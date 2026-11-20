@@ -75,61 +75,61 @@
     }
 
     [data-theme="light"] {
-      --bg: #F7F7F8;
-      --glass: rgba(255, 255, 255, 0.78);
-      --glass-2: rgba(255, 255, 255, 0.62);
-      --glass-modal: rgba(255, 255, 255, 0.92);
-      --overlay-bg: rgba(15, 15, 18, 0.28);
+      --bg: #F1F7FC;
+      --glass: rgba(255, 255, 255, 0.76);
+      --glass-2: rgba(255, 255, 255, 0.60);
+      --glass-modal: rgba(250, 253, 255, 0.92);
+      --overlay-bg: rgba(36, 62, 86, 0.20);
 
-      --border: rgba(0, 0, 0, 0.085);
-      --border-hover: rgba(0, 0, 0, 0.18);
-      --border-strong: rgba(0, 0, 0, 0.26);
+      --border: rgba(62, 104, 140, 0.12);
+      --border-hover: rgba(62, 104, 140, 0.24);
+      --border-strong: rgba(62, 104, 140, 0.34);
 
-      --tile-bg: rgba(0, 0, 0, 0.038);
-      --tile-hover: rgba(0, 0, 0, 0.07);
-      --tile-border: rgba(0, 0, 0, 0.065);
+      --tile-bg: rgba(118, 168, 205, 0.10);
+      --tile-hover: rgba(118, 168, 205, 0.17);
+      --tile-border: rgba(62, 104, 140, 0.10);
 
-      --accent: #111111;
-      --accent-hover: #000000;
-      --accent-ink: #FFFFFF;
+      --accent: #7FAFCF;
+      --accent-hover: #6A9FBF;
+      --accent-ink: #102A3A;
 
-      --text: #111111;
-      --text-2: #666666;
-      --text-3: #999999;
+      --text: #1E3345;
+      --text-2: #5A7085;
+      --text-3: #8CA1B3;
 
-      --icon: #262626;
-      --icon-muted: #6E6E6E;
+      --icon: #2B4A63;
+      --icon-muted: #6E879B;
 
-      --track: rgba(0, 0, 0, 0.12);
-      --fill: #181818;
+      --track: rgba(62, 104, 140, 0.14);
+      --fill: #6E9FBF;
 
-      --glow-1: rgba(0, 0, 0, 0.04);
-      --glow-2: rgba(0, 0, 0, 0.025);
-      --halftone-dot: rgba(0, 0, 0, 0.07);
-      --halftone-soft: rgba(0, 0, 0, 0.045);
+      --glow-1: rgba(110, 159, 191, 0.12);
+      --glow-2: rgba(110, 159, 191, 0.07);
+      --halftone-dot: rgba(62, 104, 140, 0.10);
+      --halftone-soft: rgba(62, 104, 140, 0.06);
 
-      --success: #16A34A;
-      --success-bg: rgba(22, 163, 74, 0.10);
-      --success-border: rgba(22, 163, 74, 0.28);
+      --success: #3E8E6E;
+      --success-bg: rgba(62, 142, 110, 0.10);
+      --success-border: rgba(62, 142, 110, 0.26);
 
-      --error: #DC2626;
-      --error-bg: rgba(220, 38, 38, 0.09);
-      --error-border: rgba(220, 38, 38, 0.26);
+      --error: #C06464;
+      --error-bg: rgba(192, 100, 100, 0.10);
+      --error-border: rgba(192, 100, 100, 0.26);
 
-      --user-bubble: rgba(0, 0, 0, 0.055);
-      --code-bg: rgba(0, 0, 0, 0.045);
-      --table-head: rgba(0, 0, 0, 0.038);
-      --table-hover: rgba(0, 0, 0, 0.022);
+      --user-bubble: rgba(110, 159, 191, 0.15);
+      --code-bg: rgba(110, 159, 191, 0.12);
+      --table-head: rgba(110, 159, 191, 0.10);
+      --table-hover: rgba(110, 159, 191, 0.05);
 
-      --seg-1: #161616;
-      --seg-2: #767676;
-      --seg-3: #CFCFCF;
-      --chart-grid: rgba(0, 0, 0, 0.07);
-      --chart-area-top: rgba(0, 0, 0, 0.09);
-      --chart-area-bot: rgba(0, 0, 0, 0.0);
+      --seg-1: #6E9FBF;
+      --seg-2: #A9C6DA;
+      --seg-3: #DCE9F2;
+      --chart-grid: rgba(62, 104, 140, 0.10);
+      --chart-area-top: rgba(110, 159, 191, 0.22);
+      --chart-area-bot: rgba(110, 159, 191, 0.0);
 
-      --shadow-panel: 0 12px 36px rgba(0, 0, 0, 0.055);
-      --shadow-modal: 0 28px 68px rgba(0, 0, 0, 0.14);
+      --shadow-panel: 0 14px 38px rgba(62, 104, 140, 0.10);
+      --shadow-modal: 0 28px 70px rgba(62, 104, 140, 0.18);
     }
 
     /* ==========================================================================
@@ -1426,15 +1426,42 @@
       position: absolute;
       top: 0;
       right: 0;
-      width: 240px;
-      height: 150px;
-      background-image: radial-gradient(circle, var(--halftone-soft) 1px, transparent 1.15px);
+      width: 300px;
+      height: 220px;
+      background-image: radial-gradient(circle, var(--halftone-soft) 1.05px, transparent 1.2px);
       background-size: 9px 9px;
-      -webkit-mask-image: radial-gradient(ellipse 84% 84% at 94% 6%, #000 0%, transparent 72%);
-      mask-image: radial-gradient(ellipse 84% 84% at 94% 6%, #000 0%, transparent 72%);
+      -webkit-mask-image: radial-gradient(ellipse 80% 78% at 94% 4%, #000 0%, transparent 72%);
+      mask-image: radial-gradient(ellipse 80% 78% at 94% 4%, #000 0%, transparent 72%);
       pointer-events: none;
       contain: paint;
+      overflow: hidden;
       z-index: 0;
+    }
+
+    .overview-halftone::after {
+      content: "";
+      position: absolute;
+      inset: -30px;
+      background-image: radial-gradient(circle, var(--halftone-dot) 1.25px, transparent 1.4px);
+      background-size: 13px 13px;
+      opacity: 0.55;
+      -webkit-mask-image: radial-gradient(ellipse 75% 80% at 78% 18%, #000 0%, transparent 70%);
+      mask-image: radial-gradient(ellipse 75% 80% at 78% 18%, #000 0%, transparent 70%);
+      animation: halftoneDrift 26s linear infinite;
+      will-change: transform;
+      pointer-events: none;
+    }
+
+    @keyframes halftoneDrift {
+      from { transform: translate3d(0, 0, 0); }
+      to { transform: translate3d(-13px, -13px, 0); }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      .overview-halftone::after,
+      .score-modal::before {
+        animation: none;
+      }
     }
 
     .overview-header {
@@ -1694,12 +1721,12 @@
       line-height: 1.05;
       font-weight: 500;
       letter-spacing: -0.04em;
-      color: var(--text);
+      color: var(--text-2);
       font-variant-numeric: tabular-nums;
     }
 
     .score-summary-value.is-max {
-      color: var(--accent);
+      color: var(--text);
     }
 
     .score-summary-meta {
@@ -1777,7 +1804,7 @@
     }
 
     .score-bar-value.is-max {
-      fill: var(--accent);
+      fill: var(--text);
     }
 
     .score-chart-caption {
@@ -1796,96 +1823,6 @@
       font-size: 11.5px;
     }
 
-    /* Chance widget */
-    .chance-wrap {
-      display: flex;
-      align-items: center;
-      gap: 14px;
-      min-width: 0;
-    }
-
-    .chance-ring {
-      position: relative;
-      width: 94px;
-      height: 94px;
-      flex-shrink: 0;
-    }
-
-    .chance-ring svg {
-      width: 100%;
-      height: 100%;
-      transform: rotate(-90deg);
-    }
-
-    .chance-ring-track {
-      fill: none;
-      stroke: var(--track);
-      stroke-width: 6;
-    }
-
-    .chance-ring-fill {
-      fill: none;
-      stroke: var(--accent);
-      stroke-width: 6;
-      stroke-linecap: round;
-    }
-
-    .chance-ring-center {
-      position: absolute;
-      inset: 0;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      gap: 1px;
-      text-align: center;
-    }
-
-    .chance-value {
-      font-size: 22px;
-      line-height: 1;
-      font-weight: 500;
-      letter-spacing: -0.04em;
-      color: var(--text);
-    }
-
-    .chance-unit {
-      font-size: 9.5px;
-      color: var(--text-3);
-    }
-
-    .chance-copy {
-      display: flex;
-      flex-direction: column;
-      gap: 4px;
-      min-width: 0;
-    }
-
-    .chance-label {
-      font-size: 13px;
-      font-weight: 500;
-      color: var(--text);
-      letter-spacing: -0.01em;
-    }
-
-    .chance-note {
-      font-size: 11.5px;
-      line-height: 1.45;
-      color: var(--text-3);
-    }
-
-    .chance-pill {
-      align-self: flex-start;
-      margin-top: 2px;
-      padding: 3px 8px;
-      border-radius: 999px;
-      background: var(--tile-bg);
-      border: 1px solid var(--tile-border);
-      font-size: 10px;
-      color: var(--text-2);
-      letter-spacing: 0.02em;
-    }
-
     /* Salary widget */
     .salary-list {
       display: flex;
@@ -1902,8 +1839,78 @@
       background: var(--tile-bg);
     }
 
+    /* Minimum subject scores widget */
+    .min-scores-list {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .min-scores-head,
+    .min-scores-row {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 46px 46px;
+      gap: 6px;
+      align-items: center;
+    }
+
+    .min-scores-head {
+      padding: 0 8px 2px;
+      font-size: 9.5px;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      color: var(--text-3);
+    }
+
+    .min-scores-head span:not(:first-child) {
+      text-align: center;
+    }
+
+    .min-scores-row {
+      padding: 6px 8px;
+      border-radius: 9px;
+      background: var(--tile-bg);
+      border: 1px solid var(--tile-border);
+      font-size: 11.5px;
+      color: var(--text-2);
+    }
+
+    .min-scores-row b {
+      font-weight: 500;
+      color: var(--text);
+      text-align: center;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .min-scores-row b.is-paid {
+      color: var(--text-2);
+    }
+
+    .min-scores-note {
+      font-size: 10.5px;
+      line-height: 1.4;
+      color: var(--text-3);
+    }
+
     /* Fullscreen score comparison */
+    .score-modal::before {
+      content: "";
+      position: fixed;
+      inset: -40px;
+      background-image: radial-gradient(circle, var(--halftone-dot) 1.35px, transparent 1.5px);
+      background-size: 14px 14px;
+      opacity: 0.38;
+      -webkit-mask-image: radial-gradient(ellipse 80% 80% at 50% 46%, #000 0%, transparent 78%);
+      mask-image: radial-gradient(ellipse 80% 80% at 50% 46%, #000 0%, transparent 78%);
+      animation: halftoneDrift 32s linear infinite;
+      will-change: transform;
+      pointer-events: none;
+      z-index: 0;
+    }
+
     .score-modal .score-dialog {
+      position: relative;
+      z-index: 1;
       max-width: 1180px;
       width: min(1180px, calc(100vw - 32px));
       height: min(68vh, 600px);
@@ -1937,10 +1944,10 @@
     }
 
     .score-overlay-body {
-      display: grid;
-      grid-template-columns: minmax(0, 1fr) 340px;
+      position: relative;
       height: 100%;
       min-height: 0;
+      overflow: hidden;
     }
 
     .score-carousel-wrap {
@@ -1948,7 +1955,7 @@
       flex-direction: column;
       min-width: 0;
       min-height: 0;
-      border-right: 1px solid var(--border);
+      height: 100%;
     }
 
     .score-carousel-head {
@@ -1962,6 +1969,30 @@
     .score-carousel-title {
       font-size: 11.5px;
       color: var(--text-3);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .score-chart-legend {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      padding: 3px 7px;
+      border-radius: 999px;
+      background: var(--tile-bg);
+      border: 1px solid var(--tile-border);
+      font-size: 9.5px;
+      color: var(--text-3);
+      white-space: nowrap;
+    }
+
+    .score-chart-legend::before {
+      content: "";
+      width: 6px;
+      height: 6px;
+      border-radius: 2px;
+      background: var(--accent);
     }
 
     .score-carousel-nav {
@@ -1976,7 +2007,7 @@
 
     .score-carousel {
       display: flex;
-      align-items: flex-start;
+      align-items: stretch;
       gap: 12px;
       overflow-x: auto;
       overflow-y: hidden;
@@ -1993,11 +2024,12 @@
       display: none;
     }
 
-    .score-card {
+    .score-column {
       scroll-snap-align: start;
-      flex: 0 0 300px;
-      max-width: 78vw;
-      padding: 16px;
+      flex: 0 0 218px;
+      max-width: 72vw;
+      height: 100%;
+      padding: 14px;
       border-radius: 18px;
       background: var(--glass-2);
       border: 1px solid var(--border);
@@ -2006,143 +2038,185 @@
       gap: 12px;
       text-align: left;
       cursor: pointer;
-      transition: border-color 220ms, transform 220ms, background-color 220ms;
+      transition: border-color 220ms, background-color 220ms, transform 220ms;
     }
 
-    .score-card:hover {
+    .score-column:hover {
       border-color: var(--border-hover);
       background: var(--tile-bg);
       transform: translateY(-2px);
     }
 
-    .score-card.is-selected {
+    .score-column.is-selected {
       border-color: var(--border-strong);
+      background: var(--tile-bg);
     }
 
-    .score-card:focus-visible {
+    .score-column:focus-visible {
       outline: 2px solid var(--border-strong);
       outline-offset: 2px;
     }
 
-    .score-card-top {
+    .score-column-chart {
+      position: relative;
+      flex: 1;
+      min-height: 150px;
+      display: flex;
+      align-items: flex-end;
+      padding-top: 24px;
+      background-image: linear-gradient(to top, var(--chart-grid) 1px, transparent 1px);
+      background-size: 100% 25%;
+      border-radius: 10px;
+    }
+
+    .score-column-bar-wrap {
+      position: relative;
+      width: 58%;
+      margin: 0 auto;
+      min-height: 8px;
+      display: flex;
+      align-items: flex-end;
+    }
+
+    .score-column-bar {
+      position: relative;
+      width: 100%;
+      height: 100%;
+      border-radius: 9px 9px 3px 3px;
+      background: var(--seg-2);
+      opacity: 0.55;
+      transition: opacity 200ms, background-color 200ms;
+    }
+
+    .score-column-bar::before {
+      content: "";
+      position: absolute;
+      left: -12%;
+      right: -12%;
+      top: -1px;
+      border-top: 1px dashed var(--text-3);
+      opacity: 0.55;
+    }
+
+    .score-column:hover .score-column-bar,
+    .score-column.is-selected .score-column-bar {
+      opacity: 1;
+    }
+
+    .score-column.is-selected .score-column-bar {
+      background: var(--accent);
+    }
+
+    .score-column-value {
+      position: absolute;
+      bottom: calc(100% + 8px);
+      left: 50%;
+      transform: translateX(-50%);
+      font-size: 24px;
+      line-height: 1;
+      font-weight: 500;
+      letter-spacing: -0.05em;
+      color: var(--text);
+      white-space: nowrap;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .score-column.is-selected .score-column-value {
+      color: var(--text);
+    }
+
+    .score-column-info {
+      display: flex;
+      flex-direction: column;
+      gap: 3px;
+      min-height: 118px;
+    }
+
+    .score-column-code {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 9.5px;
+      color: var(--text-3);
+      letter-spacing: 0.02em;
+    }
+
+    .score-column-name {
+      font-size: 12.5px;
+      font-weight: 500;
+      line-height: 1.3;
+      letter-spacing: -0.01em;
+      color: var(--text);
+    }
+
+    .score-column-faculty {
+      font-size: 10px;
+      color: var(--text-3);
+      margin-bottom: 2px;
+    }
+
+    .score-column-subjects {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 3px 8px;
+      font-size: 10.5px;
+      line-height: 1.35;
+      color: var(--text-2);
+    }
+
+    .score-column-subjects span {
+      white-space: nowrap;
+    }
+
+    .score-column-subjects span::after {
+      content: "·";
+      margin-left: 8px;
+      color: var(--text-3);
+    }
+
+    .score-column-subjects span:last-child::after {
+      content: "";
+      margin-left: 0;
+    }
+
+    .score-detail {
+      position: absolute;
+      top: 0;
+      right: 0;
+      bottom: 0;
+      width: 340px;
+      padding: 20px 20px 22px;
+      overflow-y: auto;
+      min-height: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      background: var(--glass-modal);
+      border-left: 1px solid var(--border);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      transform: translateX(100%);
+      opacity: 0;
+      pointer-events: none;
+      transition: transform 260ms cubic-bezier(0.22, 1, 0.36, 1), opacity 240ms;
+      z-index: 2;
+    }
+
+    .score-overlay-body.is-detail-open .score-detail {
+      transform: translateX(0);
+      opacity: 1;
+      pointer-events: auto;
+    }
+
+    .score-detail-head {
       display: flex;
       align-items: flex-start;
       justify-content: space-between;
       gap: 10px;
     }
 
-    .score-card-code {
-      font-family: 'JetBrains Mono', monospace;
-      font-size: 10.5px;
-      color: var(--text-3);
-      letter-spacing: 0.02em;
-    }
-
-    .score-card-name {
-      font-size: 14px;
-      font-weight: 500;
-      line-height: 1.3;
-      letter-spacing: -0.015em;
-      color: var(--text);
-    }
-
-    .score-card-score {
-      display: flex;
-      align-items: baseline;
-      gap: 5px;
-    }
-
-    .score-card-score strong {
-      font-size: 30px;
-      line-height: 1;
-      font-weight: 500;
-      letter-spacing: -0.05em;
-      color: var(--text);
-      font-variant-numeric: tabular-nums;
-    }
-
-    .score-card-score span {
-      font-size: 10.5px;
-      color: var(--text-3);
-    }
-
-    .score-card-meta {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 6px;
-      font-size: 10.5px;
-      color: var(--text-3);
-    }
-
-    .score-card-meta span {
-      padding: 3px 7px;
-      border-radius: 999px;
-      background: var(--tile-bg);
-      border: 1px solid var(--tile-border);
-    }
-
-    .score-card-subjects {
-      display: flex;
-      flex-direction: column;
-      gap: 7px;
-      padding-top: 2px;
-    }
-
-    .score-subject {
-      display: flex;
-      flex-direction: column;
-      gap: 3px;
-    }
-
-    .score-subject-top {
-      display: flex;
-      align-items: baseline;
-      justify-content: space-between;
-      gap: 8px;
-      font-size: 11.5px;
-      color: var(--text-2);
-    }
-
-    .score-subject-top b {
-      color: var(--text);
-      font-weight: 500;
-      font-variant-numeric: tabular-nums;
-    }
-
-    .score-subject-track {
-      height: 2px;
-      border-radius: 999px;
-      background: var(--track);
-      overflow: hidden;
-    }
-
-    .score-subject-fill {
-      height: 100%;
-      border-radius: 999px;
-      background: var(--fill);
-    }
-
-    .score-card-cta {
-      margin-top: auto;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 8px;
-      font-size: 11px;
-      color: var(--text-3);
-    }
-
-    .score-card-cta span:last-child {
-      color: var(--text-2);
-    }
-
-    .score-detail {
-      padding: 20px 20px 22px;
-      overflow-y: auto;
-      min-height: 0;
-      display: flex;
-      flex-direction: column;
-      gap: 14px;
+    .score-detail-close {
+      width: 26px;
+      height: 26px;
+      flex-shrink: 0;
     }
 
     .score-detail-code {
@@ -2180,6 +2254,21 @@
       color: var(--text-3);
     }
 
+    .score-card-meta {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      font-size: 10.5px;
+      color: var(--text-3);
+    }
+
+    .score-card-meta span {
+      padding: 3px 7px;
+      border-radius: 999px;
+      background: var(--tile-bg);
+      border: 1px solid var(--tile-border);
+    }
+
     .score-detail-text {
       font-size: 12.5px;
       line-height: 1.55;
@@ -2193,32 +2282,58 @@
       color: var(--text-3);
     }
 
-    .score-detail-subjects {
+    .score-detail-subject-list {
       display: flex;
       flex-direction: column;
-      gap: 7px;
-    }
-
-    .score-detail-subject {
-      display: grid;
-      grid-template-columns: 1fr auto;
-      gap: 4px 10px;
-      padding: 8px 10px;
-      border-radius: 10px;
-      background: var(--tile-bg);
-      border: 1px solid var(--tile-border);
+      gap: 4px;
+      margin: 0;
+      padding: 0;
+      list-style: none;
       font-size: 11.5px;
       color: var(--text-2);
     }
 
-    .score-detail-subject b {
-      color: var(--text);
-      font-weight: 500;
-      font-variant-numeric: tabular-nums;
+    .score-detail-subject-list li {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 6px 9px;
+      border-radius: 9px;
+      background: var(--tile-bg);
+      border: 1px solid var(--tile-border);
     }
 
-    .score-detail-subject .score-subject-track {
-      grid-column: 1 / -1;
+    .score-detail-subject-list li::before {
+      content: "";
+      width: 5px;
+      height: 5px;
+      border-radius: 50%;
+      background: var(--accent);
+      flex-shrink: 0;
+    }
+
+    .score-chance-btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      width: 100%;
+      padding: 10px 12px;
+      border-radius: 12px;
+      background: var(--accent);
+      color: var(--accent-ink);
+      font-size: 12px;
+      font-weight: 500;
+      transition: transform 200ms, opacity 200ms;
+    }
+
+    .score-chance-btn:hover {
+      transform: translateY(-1px);
+      opacity: 0.92;
+    }
+
+    .score-chance-btn:active {
+      transform: scale(0.98);
     }
 
     .score-detail-note {
@@ -2242,24 +2357,35 @@
 
     @media (max-width: 860px) {
       .score-modal .score-dialog {
-        height: min(90vh, 860px);
+        height: auto;
+        max-height: 90vh;
       }
       .score-overlay-body {
-        grid-template-columns: 1fr;
         overflow-y: auto;
       }
       .score-carousel-wrap {
-        border-right: none;
-        border-bottom: 1px solid var(--border);
+        height: auto;
       }
       .score-carousel {
         flex: none;
+        align-items: stretch;
+      }
+      .score-column {
+        flex-basis: 72vw;
+        height: 360px;
       }
       .score-detail {
-        overflow: visible;
+        position: static;
+        width: auto;
+        transform: none;
+        opacity: 1;
+        pointer-events: auto;
+        display: none;
+        border-left: none;
+        border-top: 1px solid var(--border);
       }
-      .score-card {
-        flex-basis: 78vw;
+      .score-overlay-body.is-detail-open .score-detail {
+        display: flex;
       }
       .score-modal-actions .score-tabs-compact {
         min-width: 0;
@@ -2277,12 +2403,8 @@
       .score-summary-value {
         font-size: 21px;
       }
-      .chance-wrap {
-        gap: 10px;
-      }
-      .chance-ring {
-        width: 82px;
-        height: 82px;
+      .score-chart-legend {
+        display: none;
       }
     }
 
@@ -2978,7 +3100,17 @@
         </div>
 
         <div class="overview-scroll">
-          <!-- Card 1: Стоимость обучения -->
+          <!-- Card 1: Этапы приёмной кампании -->
+          <div class="info-card">
+            <div class="card-head">
+              <span class="card-title" data-i18n="cardTimeline">Этапы приёмной кампании</span>
+              <span class="card-caption tabular">2026</span>
+            </div>
+            <div id="timelineList" class="timeline-list"></div>
+            <span class="timeline-note" data-i18n="timelineNote">Точные даты уточняйте в чате</span>
+          </div>
+
+          <!-- Card 2: Стоимость обучения -->
           <div class="info-card">
             <div class="card-head">
               <span class="card-title" data-i18n="cardTuition">Стоимость обучения</span>
@@ -2987,7 +3119,7 @@
             <div id="tuitionList" class="tuition-list"></div>
           </div>
 
-          <!-- Card 2: Проходные баллы по направлениям -->
+          <!-- Card 3: Проходные баллы по направлениям -->
           <div class="info-card">
             <div class="card-head">
               <span class="card-title" data-i18n="cardScores">Проходные баллы</span>
@@ -3008,25 +3140,17 @@
             </button>
           </div>
 
-          <!-- Card 3: Шанс поступления -->
+          <!-- Card 4: Минимальные баллы по предметам -->
           <div class="info-card">
             <div class="card-head">
-              <span class="card-title" data-i18n="cardChance">Шанс поступления</span>
+              <span class="card-title" data-i18n="cardMinScores">Минимальные баллы по предметам</span>
               <span class="card-caption" data-i18n="demoBadge">демо</span>
             </div>
-            <div id="chanceWidget" class="chance-wrap"></div>
+            <div id="minScoresList" class="min-scores-list"></div>
+            <span id="minScoresNote" class="min-scores-note"></span>
           </div>
 
-          <!-- Card 4: Зарплата выпускников -->
-          <div class="info-card">
-            <div class="card-head">
-              <span class="card-title" data-i18n="cardSalary">Зарплата выпускников</span>
-              <span class="card-caption" data-i18n="medianSalary">медиана · демо</span>
-            </div>
-            <div id="salaryList" class="salary-list"></div>
-          </div>
-
-          <!-- Card 3: Структура приёма (места) -->
+          <!-- Card 5: Структура приёма (места) -->
           <div class="info-card">
             <div class="card-head">
               <span class="card-title" data-i18n="cardSeats">Структура приёма (места)</span>
@@ -3036,7 +3160,7 @@
             <div id="seatsLegend" class="seats-legend"></div>
           </div>
 
-          <!-- Card 4: Стипендии и кампус -->
+          <!-- Card 6: Стипендии и кампус -->
           <div class="info-card">
             <div class="card-head">
               <span class="card-title" data-i18n="cardCampus">Стипендии и кампус</span>
@@ -3045,14 +3169,13 @@
             <div id="campusGrid" class="mini-grid"></div>
           </div>
 
-          <!-- Card 5: Этапы приёмной кампании -->
+          <!-- Card 7: Средние зарплаты выпускников -->
           <div class="info-card">
             <div class="card-head">
-              <span class="card-title" data-i18n="cardTimeline">Этапы приёмной кампании</span>
-              <span class="card-caption tabular">2026</span>
+              <span class="card-title" data-i18n="cardSalary">Средние зарплаты выпускников</span>
+              <span class="card-caption" data-i18n="medianSalary">медиана · демо</span>
             </div>
-            <div id="timelineList" class="timeline-list"></div>
-            <span class="timeline-note" data-i18n="timelineNote">Точные даты уточняйте в чате</span>
+            <div id="salaryList" class="salary-list"></div>
           </div>
         </div>
 
@@ -3246,10 +3369,13 @@
         </div>
       </div>
       <div class="modal-body score-modal-body">
-        <div class="score-overlay-body">
+        <div id="scoreOverlayBody" class="score-overlay-body">
           <div class="score-carousel-wrap">
             <div class="score-carousel-head">
-              <span class="score-carousel-title" data-i18n="scoreCarouselHint">Листайте карточки направлений</span>
+              <span class="score-carousel-title">
+                <span data-i18n="scoreCarouselHint">Листайте направления</span>
+                <span class="score-chart-legend" data-i18n="scoreLegend">Высота столбца — проходной балл</span>
+              </span>
               <div class="score-carousel-nav">
                 <button id="scorePrevBtn" class="icon-btn score-nav-btn" data-i18n-title="scorePrev" title="Предыдущее направление" aria-label="Предыдущее направление">
                   <svg viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"></polyline></svg>
@@ -3313,24 +3439,25 @@
           scoreDirectionsCount: 'по 6 направлениям',
           comparePrograms: 'Развернуть сравнение →',
           expandScores: 'Развернуть',
-          cardChance: 'Шанс поступления',
-          cardSalary: 'Зарплата выпускников',
+          cardMinScores: 'Минимальные баллы по предметам',
+          cardSalary: 'Средние зарплаты выпускников',
           medianSalary: 'медиана · демо',
           demoBadge: 'демо',
-          chanceUnit: 'шанс',
           scoreOverlayTitle: 'Сравнение направлений',
           scoreOverlaySub: 'Проходные баллы и предметы · демо',
-          scoreCarouselHint: 'Листайте карточки направлений',
+          scoreCarouselHint: 'Листайте направления',
+          scoreLegend: 'Высота столбца — проходной балл',
           scorePrev: 'Предыдущее направление',
           scoreNext: 'Следующее направление',
           scorePassing: 'Проходной балл',
-          scoreSeats: 'Мест',
           scoreBudgetSeats: 'бюджетных мест',
           scorePaidSeats: 'платных мест',
-          scoreSubjects: 'Предметы и баллы',
-          scoreDetails: 'Подробнее',
-          scoreSum: 'Сумма',
-          scoreExample: 'Пример баллов абитуриента',
+          scoreSubjects: 'Предметы',
+          scoreSubject: 'Предмет',
+          scoreBudgetShort: 'Бюджет',
+          scorePaidShort: 'Платное',
+          scoreChanceCta: 'Рассчитать шанс в чате',
+          scoreDetailClose: 'Закрыть описание',
           scoreDetailHint: 'Выберите направление, чтобы увидеть описание',
           scoreDemoNote: 'Демонстрационные данные для интерфейса',
           close: 'Закрыть',
@@ -3389,7 +3516,8 @@
             { q: 'Сравни проходные баллы на бюджет и платное по направлениям', sub: 'Бюджет · Платное' },
             { q: 'Сколько стоит обучение на бакалавриате и магистратуре?', sub: 'Стоимость за семестр' },
             { q: 'Как получить место в общежитии и сколько стоит проживание?', sub: 'Общежития · Кампус' },
-            { q: 'Какие виды стипендий и доп. баллы ИД есть в СибГУТИ?', sub: 'Стипендии · Достижения' }
+            { q: 'Какие виды стипендий и доп. баллы ИД есть в СибГУТИ?', sub: 'Стипендии · Достижения' },
+            { q: 'Какой у меня шанс поступить на ИВТ?', sub: 'Шанс поступления' }
           ]
         },
         en: {
@@ -3424,24 +3552,25 @@
           scoreDirectionsCount: 'across 6 programs',
           comparePrograms: 'Expand comparison →',
           expandScores: 'Expand',
-          cardChance: 'Admission chance',
-          cardSalary: 'Graduate salary',
+          cardMinScores: 'Minimum subject scores',
+          cardSalary: 'Average graduate salaries',
           medianSalary: 'median · demo',
           demoBadge: 'demo',
-          chanceUnit: 'chance',
           scoreOverlayTitle: 'Program comparison',
           scoreOverlaySub: 'Passing scores and subjects · demo',
-          scoreCarouselHint: 'Swipe through program cards',
+          scoreCarouselHint: 'Swipe through programs',
+          scoreLegend: 'Bar height = passing score',
           scorePrev: 'Previous program',
           scoreNext: 'Next program',
           scorePassing: 'Passing score',
-          scoreSeats: 'Seats',
           scoreBudgetSeats: 'budget seats',
           scorePaidSeats: 'paid seats',
-          scoreSubjects: 'Subjects and scores',
-          scoreDetails: 'Details',
-          scoreSum: 'Total',
-          scoreExample: 'Sample applicant scores',
+          scoreSubjects: 'Subjects',
+          scoreSubject: 'Subject',
+          scoreBudgetShort: 'Budget',
+          scorePaidShort: 'Paid',
+          scoreChanceCta: 'Estimate chance in chat',
+          scoreDetailClose: 'Close details',
           scoreDetailHint: 'Select a program to see details',
           scoreDemoNote: 'Demo data for the interface',
           close: 'Close',
@@ -3500,7 +3629,8 @@
             { q: 'Compare budget and paid passing scores across programs', sub: 'Budget · Paid' },
             { q: 'Сколько стоит обучение на бакалавриате и магистратуре?', sub: 'Tuition per semester' },
             { q: 'Как получить место в общежитии и сколько стоит проживание?', sub: 'Dormitories · Campus' },
-            { q: 'Какие виды стипендий и доп. баллы ИД есть в СибГУТИ?', sub: 'Scholarships · Bonus points' }
+            { q: 'Какие виды стипендий и доп. баллы ИД есть в СибГУТИ?', sub: 'Scholarships · Bonus points' },
+            { q: 'What are my chances of getting into CS?', sub: 'Admission chance' }
           ]
         }
       };
@@ -3555,20 +3685,16 @@
             shortEn: 'CS',
             nameRu: 'Информатика и вычислительная техника',
             nameEn: 'Computer Science and Engineering',
+            facultyRu: 'Институт информатики и вычислительной техники',
+            facultyEn: 'Institute of Computer Science and Engineering',
             budget: 221,
             paid: 168,
             budgetSeats: 258,
             paidSeats: 101,
-            subjectsRu: [
-              { name: 'Математика (профиль)', score: 82 },
-              { name: 'Информатика', score: 78 },
-              { name: 'Русский язык', score: 61 }
-            ],
-            subjectsEn: [
-              { name: 'Mathematics (profile)', score: 82 },
-              { name: 'Computer science', score: 78 },
-              { name: 'Russian language', score: 61 }
-            ],
+            chanceBudget: 85,
+            chancePaid: 92,
+            subjectsRu: ['Математика (профиль)', 'Информатика', 'Русский язык'],
+            subjectsEn: ['Mathematics (profile)', 'Computer science', 'Russian language'],
             descriptionRu: 'Флагманское ИТ-направление: алгоритмы, разработка ПО, базы данных, сети и высоконагруженные системы. Подойдёт тем, кто хочет писать код и строить сервисы.',
             descriptionEn: 'The flagship IT program: algorithms, software development, databases, networks and high-load systems. For those who want to write code and build services.'
           },
@@ -3579,20 +3705,16 @@
             shortEn: 'SEC',
             nameRu: 'Информационная безопасность',
             nameEn: 'Information Security',
+            facultyRu: 'Институт безопасности',
+            facultyEn: 'Institute of Security',
             budget: 213,
             paid: 172,
             budgetSeats: 38,
             paidSeats: 52,
-            subjectsRu: [
-              { name: 'Математика (профиль)', score: 79 },
-              { name: 'Информатика', score: 73 },
-              { name: 'Русский язык', score: 61 }
-            ],
-            subjectsEn: [
-              { name: 'Mathematics (profile)', score: 79 },
-              { name: 'Computer science', score: 73 },
-              { name: 'Russian language', score: 61 }
-            ],
+            chanceBudget: 78,
+            chancePaid: 88,
+            subjectsRu: ['Математика (профиль)', 'Информатика', 'Русский язык'],
+            subjectsEn: ['Mathematics (profile)', 'Computer science', 'Russian language'],
             descriptionRu: 'Защита информации, криптография, сети и аудит. Для тех, кто хочет заниматься кибербезопасностью и защитой инфраструктуры.',
             descriptionEn: 'Information protection, cryptography, networks and audit. For those who want to work in cybersecurity and infrastructure protection.'
           },
@@ -3603,20 +3725,16 @@
             shortEn: 'TEL',
             nameRu: 'Инфокоммуникационные технологии и системы связи',
             nameEn: 'Infocommunication Technologies and Communication Systems',
+            facultyRu: 'Институт телекоммуникаций',
+            facultyEn: 'Institute of Telecommunications',
             budget: 191,
             paid: 160,
             budgetSeats: 196,
             paidSeats: 44,
-            subjectsRu: [
-              { name: 'Математика (профиль)', score: 70 },
-              { name: 'Физика', score: 67 },
-              { name: 'Русский язык', score: 54 }
-            ],
-            subjectsEn: [
-              { name: 'Mathematics (profile)', score: 70 },
-              { name: 'Physics', score: 67 },
-              { name: 'Russian language', score: 54 }
-            ],
+            chanceBudget: 82,
+            chancePaid: 90,
+            subjectsRu: ['Математика (профиль)', 'Физика', 'Русский язык'],
+            subjectsEn: ['Mathematics (profile)', 'Physics', 'Russian language'],
             descriptionRu: 'Сети связи, маршрутизация, оптические и беспроводные технологии. Для будущих инженеров операторов связи и сетевой инфраструктуры.',
             descriptionEn: 'Communication networks, routing, optical and wireless technologies. For future engineers at telecom operators and network infrastructure.'
           },
@@ -3627,20 +3745,16 @@
             shortEn: 'RADIO',
             nameRu: 'Радиотехника',
             nameEn: 'Radio Engineering',
+            facultyRu: 'Институт телекоммуникаций',
+            facultyEn: 'Institute of Telecommunications',
             budget: 178,
             paid: 151,
             budgetSeats: 112,
             paidSeats: 15,
-            subjectsRu: [
-              { name: 'Физика', score: 65 },
-              { name: 'Математика (профиль)', score: 62 },
-              { name: 'Русский язык', score: 51 }
-            ],
-            subjectsEn: [
-              { name: 'Physics', score: 65 },
-              { name: 'Mathematics (profile)', score: 62 },
-              { name: 'Russian language', score: 51 }
-            ],
+            chanceBudget: 74,
+            chancePaid: 86,
+            subjectsRu: ['Физика', 'Математика (профиль)', 'Русский язык'],
+            subjectsEn: ['Physics', 'Mathematics (profile)', 'Russian language'],
             descriptionRu: 'Радиосигналы, антенны, приёмопередатчики и цифровая обработка сигналов. Для любителей физики, электроники и космической связи.',
             descriptionEn: 'Radio signals, antennas, transceivers and digital signal processing. For enthusiasts of physics, electronics and space communications.'
           },
@@ -3651,20 +3765,16 @@
             shortEn: 'ELEC',
             nameRu: 'Конструирование и технология электронных средств',
             nameEn: 'Design and Technology of Electronic Means',
+            facultyRu: 'Институт телекоммуникаций',
+            facultyEn: 'Institute of Telecommunications',
             budget: 171,
             paid: 149,
             budgetSeats: 112,
             paidSeats: 8,
-            subjectsRu: [
-              { name: 'Физика', score: 62 },
-              { name: 'Математика (профиль)', score: 58 },
-              { name: 'Русский язык', score: 51 }
-            ],
-            subjectsEn: [
-              { name: 'Physics', score: 62 },
-              { name: 'Mathematics (profile)', score: 58 },
-              { name: 'Russian language', score: 51 }
-            ],
+            chanceBudget: 70,
+            chancePaid: 84,
+            subjectsRu: ['Физика', 'Математика (профиль)', 'Русский язык'],
+            subjectsEn: ['Physics', 'Mathematics (profile)', 'Russian language'],
             descriptionRu: 'Микроэлектроника, схемотехника и нанотехнологии. Для тех, кто хочет проектировать чипы и электронные устройства.',
             descriptionEn: 'Microelectronics, circuit design and nanotechnologies. For those who want to design chips and electronic devices.'
           },
@@ -3675,30 +3785,30 @@
             shortEn: 'MEDIA',
             nameRu: 'Реклама и связи с общественностью',
             nameEn: 'Advertising and Public Relations',
+            facultyRu: 'Институт базовых дисциплин',
+            facultyEn: 'Institute of Basic Disciplines',
             budget: 145,
             paid: 138,
             budgetSeats: 0,
             paidSeats: 50,
-            subjectsRu: [
-              { name: 'Обществознание', score: 50 },
-              { name: 'История', score: 45 },
-              { name: 'Русский язык', score: 50 }
-            ],
-            subjectsEn: [
-              { name: 'Social studies', score: 50 },
-              { name: 'History', score: 45 },
-              { name: 'Russian language', score: 50 }
-            ],
+            chanceBudget: 65,
+            chancePaid: 80,
+            subjectsRu: ['Обществознание', 'История', 'Русский язык'],
+            subjectsEn: ['Social studies', 'History', 'Russian language'],
             descriptionRu: 'Коммуникации, медиа, SMM и рекламные кампании. Для творческих людей, которые хотят работать с аудиторией и брендами.',
             descriptionEn: 'Communications, media, SMM and advertising campaigns. For creative people who want to work with audiences and brands.'
           }
         ],
-        chance: {
-          percent: 85,
-          labelRu: 'Высокий шанс',
-          labelEn: 'High chance',
-          noteRu: 'При 221 балле и 258 бюджетных местах на ИВТ',
-          noteEn: 'With 221 points and 258 budget seats in CS'
+        minSubjectScores: {
+          noteRu: 'Минимальные пороги, ниже которых документы не рассматриваются. Демо-данные.',
+          noteEn: 'Minimum thresholds below which applications are not considered. Demo data.',
+          subjects: [
+            { nameRu: 'Математика (профиль)', nameEn: 'Mathematics (profile)', budget: 40, paid: 36 },
+            { nameRu: 'Физика', nameEn: 'Physics', budget: 40, paid: 36 },
+            { nameRu: 'Информатика', nameEn: 'Computer science', budget: 45, paid: 40 },
+            { nameRu: 'Русский язык', nameEn: 'Russian language', budget: 40, paid: 36 },
+            { nameRu: 'Обществознание', nameEn: 'Social studies', budget: 45, paid: 40 }
+          ]
         },
         salaries: [
           { id: 'ivt', labelRu: 'ИТ и разработка ПО', labelEn: 'IT & software', valueRu: '110 000 ₽', valueEn: '110,000 ₽', pct: 100 },
@@ -3994,7 +4104,8 @@
         scoreChartSvg: document.getElementById('scoreChartSvg'),
         expandScoresBtn: document.getElementById('expandScoresBtn'),
         compareProgramsBtn: document.getElementById('compareProgramsBtn'),
-        chanceWidget: document.getElementById('chanceWidget'),
+        minScoresList: document.getElementById('minScoresList'),
+        minScoresNote: document.getElementById('minScoresNote'),
         salaryList: document.getElementById('salaryList'),
         totalSeatsCaption: document.getElementById('totalSeatsCaption'),
         seatsBar: document.getElementById('seatsBar'),
@@ -4003,6 +4114,7 @@
         timelineList: document.getElementById('timelineList'),
 
         scoreOverlay: document.getElementById('scoreOverlay'),
+        scoreOverlayBody: document.getElementById('scoreOverlayBody'),
         scoreOverlayToggle: document.getElementById('scoreOverlayToggle'),
         closeScoreOverlayBtn: document.getElementById('closeScoreOverlayBtn'),
         scoreCarousel: document.getElementById('scoreCarousel'),
@@ -4632,10 +4744,10 @@
         renderScoreSummary();
         renderScoreChart();
 
-        // Card 3: Admission chance
-        renderChanceWidget();
+        // Card 4: Minimum subject scores
+        renderMinScores();
 
-        // Card 4: Graduate salary
+        // Card 7: Graduate salary
         renderSalaryList();
 
         // Card 5: Admission Seats Segmented Bar
@@ -4816,30 +4928,27 @@
         });
       }
 
-      function renderChanceWidget() {
-        const data = overviewData.chance || { percent: 85 };
+      function renderMinScores() {
+        const data = overviewData.minSubjectScores || { subjects: [] };
         const isEn = state.settings.lang === 'en';
-        const percent = Math.max(0, Math.min(100, Number(data.percent) || 0));
-        const radius = 40;
-        const circumference = 2 * Math.PI * radius;
-        const offset = circumference * (1 - percent / 100);
-
-        el.chanceWidget.innerHTML =
-          `<div class="chance-ring" aria-label="${percent}%">` +
-          `  <svg viewBox="0 0 100 100" aria-hidden="true">` +
-          `    <circle class="chance-ring-track" cx="50" cy="50" r="${radius}" />` +
-          `    <circle class="chance-ring-fill" cx="50" cy="50" r="${radius}" stroke-dasharray="${circumference.toFixed(2)}" stroke-dashoffset="${offset.toFixed(2)}" />` +
-          `  </svg>` +
-          `  <div class="chance-ring-center">` +
-          `    <span class="chance-value tabular">${percent}%</span>` +
-          `    <span class="chance-unit">${t('chanceUnit')}</span>` +
-          `  </div>` +
+        const subjects = data.subjects || [];
+        el.minScoresList.innerHTML =
+          `<div class="min-scores-head">` +
+          `  <span>${t('scoreSubject')}</span>` +
+          `  <span>${t('scoreBudgetShort')}</span>` +
+          `  <span>${t('scorePaidShort')}</span>` +
           `</div>` +
-          `<div class="chance-copy">` +
-          `  <span class="chance-label">${escapeHtml(isEn ? data.labelEn : data.labelRu)}</span>` +
-          `  <span class="chance-note">${escapeHtml(isEn ? data.noteEn : data.noteRu)}</span>` +
-          `  <span class="chance-pill">${t('demoBadge')}</span>` +
-          `</div>`;
+          subjects
+            .map(
+              (subject) =>
+                `<div class="min-scores-row">` +
+                `  <span>${escapeHtml(isEn ? subject.nameEn : subject.nameRu)}</span>` +
+                `  <b>${subject.budget}</b>` +
+                `  <b class="is-paid">${subject.paid}</b>` +
+                `</div>`
+            )
+            .join('');
+        el.minScoresNote.textContent = isEn ? data.noteEn : data.noteRu;
       }
 
       function renderSalaryList() {
@@ -4874,62 +4983,53 @@
           selectedScoreDirection = directions[0].id;
         }
 
+        const values = directions.map((d) => getScoreValue(d, activeScoreMode));
+        const minValue = Math.min(...values);
+        const maxValue = Math.max(...values);
+        const baseline = Math.max(0, minValue - 20);
+        const range = Math.max(1, maxValue - baseline);
+
         el.scoreCarousel.innerHTML = '';
         directions.forEach((direction) => {
           const value = getScoreValue(direction, activeScoreMode);
-          const seats = getScoreSeats(direction, activeScoreMode);
           const subjects = isEn ? direction.subjectsEn : direction.subjectsRu;
           const isSelected = direction.id === selectedScoreDirection;
+          const height = Math.max(12, ((value - baseline) / range) * 100);
 
-          const card = document.createElement('article');
-          card.className = 'score-card' + (isSelected ? ' is-selected' : '');
-          card.setAttribute('data-direction', direction.id);
-          card.setAttribute('role', 'button');
-          card.setAttribute('tabindex', '0');
-          card.setAttribute('aria-pressed', String(isSelected));
-          card.innerHTML =
-            `<div class="score-card-top">` +
-            `  <div>` +
-            `    <div class="score-card-code">${escapeHtml(direction.code)}</div>` +
-            `    <div class="score-card-name">${escapeHtml(isEn ? direction.nameEn : direction.nameRu)}</div>` +
+          const column = document.createElement('article');
+          column.className = 'score-column' + (isSelected ? ' is-selected' : '');
+          column.setAttribute('data-direction', direction.id);
+          column.setAttribute('role', 'button');
+          column.setAttribute('tabindex', '0');
+          column.setAttribute('aria-pressed', String(isSelected));
+          column.innerHTML =
+            `<div class="score-column-chart">` +
+            `  <div class="score-column-bar-wrap" style="height:${height.toFixed(1)}%;">` +
+            `    <div class="score-column-value">${value}</div>` +
+            `    <div class="score-column-bar"></div>` +
             `  </div>` +
-            `  <span class="score-card-code">${escapeHtml(isEn ? direction.shortEn : direction.shortRu)}</span>` +
             `</div>` +
-            `<div class="score-card-score">` +
-            `  <strong>${value}</strong>` +
-            `  <span>${t('scorePassing')}</span>` +
-            `</div>` +
-            `<div class="score-card-meta">` +
-            `  <span>${seats} ${t(activeScoreMode === 'paid' ? 'scorePaidSeats' : 'scoreBudgetSeats')}</span>` +
-            `  <span>${t(activeScoreMode === 'paid' ? 'scorePaid' : 'scoreBudget')}</span>` +
-            `</div>` +
-            `<div class="score-card-subjects">` +
-            subjects
-              .map(
-                (subject) =>
-                  `<div class="score-subject">` +
-                  `  <div class="score-subject-top"><span>${escapeHtml(subject.name)}</span><b>${subject.score}</b></div>` +
-                  `  <div class="score-subject-track"><div class="score-subject-fill" style="width:${subject.score}%;"></div></div>` +
-                  `</div>`
-              )
-              .join('') +
-            `</div>` +
-            `<div class="score-card-cta"><span>${t('scoreExample')}</span><span>${t('scoreDetails')} →</span></div>`;
+            `<div class="score-column-info">` +
+            `  <div class="score-column-code">${escapeHtml(direction.code)} · ${escapeHtml(isEn ? direction.shortEn : direction.shortRu)}</div>` +
+            `  <div class="score-column-name">${escapeHtml(isEn ? direction.nameEn : direction.nameRu)}</div>` +
+            `  <div class="score-column-faculty">${escapeHtml(isEn ? direction.facultyEn : direction.facultyRu)}</div>` +
+            `  <div class="score-column-subjects">${subjects.map((subject) => `<span>${escapeHtml(subject)}</span>`).join('')}</div>` +
+            `</div>`;
 
           const select = () => {
-            selectScoreDirection(direction.id, false);
+            openScoreDetail(direction.id);
             if (window.matchMedia('(max-width: 860px)').matches) {
               el.scoreDetail.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
             }
           };
-          card.addEventListener('click', select);
-          card.addEventListener('keydown', (event) => {
+          column.addEventListener('click', select);
+          column.addEventListener('keydown', (event) => {
             if (event.key === 'Enter' || event.key === ' ') {
               event.preventDefault();
               select();
             }
           });
-          el.scoreCarousel.appendChild(card);
+          el.scoreCarousel.appendChild(column);
         });
 
         renderScoreDetail(selectedScoreDirection);
@@ -4946,10 +5046,15 @@
         const value = getScoreValue(direction, activeScoreMode);
         const seats = getScoreSeats(direction, activeScoreMode);
         const subjects = isEn ? direction.subjectsEn : direction.subjectsRu;
-        const total = subjects.reduce((sum, subject) => sum + subject.score, 0);
+        const closeLabel = t('scoreDetailClose');
 
         el.scoreDetail.innerHTML =
-          `<div class="score-detail-code">${escapeHtml(direction.code)} · ${escapeHtml(isEn ? direction.shortEn : direction.shortRu)}</div>` +
+          `<div class="score-detail-head">` +
+          `  <div class="score-detail-code">${escapeHtml(direction.code)} · ${escapeHtml(isEn ? direction.shortEn : direction.shortRu)}</div>` +
+          `  <button class="icon-btn score-detail-close" data-action="close-detail" title="${escapeHtml(closeLabel)}" aria-label="${escapeHtml(closeLabel)}">` +
+          `    <svg viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>` +
+          `  </button>` +
+          `</div>` +
           `<div class="score-detail-title">${escapeHtml(isEn ? direction.nameEn : direction.nameRu)}</div>` +
           `<div class="score-detail-score">` +
           `  <strong>${value}</strong>` +
@@ -4958,43 +5063,45 @@
           `<div class="score-card-meta"><span>${seats} ${t(activeScoreMode === 'paid' ? 'scorePaidSeats' : 'scoreBudgetSeats')}</span></div>` +
           `<p class="score-detail-text">${escapeHtml(isEn ? direction.descriptionEn : direction.descriptionRu)}</p>` +
           `<div class="score-detail-section-title">${t('scoreSubjects')}</div>` +
-          `<div class="score-detail-subjects">` +
-          subjects
-            .map(
-              (subject) =>
-                `<div class="score-detail-subject">` +
-                `  <span>${escapeHtml(subject.name)}</span><b>${subject.score}</b>` +
-                `  <div class="score-subject-track"><div class="score-subject-fill" style="width:${subject.score}%;"></div></div>` +
-                `</div>`
-            )
-            .join('') +
-          `</div>` +
-          `<div class="score-detail-note">${t('scoreSum')}: ${total} · ${t('scoreDemoNote')}</div>`;
+          `<ul class="score-detail-subject-list">${subjects.map((subject) => `<li>${escapeHtml(subject)}</li>`).join('')}</ul>` +
+          `<button class="score-chance-btn" data-action="chance" data-direction="${direction.id}">` +
+          `  <span>${t('scoreChanceCta')}</span><span>→</span>` +
+          `</button>` +
+          `<div class="score-detail-note">${t('scoreDemoNote')}</div>`;
       }
 
       function selectScoreDirection(directionId, shouldScroll) {
         selectedScoreDirection = directionId;
-        el.scoreCarousel.querySelectorAll('.score-card').forEach((card) => {
-          const isSelected = card.getAttribute('data-direction') === directionId;
-          card.classList.toggle('is-selected', isSelected);
-          card.setAttribute('aria-pressed', String(isSelected));
+        el.scoreCarousel.querySelectorAll('.score-column').forEach((column) => {
+          const isSelected = column.getAttribute('data-direction') === directionId;
+          column.classList.toggle('is-selected', isSelected);
+          column.setAttribute('aria-pressed', String(isSelected));
         });
         renderScoreDetail(directionId);
         if (shouldScroll) scrollScoreCarouselTo(directionId, true);
       }
 
+      function openScoreDetail(directionId) {
+        if (directionId) selectScoreDirection(directionId, false);
+        el.scoreOverlayBody.classList.add('is-detail-open');
+      }
+
+      function closeScoreDetail() {
+        el.scoreOverlayBody.classList.remove('is-detail-open');
+      }
+
       function scrollScoreCarouselTo(directionId, smooth) {
-        const card = el.scoreCarousel.querySelector(`[data-direction="${directionId}"]`);
-        if (!card) return;
-        const cardRect = card.getBoundingClientRect();
+        const column = el.scoreCarousel.querySelector(`[data-direction="${directionId}"]`);
+        if (!column) return;
+        const columnRect = column.getBoundingClientRect();
         const carouselRect = el.scoreCarousel.getBoundingClientRect();
-        const left = el.scoreCarousel.scrollLeft + (cardRect.left - carouselRect.left) - 18;
+        const left = el.scoreCarousel.scrollLeft + (columnRect.left - carouselRect.left) - 18;
         el.scoreCarousel.scrollTo({ left, behavior: smooth ? 'smooth' : 'auto' });
       }
 
       function scrollScoreCarouselBy(direction) {
-        const card = el.scoreCarousel.querySelector('.score-card');
-        const step = card ? card.getBoundingClientRect().width + 12 : 312;
+        const column = el.scoreCarousel.querySelector('.score-column');
+        const step = column ? column.getBoundingClientRect().width + 12 : 230;
         el.scoreCarousel.scrollBy({ left: direction * step, behavior: 'smooth' });
       }
 
@@ -5003,19 +5110,24 @@
         el.scoreOverlay.classList.add('open');
         renderScoreOverlay();
         const id = directionId || selectedScoreDirection || (getScoreDirections()[0] || {}).id;
-        if (id) {
+        if (!id) return;
+        if (explicit) {
+          openScoreDetail(id);
+        } else {
+          closeScoreDetail();
           selectScoreDirection(id, false);
-          requestAnimationFrame(() => {
-            scrollScoreCarouselTo(id, true);
-            if (explicit && window.matchMedia('(max-width: 860px)').matches) {
-              el.scoreDetail.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-            }
-          });
         }
+        requestAnimationFrame(() => {
+          scrollScoreCarouselTo(id, true);
+          if (explicit && window.matchMedia('(max-width: 860px)').matches) {
+            el.scoreDetail.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+          }
+        });
       }
 
       function closeScoreOverlay() {
         el.scoreOverlay.classList.remove('open');
+        closeScoreDetail();
       }
 
       /* Optional sync with FastAPI /api/overview if backend is connected */
@@ -5059,6 +5171,17 @@
         if (/(стипенд)/.test(recentText)) return 'scholarship';
         if (/(балл|направлен|ивт|иб|связь)/.test(recentText)) return 'programs';
         return null;
+      }
+
+      function findDirectionFromQuery(query) {
+        const q = query.toLowerCase();
+        const directions = getScoreDirections();
+        return (
+          directions.find((direction) => q.includes(direction.code)) ||
+          directions.find((direction) => q.includes(direction.nameRu.toLowerCase())) ||
+          directions.find((direction) => q.includes(direction.shortRu.toLowerCase())) ||
+          directions.find((direction) => direction.shortEn && q.includes(direction.shortEn.toLowerCase()))
+        );
       }
 
       function buildDemoReply(query, history) {
@@ -5120,7 +5243,56 @@
           };
         }
 
-        // 3. Tuition / Prices (including context-aware follow-up "а сколько стоит?")
+        // 3. Admission chance (chat-only demo function)
+        if (/(шанс|вероятност|chance|probability|odds)/.test(q)) {
+          const direction = findDirectionFromQuery(q);
+          const mode = /(платн|paid)/.test(q) ? 'paid' : 'budget';
+          if (!direction) {
+            return {
+              content:
+                'Чтобы оценить шанс поступления, уточните направление — например, **ИВТ**, **ИБ** или код **09.03.01**.\n\n' +
+                'Можно спросить так: «Какой у меня шанс поступить на ИВТ на бюджет?»',
+              callout: 'Оценка демонстрационная: учитывает только балл и количество мест, без индивидуальных достижений и реального конкурса.',
+              securityBlocked: injection,
+              sources: [
+                {
+                  title: 'Проходные баллы по направлениям (демо)',
+                  year: '2026',
+                  url: 'https://sibsutis.ru/abitur/scores/',
+                  quote: 'Демонстрационная сводка проходных баллов и количества мест по направлениям СибГУТИ.'
+                }
+              ]
+            };
+          }
+          const chance = mode === 'paid' ? direction.chancePaid : direction.chanceBudget;
+          const score = mode === 'paid' ? direction.paid : direction.budget;
+          const seats = mode === 'paid' ? direction.paidSeats : direction.budgetSeats;
+          const modeLabel = mode === 'paid' ? 'Платное' : 'Бюджет';
+          return {
+            content:
+              `### Шанс поступления: ${direction.nameRu}\n\n` +
+              `**${chance}%** — демонстрационная оценка при балле **${score}** и **${seats}** ${mode === 'paid' ? 'платных' : 'бюджетных'} местах.\n\n` +
+              `| Параметр | Значение |\n` +
+              `| :--- | :--- |\n` +
+              `| Направление | \`${direction.code}\` ${direction.nameRu} |\n` +
+              `| Форма | ${modeLabel} |\n` +
+              `| Проходной балл (демо) | ${score} |\n` +
+              `| Мест | ${seats} |\n\n` +
+              `Оценка учитывает только балл и количество мест. Индивидуальные достижения, квоты и реальный конкурс могут изменить результат.`,
+            callout: 'Это демонстрационная функция чата, а не официальный прогноз приёмной комиссии.',
+            securityBlocked: injection,
+            sources: [
+              {
+                title: 'Проходные баллы по направлениям (демо)',
+                year: '2026',
+                url: 'https://sibsutis.ru/abitur/scores/',
+                quote: `Демо-оценка для ${direction.code}: ${chance}% при балле ${score} и ${seats} местах (${modeLabel.toLowerCase()}).`
+              }
+            ]
+          };
+        }
+
+        // 4. Tuition / Prices (including context-aware follow-up "а сколько стоит?")
         if (/(стоимост|сколько\s+стоит|цен[аы]|оплат|платн|семестр)/.test(q) && !/(общежит|проходн|балл|направлен)/.test(q)) {
           const isMaster = /магистрат/.test(q) || prevTopic === 'master';
           const isSpo = /(колледж|спо)/.test(q) || prevTopic === 'spo';
@@ -5651,6 +5823,23 @@
         el.closeScoreOverlayBtn.addEventListener('click', closeScoreOverlay);
         el.scoreOverlay.addEventListener('click', (event) => {
           if (event.target === el.scoreOverlay) closeScoreOverlay();
+        });
+        el.scoreDetail.addEventListener('click', (event) => {
+          const closeBtn = event.target.closest('[data-action="close-detail"]');
+          if (closeBtn) {
+            closeScoreDetail();
+            return;
+          }
+          const chanceBtn = event.target.closest('[data-action="chance"]');
+          if (chanceBtn) {
+            const directionId = chanceBtn.getAttribute('data-direction');
+            const direction = getScoreDirections().find((item) => item.id === directionId);
+            if (direction) {
+              const mode = activeScoreMode === 'paid' ? 'платное' : 'бюджет';
+              closeScoreOverlay();
+              sendMessage(`Рассчитай шанс поступления на ${direction.code} ${direction.nameRu} (${mode})`);
+            }
+          }
         });
         el.scorePrevBtn.addEventListener('click', () => scrollScoreCarouselBy(-1));
         el.scoreNextBtn.addEventListener('click', () => scrollScoreCarouselBy(1));
