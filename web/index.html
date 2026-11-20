@@ -2013,7 +2013,7 @@
       overflow-y: hidden;
       scroll-snap-type: x mandatory;
       scroll-behavior: smooth;
-      padding: 4px 18px 18px;
+      padding: 4px 0 18px;
       scrollbar-width: none;
       -ms-overflow-style: none;
       flex: 1;
@@ -2024,157 +2024,146 @@
       display: none;
     }
 
-    .score-column {
-      scroll-snap-align: start;
-      flex: 0 0 218px;
-      max-width: 72vw;
-      height: 100%;
-      padding: 14px;
-      border-radius: 18px;
-      background: var(--glass-2);
-      border: 1px solid var(--border);
+    .score-chart-board {
+      position: relative;
       display: flex;
-      flex-direction: column;
-      gap: 12px;
-      text-align: left;
-      cursor: pointer;
-      transition: border-color 220ms, background-color 220ms, transform 220ms;
+      align-items: flex-end;
+      gap: 14px;
+      min-width: max-content;
+      height: 100%;
+      margin: 0 auto;
+      padding: 26px 18px 0;
+      transition: transform 260ms cubic-bezier(0.22, 1, 0.36, 1);
     }
 
-    .score-column:hover {
-      border-color: var(--border-hover);
-      background: var(--tile-bg);
+    .score-carousel.is-detail-shift .score-chart-board {
+      transform: translateX(-170px);
+    }
+
+    .score-chart-board::before {
+      content: "";
+      position: absolute;
+      left: 18px;
+      right: 18px;
+      top: 26px;
+      bottom: 22px;
+      background-image: linear-gradient(to top, var(--chart-grid) 1px, transparent 1px);
+      background-size: 100% 25%;
+      pointer-events: none;
+    }
+
+    .score-chart-board::after {
+      content: "";
+      position: absolute;
+      left: 18px;
+      right: 18px;
+      bottom: 20px;
+      height: 1px;
+      background: var(--border);
+      pointer-events: none;
+    }
+
+    .score-bar-column {
+      position: relative;
+      z-index: 1;
+      flex: 0 0 78px;
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: flex-end;
+      gap: 8px;
+      padding: 0;
+      background: none;
+      border: none;
+      cursor: pointer;
+      scroll-snap-align: start;
+    }
+
+    .score-bar-column::before {
+      content: "";
+      position: absolute;
+      left: 50%;
+      bottom: 24px;
+      width: 120px;
+      height: 70%;
+      transform: translateX(-50%) scale(0.8);
+      background: radial-gradient(ellipse at center, var(--glow-1), transparent 70%);
+      opacity: 0;
+      transition: opacity 220ms, transform 220ms;
+      pointer-events: none;
+      z-index: -1;
+    }
+
+    .score-bar-column:hover::before,
+    .score-bar-column.is-selected::before {
+      opacity: 1;
+      transform: translateX(-50%) scale(1);
+    }
+
+    .score-bar-plot {
+      position: relative;
+      width: 100%;
+      flex: 1;
+      min-height: 160px;
+      display: flex;
+      align-items: flex-end;
+      justify-content: center;
+    }
+
+    .score-bar-pill {
+      width: 34px;
+      height: var(--bar-height);
+      border-radius: 999px;
+      background: var(--seg-2);
+      opacity: 0.55;
+      transition: opacity 200ms, background-color 200ms, transform 220ms, box-shadow 220ms;
+    }
+
+    .score-bar-column:hover .score-bar-pill {
+      opacity: 0.9;
       transform: translateY(-2px);
     }
 
-    .score-column.is-selected {
-      border-color: var(--border-strong);
-      background: var(--tile-bg);
-    }
-
-    .score-column:focus-visible {
-      outline: 2px solid var(--border-strong);
-      outline-offset: 2px;
-    }
-
-    .score-column-chart {
-      position: relative;
-      flex: 1;
-      min-height: 150px;
-      display: flex;
-      align-items: flex-end;
-      padding-top: 24px;
-      background-image: linear-gradient(to top, var(--chart-grid) 1px, transparent 1px);
-      background-size: 100% 25%;
-      border-radius: 10px;
-    }
-
-    .score-column-bar-wrap {
-      position: relative;
-      width: 58%;
-      margin: 0 auto;
-      min-height: 8px;
-      display: flex;
-      align-items: flex-end;
-    }
-
-    .score-column-bar {
-      position: relative;
-      width: 100%;
-      height: 100%;
-      border-radius: 9px 9px 3px 3px;
-      background: var(--seg-2);
-      opacity: 0.55;
-      transition: opacity 200ms, background-color 200ms;
-    }
-
-    .score-column-bar::before {
-      content: "";
-      position: absolute;
-      left: -12%;
-      right: -12%;
-      top: -1px;
-      border-top: 1px dashed var(--text-3);
-      opacity: 0.55;
-    }
-
-    .score-column:hover .score-column-bar,
-    .score-column.is-selected .score-column-bar {
-      opacity: 1;
-    }
-
-    .score-column.is-selected .score-column-bar {
+    .score-bar-column.is-selected .score-bar-pill {
       background: var(--accent);
+      opacity: 1;
+      box-shadow: 0 0 28px var(--glow-1);
     }
 
-    .score-column-value {
+    .score-bar-value {
       position: absolute;
-      bottom: calc(100% + 8px);
+      bottom: calc(var(--bar-height) + 8px);
       left: 50%;
       transform: translateX(-50%);
-      font-size: 24px;
+      font-size: 12px;
       line-height: 1;
       font-weight: 500;
-      letter-spacing: -0.05em;
+      letter-spacing: -0.03em;
       color: var(--text);
       white-space: nowrap;
       font-variant-numeric: tabular-nums;
     }
 
-    .score-column.is-selected .score-column-value {
-      color: var(--text);
-    }
-
-    .score-column-info {
-      display: flex;
-      flex-direction: column;
-      gap: 3px;
-      min-height: 118px;
-    }
-
-    .score-column-code {
-      font-family: 'JetBrains Mono', monospace;
-      font-size: 9.5px;
-      color: var(--text-3);
-      letter-spacing: 0.02em;
-    }
-
-    .score-column-name {
-      font-size: 12.5px;
-      font-weight: 500;
-      line-height: 1.3;
-      letter-spacing: -0.01em;
-      color: var(--text);
-    }
-
-    .score-column-faculty {
+    .score-bar-label {
       font-size: 10px;
+      line-height: 1.2;
       color: var(--text-3);
-      margin-bottom: 2px;
-    }
-
-    .score-column-subjects {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 3px 8px;
-      font-size: 10.5px;
-      line-height: 1.35;
-      color: var(--text-2);
-    }
-
-    .score-column-subjects span {
+      text-align: center;
       white-space: nowrap;
+      max-width: 78px;
+      overflow: hidden;
+      text-overflow: ellipsis;
     }
 
-    .score-column-subjects span::after {
-      content: "·";
-      margin-left: 8px;
-      color: var(--text-3);
+    .score-bar-column.is-selected .score-bar-label {
+      color: var(--text);
     }
 
-    .score-column-subjects span:last-child::after {
-      content: "";
-      margin-left: 0;
+    .score-bar-column:focus-visible {
+      outline: 2px solid var(--border-strong);
+      outline-offset: 4px;
+      border-radius: 12px;
     }
 
     .score-detail {
@@ -2370,8 +2359,11 @@
         flex: none;
         align-items: stretch;
       }
-      .score-column {
-        flex-basis: 72vw;
+      .score-carousel.is-detail-shift .score-chart-board {
+        transform: none;
+      }
+      .score-bar-column {
+        flex-basis: 78px;
         height: 360px;
       }
       .score-detail {
@@ -4990,31 +4982,29 @@
         const range = Math.max(1, maxValue - baseline);
 
         el.scoreCarousel.innerHTML = '';
+        const board = document.createElement('div');
+        board.className = 'score-chart-board';
+
         directions.forEach((direction) => {
           const value = getScoreValue(direction, activeScoreMode);
-          const subjects = isEn ? direction.subjectsEn : direction.subjectsRu;
           const isSelected = direction.id === selectedScoreDirection;
           const height = Math.max(12, ((value - baseline) / range) * 100);
+          const label = isEn ? direction.shortEn : direction.shortRu;
+          const fullName = isEn ? direction.nameEn : direction.nameRu;
 
-          const column = document.createElement('article');
-          column.className = 'score-column' + (isSelected ? ' is-selected' : '');
+          const column = document.createElement('button');
+          column.type = 'button';
+          column.className = 'score-bar-column' + (isSelected ? ' is-selected' : '');
           column.setAttribute('data-direction', direction.id);
-          column.setAttribute('role', 'button');
-          column.setAttribute('tabindex', '0');
           column.setAttribute('aria-pressed', String(isSelected));
+          column.setAttribute('aria-label', `${fullName}: ${value}`);
+          column.style.setProperty('--bar-height', `${height.toFixed(1)}%`);
           column.innerHTML =
-            `<div class="score-column-chart">` +
-            `  <div class="score-column-bar-wrap" style="height:${height.toFixed(1)}%;">` +
-            `    <div class="score-column-value">${value}</div>` +
-            `    <div class="score-column-bar"></div>` +
-            `  </div>` +
-            `</div>` +
-            `<div class="score-column-info">` +
-            `  <div class="score-column-code">${escapeHtml(direction.code)} · ${escapeHtml(isEn ? direction.shortEn : direction.shortRu)}</div>` +
-            `  <div class="score-column-name">${escapeHtml(isEn ? direction.nameEn : direction.nameRu)}</div>` +
-            `  <div class="score-column-faculty">${escapeHtml(isEn ? direction.facultyEn : direction.facultyRu)}</div>` +
-            `  <div class="score-column-subjects">${subjects.map((subject) => `<span>${escapeHtml(subject)}</span>`).join('')}</div>` +
-            `</div>`;
+            `<span class="score-bar-plot">` +
+            `  <span class="score-bar-value">${value}</span>` +
+            `  <span class="score-bar-pill"></span>` +
+            `</span>` +
+            `<span class="score-bar-label">${escapeHtml(label)}</span>`;
 
           const select = () => {
             openScoreDetail(direction.id);
@@ -5023,14 +5013,15 @@
             }
           };
           column.addEventListener('click', select);
-          column.addEventListener('keydown', (event) => {
-            if (event.key === 'Enter' || event.key === ' ') {
-              event.preventDefault();
-              select();
-            }
-          });
-          el.scoreCarousel.appendChild(column);
+          board.appendChild(column);
         });
+        el.scoreCarousel.appendChild(board);
+
+        const detailOpen = el.scoreOverlayBody.classList.contains('is-detail-open');
+        el.scoreCarousel.classList.toggle(
+          'is-detail-shift',
+          detailOpen && board.getBoundingClientRect().width <= el.scoreCarousel.clientWidth
+        );
 
         renderScoreDetail(selectedScoreDirection);
       }
@@ -5072,7 +5063,7 @@
 
       function selectScoreDirection(directionId, shouldScroll) {
         selectedScoreDirection = directionId;
-        el.scoreCarousel.querySelectorAll('.score-column').forEach((column) => {
+        el.scoreCarousel.querySelectorAll('.score-bar-column').forEach((column) => {
           const isSelected = column.getAttribute('data-direction') === directionId;
           column.classList.toggle('is-selected', isSelected);
           column.setAttribute('aria-pressed', String(isSelected));
@@ -5084,10 +5075,19 @@
       function openScoreDetail(directionId) {
         if (directionId) selectScoreDirection(directionId, false);
         el.scoreOverlayBody.classList.add('is-detail-open');
+        const board = el.scoreCarousel.querySelector('.score-chart-board');
+        el.scoreCarousel.classList.toggle(
+          'is-detail-shift',
+          Boolean(board) && board.getBoundingClientRect().width <= el.scoreCarousel.clientWidth
+        );
+        if (directionId) {
+          requestAnimationFrame(() => scrollScoreCarouselTo(directionId, true));
+        }
       }
 
       function closeScoreDetail() {
         el.scoreOverlayBody.classList.remove('is-detail-open');
+        el.scoreCarousel.classList.remove('is-detail-shift');
       }
 
       function scrollScoreCarouselTo(directionId, smooth) {
@@ -5100,8 +5100,8 @@
       }
 
       function scrollScoreCarouselBy(direction) {
-        const column = el.scoreCarousel.querySelector('.score-column');
-        const step = column ? column.getBoundingClientRect().width + 12 : 230;
+        const column = el.scoreCarousel.querySelector('.score-bar-column');
+        const step = column ? column.getBoundingClientRect().width + 14 : 92;
         el.scoreCarousel.scrollBy({ left: direction * step, behavior: 'smooth' });
       }
 
