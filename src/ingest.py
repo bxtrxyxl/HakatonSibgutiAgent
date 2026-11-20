@@ -386,13 +386,45 @@ def _expand_tables(blocks: list[str], limit: int) -> list[str]:
 
 
 def chunk_markdown(markdown: str, title: str, section: str) -> list[dict[str, str]]:
-    """Режет Markdown на чанки, не разрывая строки таблиц."""
+    """Режет Markdown на чанки, не разрывая строки таблиц и не смешивая разделы."""
     blocks = _expand_tables(_split_blocks(markdown), config.CHUNK_SIZE)
-    chunks: list[dict[str, str]] = []
+
+    # Сначала группируем блоки по активному заголовку уровня <= 3, чтобы
+    # содержимое одного раздела не попадало под заголовок следующего.
+    groups: list[tuple[str, list[str]]] = []
     heading = ""
+    current_group: list[str] = []
+    for block in blocks:
+        if BOILERPLATE_RE.search(block):
+            continue
+        if block.startswith("#"):
+            level = len(block) - len(block.lstrip("#"))
+            if level <= 3:
+                if current_group:
+                    groups.append((heading, current_group))
+                heading = block.lstrip("#").strip()
+                current_group = [block]
+                continue
+        current_group.append(block)
+    if current_group:
+        groups.append((heading, current_group))
+
+    chunks: list[dict[str, str]] = []
+    seen: set[str] = set()
+    for group_heading, group_blocks in groups:
+        _chunk_group(group_heading, group_blocks, chunks, seen)
+    return chunks
+
+
+def _chunk_group(
+    heading: str,
+    blocks: list[str],
+    chunks: list[dict[str, str]],
+    seen: set[str],
+) -> None:
+    """Упаковывает блоки одного раздела в чанки с общим заголовком."""
     current: list[str] = []
     current_len = 0
-    seen: set[str] = set()
 
     def flush() -> None:
         nonlocal current, current_len
@@ -405,8 +437,6 @@ def chunk_markdown(markdown: str, title: str, section: str) -> list[dict[str, st
         # Заголовок добавляется как контекст, только если чанк не начинается с заголовка.
         prefix = f"## {heading}\n\n" if heading and not body.lstrip().startswith("#") else ""
         text = (prefix + body).strip()
-        if len(text) < config.MIN_CHUNK_SIZE and chunks:
-            return
         key = sha256_text(text)
         if key in seen:
             return
@@ -414,15 +444,9 @@ def chunk_markdown(markdown: str, title: str, section: str) -> list[dict[str, st
         chunks.append({"text": text, "heading": heading})
 
     for block in blocks:
-        if BOILERPLATE_RE.search(block):
-            continue
-        if block.startswith("#"):
-            level = len(block) - len(block.lstrip("#"))
-            if level <= 3:
-                heading = block.lstrip("#").strip()
         if current and current_len + len(block) + 2 > config.CHUNK_SIZE:
             tail: list[str] = []
-            if current and len(current[-1]) <= config.CHUNK_OVERLAP * 2:
+            if len(current[-1]) <= config.CHUNK_OVERLAP * 2:
                 tail = [current[-1]]
             flush()
             current = list(tail)
@@ -430,7 +454,6 @@ def chunk_markdown(markdown: str, title: str, section: str) -> list[dict[str, st
         current.append(block)
         current_len += len(block) + 2
     flush()
-    return chunks
 
 
 # --- Эмбеддинги -----------------------------------------------------------
