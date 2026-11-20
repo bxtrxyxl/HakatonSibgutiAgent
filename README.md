@@ -25,7 +25,7 @@
 ```bash
 python -m venv .venv && .venv\Scripts\activate      # 0. окружение (Windows)
 pip install -r requirements.txt                      # 1. зависимости
-python -m src.ingest --urls data/seed_urls.json      # 2. сборка базы знаний
+python -m src.ingest --dir data/docs                 # 2. сборка базы из ваших .md
 uvicorn src.api:app --host 127.0.0.1 --port 8000     # 3. запуск
 ```
 
@@ -44,16 +44,43 @@ uvicorn src.api:app --host 127.0.0.1 --port 8000     # 3. запуск
 
 ## Сборка базы знаний
 
+Основной режим — импорт папки с локальными материалами:
+
 ```bash
-# полная пересборка по списку источников
-python -m src.ingest --urls data/seed_urls.json
+python -m src.ingest --dir data/docs
+```
 
-# продолжить прерванную сборку (пропускает уже проиндексированные URL)
-python -m src.ingest --urls data/seed_urls.json --resume
+Все `.md`, `.txt`, `.html`, `.pdf` из папки (рекурсивно) индексируются в один проход.
+База при этом пересобирается с нуля, поэтому это же команда обновления после правок.
 
-# штатная догрузка одного документа
-python -m src.ingest --file path/to/doc.html --url https://sibsutis.ru/... \
+Заголовок, URL, раздел и год можно задать frontmatter-блоком в `.md` (необязательно):
+
+```markdown
+---
+title: Правила приёма 2026
+url: https://sibsutis.ru/abitur/pravila-priema/
+section: Приёмная комиссия
+year: 2026
+---
+
+# Правила приёма
+
+Текст документа...
+```
+
+Без frontmatter: заголовок берётся из первого `# `, раздел — из имени вложенной папки,
+URL — `local://<путь>`, год — автопоиском по тексту.
+
+Остальные режимы:
+
+```bash
+# догрузить один документ, не пересобирая базу
+python -m src.ingest --file path/to/doc.md --url https://sibsutis.ru/... \
     --title "Название" --section "Приёмная комиссия" --year 2026
+
+# сборка по списку URL (краулер, по умолчанию выключен в пользу --dir)
+python -m src.ingest --urls data/seed_urls.json
+python -m src.ingest --urls data/seed_urls.json --resume
 ```
 
 **Поддерживаемые форматы:** HTML (основной контент без меню/футеров, `<table>` → Markdown,
@@ -75,8 +102,8 @@ python -m src.ingest --file path/to/doc.html --url https://sibsutis.ru/... \
 ## Статистика базы знаний
 
 <!-- STATS_TABLE -->
-Текущее состояние локальной сборки (частичная: 7 из 22 источников, остальные не успели
-собраться в отведённое время — дособираются командой `--resume`):
+Текущее состояние — временная сборка из 7 источников (заменится импортом ваших `.md`
+командой `--dir`, база пересобирается с нуля):
 
 | Показатель | Значение |
 | --- | --- |

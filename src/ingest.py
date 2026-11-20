@@ -760,6 +760,132 @@ def run_urls(seed_path: Path, use_wayback: bool = True, resume: bool = False) ->
     return stats
 
 
+def load_local_document(path: Path) -> tuple[str, str]:
+    """Читает локальный файл и возвращает (markdown, format)."""
+    fmt = detect_format(path.name, "", filename=path.name)
+    data = path.read_bytes()
+    if fmt == "pdf":
+        return extract_pdf(data), "pdf"
+    text = decode_text(data)
+    if fmt in {"txt", "md"}:
+        return text, fmt
+    _, markdown = html_to_markdown(text)
+    return markdown, "html"
+
+
+def parse_frontmatter(text: str) -> tuple[dict[str, str], str]:
+    """Разбирает необязательный YAML-блок в начале .md (без внешних зависимостей)."""
+    if not text.startswith("---"):
+        return {}, text
+    end = text.find("\n---", 3)
+    if end == -1:
+        return {}, text
+    meta: dict[str, str] = {}
+    for line in text[3:end].splitlines():
+        if ":" in line:
+            key, value = line.split(":", 1)
+            meta[key.strip().lower()] = value.strip().strip("\"'")
+    return meta, text[end + 4:].lstrip("\n")
+
+
+def first_heading(markdown: str) -> str:
+    for line in markdown.splitlines():
+        if line.startswith("# "):
+            return line[2:].strip()
+    return ""
+
+
+def process_local_file(
+    path: Path,
+    connection: sqlite3.Connection,
+    known: set[str],
+    url: str = "",
+    title: str = "",
+    section: str = "",
+    year: str | None = None,
+    default_url: str = "",
+) -> np.ndarray | None:
+    """Индексирует один локальный файл. Возвращает векторы или None при дубликате."""
+    markdown, fmt = load_local_document(path)
+    meta, body = parse_frontmatter(markdown)
+    if body.strip():
+        markdown = body
+    if len(markdown) < 50:
+        raise RuntimeError("empty_content")
+
+    # Приоритет: явный аргумент -> url из frontmatter -> local:// путь.
+    final_url = url or meta.get("url") or default_url or f"local://{path.name}"
+    final_title = title or meta.get("title") or first_heading(markdown) or path.stem
+    final_section = section or meta.get("section") or "Прочее"
+
+    digest = sha256_text(markdown)
+    if digest in known:
+        return None
+
+    chunks = chunk_markdown(markdown, final_title, final_section)
+    if not chunks:
+        raise RuntimeError("no_chunks")
+
+    doc = {
+        "doc_id": doc_id_for(final_url),
+        "title": final_title,
+        "url": final_url,
+        "section": final_section,
+        "fetched_at": utc_now(),
+        "year_version": year or meta.get("year") or find_year_version(final_title, markdown[:4000]),
+        "format": fmt,
+        "sha256": digest,
+        "chars": len(markdown),
+        "retrieved_via": "local_file",
+    }
+    vectors = embed_texts([f"{final_title}\n{final_section}\n{c['text']}" for c in chunks])
+    store_document(connection, doc, chunks)
+    known.add(digest)
+    return vectors
+
+
+def run_directory(directory: Path, rebuild: bool = True) -> dict[str, Any]:
+    """Собирает базу из папки с локальными .md/.txt/.html/.pdf."""
+    suffixes = {".md", ".markdown", ".txt", ".html", ".htm", ".pdf"}
+    files = sorted(path for path in directory.rglob("*") if path.suffix.lower() in suffixes)
+    if not files:
+        raise RuntimeError(f"в папке нет поддерживаемых файлов: {directory}")
+
+    connection = connect_db()
+    init_db(connection, rebuild=rebuild)
+    if rebuild and config.EMBEDDINGS_PATH.exists():
+        config.EMBEDDINGS_PATH.unlink()
+    known = existing_hashes(connection)
+    errors: list[dict[str, str]] = []
+    skipped = 0
+
+    for index, path in enumerate(files, start=1):
+        relative = path.relative_to(directory).as_posix()
+        section = path.parent.name if path.parent != directory else "Прочее"
+        try:
+            vectors = process_local_file(
+                path, connection, known, section=section, default_url=f"local://{relative}"
+            )
+            if vectors is None:
+                skipped += 1
+                print(f"[{index}/{len(files)}] skip (duplicate) {relative}")
+            else:
+                append_embeddings(vectors)
+                print(f"[{index}/{len(files)}] ok {vectors.shape[0]} chunks {relative}")
+        except Exception as exc:
+            errors.append({"url": relative, "error": str(exc), "stage": "local_file"})
+            print(f"[{index}/{len(files)}] ERROR {relative}: {exc}", file=sys.stderr)
+        finally:
+            write_registry(connection)
+            write_stats(connection, read_registry(connection), errors, skipped)
+
+    verify_index_consistency(connection)
+    registry = write_registry(connection)
+    stats = write_stats(connection, registry, errors, skipped)
+    connection.close()
+    return stats
+
+
 def run_single_file(
     path: Path,
     url: str,
@@ -775,49 +901,16 @@ def run_single_file(
     skipped = 0
     vectors: list[np.ndarray] = []
 
-    content = path.read_bytes()
-    fmt = detect_format(url or path.name, "", filename=path.name)
-
-    if fmt == "pdf":
-        markdown = extract_pdf(content)
-        if len(markdown) < 50:
-            errors.append({"url": url or path.name, "error": "no_text_layer", "stage": "extract"})
-            markdown = ""
-    elif fmt in {"txt", "md"}:
-        markdown = decode_text(content)
-    else:
-        html = decode_text(content)
-        _, markdown = html_to_markdown(html)
-
-    if not markdown:
-        write_registry(connection)
-        rows = [dict(r) for r in connection.execute("SELECT * FROM documents")]
-        stats = write_stats(connection, rows, errors, skipped)
-        connection.close()
-        return stats
-
-    digest = sha256_text(markdown)
-    if digest in known:
-        skipped += 1
-    else:
-        chunks = chunk_markdown(markdown, title, section)
-        if not chunks:
-            errors.append({"url": url or path.name, "error": "no_chunks", "stage": "chunk"})
+    try:
+        result = process_local_file(
+            path, connection, known, url=url, title=title, section=section, year=year
+        )
+        if result is None:
+            skipped += 1
         else:
-            doc = {
-                "doc_id": doc_id_for(url or path.name),
-                "title": title,
-                "url": url or path.name,
-                "section": section,
-                "fetched_at": utc_now(),
-                "year_version": year or find_year_version(title, markdown[:4000]),
-                "format": fmt,
-                "sha256": digest,
-                "chars": len(markdown),
-                "retrieved_via": "local_file",
-            }
-            vectors.append(embed_texts([f"{title}\n{section}\n{c['text']}" for c in chunks]))
-            store_document(connection, doc, chunks)
+            vectors.append(result)
+    except Exception as exc:
+        errors.append({"url": url or path.name, "error": str(exc), "stage": "local_file"})
 
     sync_embeddings(vectors, rebuild=False)
     registry = write_registry(connection)
@@ -837,6 +930,7 @@ def main(argv: Iterable[str] | None = None) -> int:
                 pass
     parser = argparse.ArgumentParser(description="Сбор базы знаний СибГУТИ")
     parser.add_argument("--urls", type=Path, help="JSON со списком источников (полная пересборка)")
+    parser.add_argument("--dir", type=Path, help="Папка с локальными .md/.txt/.html/.pdf (полная пересборка)")
     parser.add_argument("--file", type=Path, help="Один локальный документ (HTML/PDF/TXT/MD)")
     parser.add_argument("--url", default="", help="Канонический URL документа для режима --file")
     parser.add_argument("--title", default="", help="Заголовок документа")
@@ -854,11 +948,16 @@ def main(argv: Iterable[str] | None = None) -> int:
     )
     args = parser.parse_args(list(argv) if argv is not None else None)
 
-    if not args.urls and not args.file:
-        parser.error("укажите --urls или --file")
+    if not args.urls and not args.file and not args.dir:
+        parser.error("укажите --dir, --urls или --file")
 
     started = time.perf_counter()
-    if args.urls:
+    if args.dir:
+        if not args.dir.is_dir():
+            print(f"папка не найдена: {args.dir}", file=sys.stderr)
+            return 2
+        stats = run_directory(args.dir)
+    elif args.urls:
         stats = run_urls(args.urls, use_wayback=not args.no_wayback, resume=args.resume)
     else:
         if not args.file.exists():
