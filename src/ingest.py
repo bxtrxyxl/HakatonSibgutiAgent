@@ -40,6 +40,14 @@ ACADEMIC_YEAR_RE = re.compile(r"(20\d{2})\s*/\s*(\d{2})")
 SINGLE_YEAR_RE = re.compile(r"\b(20\d{2})\b")
 YEAR_CONTEXT = re.compile(r"(при[её]м|редакц|год[уа]?|кампани|правил|набор)", re.I)
 
+# Блоки-«мусор»: баннеры браузера, cookie-уведомления, служебная навигация.
+BOILERPLATE_RE = re.compile(
+    r"(ваш браузер устарел|установите последнюю версию|включите javascript|"
+    r"для работы сайта|использу(ются|ет) cookie|мы используем файлы cookie|"
+    r"перейти к содержимому|версия для слабовидящих)",
+    re.I,
+)
+
 
 # --- Утилиты --------------------------------------------------------------
 
@@ -94,6 +102,25 @@ def _http_get(client: httpx.Client, url: str) -> httpx.Response:
     raise RuntimeError(f"fetch failed: {type(last_error).__name__}: {last_error}")
 
 
+def _archive_candidates(client: httpx.Client, url: str) -> list[str]:
+    """Кандидаты на копию в веб-архиве: ближайший снапшот, затем общий редирект."""
+    candidates: list[str] = []
+    try:
+        meta = client.get(
+            "https://archive.org/wayback/available",
+            params={"url": url, "timestamp": "2025"},
+            timeout=10.0,
+        )
+        if meta.status_code == 200:
+            closest = ((meta.json() or {}).get("archived_snapshots") or {}).get("closest") or {}
+            if closest.get("available") and closest.get("url"):
+                candidates.append(str(closest["url"]))
+    except Exception:
+        pass
+    candidates.append(f"https://web.archive.org/web/{url}")
+    return candidates
+
+
 def fetch_url(url: str, use_wayback: bool = True) -> tuple[bytes, str, str, str]:
     """Возвращает (content, content_type, final_url, retrieved_via)."""
     headers = {"User-Agent": config.USER_AGENT, "Accept-Language": "ru,en;q=0.8"}
@@ -105,18 +132,22 @@ def fetch_url(url: str, use_wayback: bool = True) -> tuple[bytes, str, str, str]
         except Exception as origin_error:
             if not use_wayback:
                 raise RuntimeError(f"origin unavailable: {origin_error}") from origin_error
-            archive_url = f"https://web.archive.org/web/2025/{url}"
-            try:
-                response = _http_get(client, archive_url)
-            except Exception as archive_error:
-                raise RuntimeError(
-                    f"origin unavailable ({origin_error}); archive unavailable ({archive_error})"
-                ) from archive_error
-            text_probe = response.content[:4000].decode("utf-8", errors="ignore").lower()
-            if "has not archived that url" in text_probe or "wayback machine doesn't have that page" in text_probe:
-                raise RuntimeError(f"origin unavailable ({origin_error}); no archived copy") from None
-            ctype = response.headers.get("content-type", "")
-            return response.content, ctype, str(response.url), "wayback"
+            archive_errors: list[str] = []
+            for archive_url in _archive_candidates(client, url):
+                try:
+                    response = _http_get(client, archive_url)
+                except Exception as archive_error:
+                    archive_errors.append(str(archive_error))
+                    continue
+                text_probe = response.content[:4000].decode("utf-8", errors="ignore").lower()
+                if "has not archived that url" in text_probe or "doesn't have that page" in text_probe:
+                    archive_errors.append("no archived copy")
+                    continue
+                ctype = response.headers.get("content-type", "")
+                return response.content, ctype, str(response.url), "wayback"
+            raise RuntimeError(
+                f"origin unavailable ({origin_error}); archive unavailable ({'; '.join(archive_errors)})"
+            ) from origin_error
 
 
 # --- HTML -> Markdown -----------------------------------------------------
@@ -124,7 +155,12 @@ def fetch_url(url: str, use_wayback: bool = True) -> tuple[bytes, str, str, str]
 def table_to_markdown(table: Tag) -> str:
     rows: list[list[str]] = []
     for tr in table.find_all("tr"):
-        cells = tr.find_all(["th", "td"])
+        # Только «свои» строки: строки вложенных таблиц не дублируем в родительской.
+        if tr.find_parent("table") is not table:
+            continue
+        cells = tr.find_all(["th", "td"], recursive=False)
+        if not cells:
+            cells = tr.find_all(["th", "td"])
         if not cells:
             continue
         values = [clean_space(cell.get_text(" ", strip=True)).replace("|", "\\|") for cell in cells]
@@ -294,9 +330,64 @@ def _split_blocks(markdown: str) -> list[str]:
     return blocks
 
 
+def _hard_split(text: str, limit: int) -> list[str]:
+    """Аварийное дробление блока, который не влезает в лимит (патологические строки)."""
+    pieces: list[str] = []
+    current = ""
+    for token in re.split(r"(\s+)", text):
+        if not token:
+            continue
+        if len(current) + len(token) > limit and current.strip():
+            pieces.append(current.strip())
+            current = token.lstrip()
+            continue
+        current += token
+    if current.strip():
+        pieces.append(current.strip())
+    return pieces
+
+
+def _expand_tables(blocks: list[str], limit: int) -> list[str]:
+    """Дробит слишком большие Markdown-таблицы по строкам, повторяя заголовок.
+
+    Строки таблицы при этом не разрываются, а каждая часть остаётся
+    корректной таблицей с шапкой.
+    """
+    expanded: list[str] = []
+    for block in blocks:
+        if not block.startswith("|") or len(block) <= limit:
+            expanded.append(block)
+            continue
+        lines = block.split("\n")
+        header = lines[0]
+        separator = lines[1] if len(lines) > 1 and lines[1].lstrip("|").strip().startswith("---") else None
+        body = lines[2:] if separator else lines[1:]
+        head = [header] + ([separator] if separator else [])
+        current = list(head)
+        current_len = sum(len(item) + 1 for item in current)
+        for row in body:
+            if current_len + len(row) + 1 > limit and len(current) > len(head):
+                expanded.append("\n".join(current))
+                current = list(head)
+                current_len = sum(len(item) + 1 for item in current)
+            current.append(row)
+            current_len += len(row) + 1
+        if len(current) > len(head):
+            expanded.append("\n".join(current))
+
+    # Последняя страховка: ни один блок не должен превышать лимит.
+    capped: list[str] = []
+    for block in expanded:
+        if len(block) <= limit:
+            capped.append(block)
+        else:
+            capped.extend(_hard_split(block, limit))
+    return capped
+
+
 def chunk_markdown(markdown: str, title: str, section: str) -> list[dict[str, str]]:
     """Режет Markdown на чанки, не разрывая строки таблиц."""
-    blocks = _split_blocks(markdown)
+    blocks = _expand_tables(_split_blocks(markdown), config.CHUNK_SIZE)
     chunks: list[dict[str, str]] = []
     heading = ""
     current: list[str] = []
@@ -323,6 +414,8 @@ def chunk_markdown(markdown: str, title: str, section: str) -> list[dict[str, st
         chunks.append({"text": text, "heading": heading})
 
     for block in blocks:
+        if BOILERPLATE_RE.search(block):
+            continue
         if block.startswith("#"):
             level = len(block) - len(block.lstrip("#"))
             if level <= 3:
@@ -354,23 +447,29 @@ def _embedding_client() -> Any:
     )
 
 
+def _embed_batch(client: Any, batch: list[str]) -> list[list[float]]:
+    """Эмбеддинги батча; при ошибке 400 дробит батч, изолируя проблемный текст."""
+    last_error: Exception | None = None
+    for attempt in range(3):
+        try:
+            response = client.embeddings.create(model=config.EMBED_MODEL, input=batch)
+            ordered = sorted(response.data, key=lambda item: item.index)
+            return [item.embedding for item in ordered]
+        except Exception as exc:
+            last_error = exc
+            time.sleep(2.0 * (attempt + 1))
+    if len(batch) > 1:
+        middle = len(batch) // 2
+        return _embed_batch(client, batch[:middle]) + _embed_batch(client, batch[middle:])
+    raise RuntimeError(f"embeddings failed after retries: {type(last_error).__name__}: {last_error}")
+
+
 def embed_texts(texts: list[str], batch_size: int = 32) -> np.ndarray:
     client = _embedding_client()
+    prepared = [(text[: config.EMBED_MAX_CHARS] if text.strip() else "пустой фрагмент") for text in texts]
     vectors: list[list[float]] = []
-    for start in range(0, len(texts), batch_size):
-        batch = texts[start: start + batch_size]
-        last_error: Exception | None = None
-        for attempt in range(3):
-            try:
-                response = client.embeddings.create(model=config.EMBED_MODEL, input=batch)
-                ordered = sorted(response.data, key=lambda item: item.index)
-                vectors.extend([item.embedding for item in ordered])
-                break
-            except Exception as exc:
-                last_error = exc
-                time.sleep(2.0 * (attempt + 1))
-        else:
-            raise RuntimeError(f"embeddings failed after retries: {type(last_error).__name__}: {last_error}")
+    for start in range(0, len(prepared), batch_size):
+        vectors.extend(_embed_batch(client, prepared[start: start + batch_size]))
     matrix = np.asarray(vectors, dtype=np.float32)
     norms = np.linalg.norm(matrix, axis=1, keepdims=True)
     norms[norms == 0] = 1.0
@@ -520,11 +619,13 @@ def process_source(
         "chars": len(markdown),
         "retrieved_via": via,
     }
+    embed_inputs = [f"{title}\n{section}\n{chunk['text']}" for chunk in chunks]
+    # Сначала эмбеддинги, потом запись в БД: иначе при сбое модели
+    # чанки остаются в базе без векторов и индексы расходятся.
+    vectors = embed_texts(embed_inputs)
+
     store_document(connection, doc, chunks)
     known_hashes.add(digest)
-
-    embed_inputs = [f"{title}\n{section}\n{chunk['text']}" for chunk in chunks]
-    vectors = embed_texts(embed_inputs)
     return len(chunks), vectors
 
 
@@ -543,8 +644,35 @@ def sync_embeddings(new_vectors: list[np.ndarray], rebuild: bool) -> int:
     return int(stacked.shape[0])
 
 
-def write_registry(connection: sqlite3.Connection) -> list[dict[str, Any]]:
-    rows = [
+def append_embeddings(vectors: np.ndarray) -> None:
+    """Дописывает векторы на диск сразу после документа.
+
+    Нужно, чтобы обрыв процесса не оставлял базу без эмбеддингов.
+    """
+    if vectors.size == 0:
+        return
+    if config.EMBEDDINGS_PATH.exists():
+        previous = np.load(config.EMBEDDINGS_PATH)
+        if previous.size and previous.shape[1] != vectors.shape[1]:
+            raise RuntimeError("размерность эмбеддингов не совпадает с существующей матрицей")
+        vectors = np.vstack([previous, vectors]).astype(np.float32)
+    np.save(config.EMBEDDINGS_PATH, vectors)
+
+
+def verify_index_consistency(connection: sqlite3.Connection) -> int:
+    """Проверяет, что число чанков и векторов совпадает."""
+    chunks = connection.execute("SELECT COUNT(*) FROM chunks").fetchone()[0]
+    vectors = int(np.load(config.EMBEDDINGS_PATH).shape[0]) if config.EMBEDDINGS_PATH.exists() else 0
+    if chunks != vectors:
+        raise RuntimeError(
+            f"рассинхронизация индексов: чанков {chunks}, векторов {vectors}. "
+            "Пересоберите базу: python -m src.ingest --urls data/seed_urls.json"
+        )
+    return chunks
+
+
+def read_registry(connection: sqlite3.Connection) -> list[dict[str, Any]]:
+    return [
         dict(row)
         for row in connection.execute(
             """SELECT doc_id, title, url, section, fetched_at, year_version, format,
@@ -552,6 +680,10 @@ def write_registry(connection: sqlite3.Connection) -> list[dict[str, Any]]:
                FROM documents ORDER BY section, title"""
         )
     ]
+
+
+def write_registry(connection: sqlite3.Connection) -> list[dict[str, Any]]:
+    rows = read_registry(connection)
     config.REGISTRY_PATH.write_text(json.dumps(rows, ensure_ascii=False, indent=2), encoding="utf-8")
     return rows
 
@@ -586,31 +718,42 @@ def write_stats(
     return stats
 
 
-def run_urls(seed_path: Path, use_wayback: bool = True) -> dict[str, Any]:
+def run_urls(seed_path: Path, use_wayback: bool = True, resume: bool = False) -> dict[str, Any]:
     sources = json.loads(seed_path.read_text(encoding="utf-8"))
     connection = connect_db()
-    init_db(connection, rebuild=True)
+    init_db(connection, rebuild=not resume)
+    if not resume and config.EMBEDDINGS_PATH.exists():
+        config.EMBEDDINGS_PATH.unlink()
     known = existing_hashes(connection)
-    vectors: list[np.ndarray] = []
+    done_urls = (
+        {row["url"] for row in connection.execute("SELECT url FROM documents")} if resume else set()
+    )
     errors: list[dict[str, str]] = []
     skipped = 0
 
     for index, source in enumerate(sources, start=1):
         url = source.get("url", "?")
+        if url in done_urls:
+            print(f"[{index}/{len(sources)}] skip (already indexed) {url}")
+            continue
         try:
             chunk_count, new_vectors = process_source(source, connection, known, use_wayback)
             if new_vectors is None:
                 skipped += 1
                 print(f"[{index}/{len(sources)}] skip (duplicate) {url}")
             else:
-                vectors.append(new_vectors)
+                append_embeddings(new_vectors)
                 print(f"[{index}/{len(sources)}] ok {chunk_count} chunks {url}")
         except Exception as exc:
             message = str(exc)
             errors.append({"url": url, "error": message, "stage": "fetch+extract"})
             print(f"[{index}/{len(sources)}] ERROR {url}: {message}", file=sys.stderr)
+        finally:
+            # Состояние фиксируется после каждого источника: обрыв не теряет прогресс.
+            write_registry(connection)
+            write_stats(connection, read_registry(connection), errors, skipped)
 
-    sync_embeddings(vectors, rebuild=True)
+    verify_index_consistency(connection)
     registry = write_registry(connection)
     stats = write_stats(connection, registry, errors, skipped)
     connection.close()
@@ -658,20 +801,23 @@ def run_single_file(
         skipped += 1
     else:
         chunks = chunk_markdown(markdown, title, section)
-        doc = {
-            "doc_id": doc_id_for(url or path.name),
-            "title": title,
-            "url": url or path.name,
-            "section": section,
-            "fetched_at": utc_now(),
-            "year_version": year or find_year_version(title, markdown[:4000]),
-            "format": fmt,
-            "sha256": digest,
-            "chars": len(markdown),
-            "retrieved_via": "local_file",
-        }
-        store_document(connection, doc, chunks)
-        vectors.append(embed_texts([f"{title}\n{section}\n{c['text']}" for c in chunks]))
+        if not chunks:
+            errors.append({"url": url or path.name, "error": "no_chunks", "stage": "chunk"})
+        else:
+            doc = {
+                "doc_id": doc_id_for(url or path.name),
+                "title": title,
+                "url": url or path.name,
+                "section": section,
+                "fetched_at": utc_now(),
+                "year_version": year or find_year_version(title, markdown[:4000]),
+                "format": fmt,
+                "sha256": digest,
+                "chars": len(markdown),
+                "retrieved_via": "local_file",
+            }
+            vectors.append(embed_texts([f"{title}\n{section}\n{c['text']}" for c in chunks]))
+            store_document(connection, doc, chunks)
 
     sync_embeddings(vectors, rebuild=False)
     registry = write_registry(connection)
@@ -681,6 +827,14 @@ def run_single_file(
 
 
 def main(argv: Iterable[str] | None = None) -> int:
+    # Консоль Windows по умолчанию cp1252: без этого русский --help падает.
+    for stream in (sys.stdout, sys.stderr):
+        reconfigure = getattr(stream, "reconfigure", None)
+        if reconfigure is not None:
+            try:
+                reconfigure(encoding="utf-8", errors="replace")
+            except Exception:
+                pass
     parser = argparse.ArgumentParser(description="Сбор базы знаний СибГУТИ")
     parser.add_argument("--urls", type=Path, help="JSON со списком источников (полная пересборка)")
     parser.add_argument("--file", type=Path, help="Один локальный документ (HTML/PDF/TXT/MD)")
@@ -693,6 +847,11 @@ def main(argv: Iterable[str] | None = None) -> int:
         action="store_true",
         help="Не использовать веб-архив при недоступности источника",
     )
+    parser.add_argument(
+        "--resume",
+        action="store_true",
+        help="Продолжить сбор: не очищать базу и пропустить уже проиндексированные URL",
+    )
     args = parser.parse_args(list(argv) if argv is not None else None)
 
     if not args.urls and not args.file:
@@ -700,7 +859,7 @@ def main(argv: Iterable[str] | None = None) -> int:
 
     started = time.perf_counter()
     if args.urls:
-        stats = run_urls(args.urls, use_wayback=not args.no_wayback)
+        stats = run_urls(args.urls, use_wayback=not args.no_wayback, resume=args.resume)
     else:
         if not args.file.exists():
             print(f"файл не найден: {args.file}", file=sys.stderr)

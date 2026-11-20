@@ -57,11 +57,13 @@ LLM_TIMEOUT = 90.0
 CHUNK_SIZE = 1100
 CHUNK_OVERLAP = 150
 MIN_CHUNK_SIZE = 200
+# Страховка для эмбеддингов: длиннее модель не примет.
+EMBED_MAX_CHARS = 6000
 
 # Сеть
 USER_AGENT = "SibSUTIS-Agent/1.0 (+educational hackathon project)"
-FETCH_TIMEOUT = 30.0
-FETCH_RETRIES = 2
+FETCH_TIMEOUT = 20.0
+FETCH_RETRIES = 1
 
 
 # --- Валидация ------------------------------------------------------------

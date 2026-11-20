@@ -1,0 +1,387 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Ассистент СибГУТИ</title>
+<script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/dompurify@3/dist/purify.min.js"></script>
+<style>
+  :root {
+    --bg: #0f172a;
+    --panel: #ffffff;
+    --ink: #16213a;
+    --muted: #5d6b85;
+    --line: #e2e8f2;
+    --brand: #1b4fd8;
+    --brand-soft: #eef3ff;
+    --ok: #0f9d58;
+    --err: #c62828;
+    --err-soft: #fdecec;
+    --radius: 14px;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    background: linear-gradient(180deg, #f5f7fc 0%, #eef2fa 100%);
+    color: var(--ink);
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+  }
+  header {
+    background: var(--panel);
+    border-bottom: 1px solid var(--line);
+    padding: 16px 20px;
+    display: flex;
+    align-items: flex-start;
+    gap: 16px;
+    flex-wrap: wrap;
+  }
+  .brand { display: flex; flex-direction: column; gap: 4px; flex: 1 1 320px; }
+  .brand h1 { margin: 0; font-size: 19px; letter-spacing: -0.2px; }
+  .brand p { margin: 0; font-size: 13px; color: var(--muted); line-height: 1.45; max-width: 760px; }
+  .brand .limits { font-size: 12px; color: #8a97ad; }
+  button {
+    font: inherit;
+    cursor: pointer;
+    border-radius: 10px;
+    border: 1px solid transparent;
+    padding: 9px 16px;
+    transition: background .15s ease, border-color .15s ease, opacity .15s ease;
+  }
+  button:disabled { cursor: not-allowed; opacity: .55; }
+  .btn-primary { background: var(--brand); color: #fff; }
+  .btn-primary:hover:not(:disabled) { background: #1640b0; }
+  .btn-ghost { background: #fff; border-color: var(--line); color: var(--ink); }
+  .btn-ghost:hover:not(:disabled) { background: #f7f9fd; }
+  main {
+    flex: 1;
+    width: 100%;
+    max-width: 900px;
+    margin: 0 auto;
+    padding: 20px 16px 28px;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+  }
+  .start {
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    padding: 22px;
+  }
+  .start h2 { margin: 0 0 6px; font-size: 16px; }
+  .start p { margin: 0 0 14px; font-size: 13px; color: var(--muted); }
+  .examples { display: grid; gap: 8px; }
+  .example {
+    text-align: left;
+    background: var(--brand-soft);
+    border: 1px solid #d8e3ff;
+    color: #16306e;
+    padding: 11px 14px;
+    border-radius: 10px;
+    font-size: 14px;
+    line-height: 1.4;
+  }
+  .example:hover:not(:disabled) { background: #e2ebff; }
+  .msg { display: flex; flex-direction: column; gap: 8px; }
+  .msg .role { font-size: 11px; text-transform: uppercase; letter-spacing: .08em; color: #94a1b8; }
+  .bubble {
+    border-radius: var(--radius);
+    padding: 14px 16px;
+    line-height: 1.55;
+    font-size: 14.5px;
+    word-wrap: break-word;
+    overflow-wrap: anywhere;
+  }
+  .msg.user { align-items: flex-end; }
+  .msg.user .bubble { background: var(--brand); color: #fff; max-width: 85%; }
+  .msg.bot .bubble { background: var(--panel); border: 1px solid var(--line); }
+  .bubble p:first-child { margin-top: 0; }
+  .bubble p:last-child { margin-bottom: 0; }
+  .bubble ul, .bubble ol { padding-left: 22px; }
+  .bubble table { border-collapse: collapse; width: 100%; margin: 12px 0; font-size: 13.5px; display: block; overflow-x: auto; }
+  .bubble th, .bubble td { border: 1px solid var(--line); padding: 8px 10px; text-align: left; vertical-align: top; }
+  .bubble th { background: #f4f7fd; font-weight: 600; }
+  .bubble code { background: #f1f4fa; padding: 1px 5px; border-radius: 5px; font-size: 13px; }
+  .sources { border-top: 1px dashed var(--line); margin-top: 14px; padding-top: 12px; }
+  .sources h3 { margin: 0 0 8px; font-size: 12px; text-transform: uppercase; letter-spacing: .07em; color: var(--muted); }
+  .sources ol { margin: 0; padding-left: 20px; display: grid; gap: 7px; }
+  .sources li { font-size: 13px; line-height: 1.4; }
+  .sources a { color: var(--brand); text-decoration: none; }
+  .sources a:hover { text-decoration: underline; }
+  .meta { font-size: 11.5px; color: #97a3b8; display: flex; gap: 12px; flex-wrap: wrap; }
+  .notice {
+    background: #fff8e6; border: 1px solid #f3dfae; color: #7a5b00;
+    border-radius: 10px; padding: 9px 12px; font-size: 12.5px; margin-top: 10px;
+  }
+  .error {
+    background: var(--err-soft); border: 1px solid #f5c6c6; color: var(--err);
+    border-radius: var(--radius); padding: 14px 16px; display: flex; gap: 12px;
+    align-items: center; justify-content: space-between; flex-wrap: wrap; font-size: 13.5px;
+  }
+  .typing { display: inline-flex; gap: 5px; align-items: center; padding: 6px 0; }
+  .typing span {
+    width: 7px; height: 7px; border-radius: 50%; background: #b9c4d8;
+    animation: pulse 1.2s infinite ease-in-out;
+  }
+  .typing span:nth-child(2) { animation-delay: .15s; }
+  .typing span:nth-child(3) { animation-delay: .3s; }
+  @keyframes pulse { 0%, 80%, 100% { opacity: .35; transform: scale(.9); } 40% { opacity: 1; transform: scale(1); } }
+  form.composer {
+    position: sticky; bottom: 0; background: rgba(245,247,252,.92);
+    backdrop-filter: blur(6px); padding: 10px 0 0; display: flex; gap: 10px; align-items: flex-end;
+  }
+  textarea {
+    flex: 1; resize: none; font: inherit; font-size: 14.5px; line-height: 1.45;
+    padding: 12px 14px; border-radius: 12px; border: 1px solid var(--line);
+    background: #fff; color: var(--ink); min-height: 48px; max-height: 160px;
+  }
+  textarea:focus { outline: 2px solid #c7d7ff; border-color: #a9c0ff; }
+  .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+  @media (max-width: 640px) {
+    header { padding: 14px; }
+    main { padding: 14px 12px 20px; }
+  }
+</style>
+</head>
+<body>
+<header>
+  <div class="brand">
+    <h1>Ассистент СибГУТИ</h1>
+    <p>Отвечает на вопросы абитуриентов и студентов по открытым материалам официального сайта СибГУТИ: направления подготовки, приём, общежития, стипендии, контакты.</p>
+    <span class="limits">Границы: нет доступа к личному кабинету, оценкам, персональному расписанию и внутренним документам. Ответы не заменяют официальную информацию приёмной комиссии.</span>
+  </div>
+  <button id="newDialog" class="btn-ghost" type="button">Новый диалог</button>
+</header>
+
+<main>
+  <section id="start" class="start">
+    <h2>С чего начать</h2>
+    <p>Выберите готовый вопрос или напишите свой.</p>
+    <div class="examples" id="examples"></div>
+  </section>
+
+  <div id="dialog" aria-live="polite"></div>
+  <div id="errorSlot"></div>
+
+  <form class="composer" id="composer">
+    <label class="sr-only" for="input">Ваш вопрос</label>
+    <textarea id="input" rows="1" placeholder="Спросите про поступление, направления, общежитие, стипендию…" maxlength="4000"></textarea>
+    <button id="send" class="btn-primary" type="submit">Отправить</button>
+  </form>
+</main>
+
+<script>
+(function () {
+  "use strict";
+
+  const EXAMPLES = [
+    "Какие ИТ-направления бакалавриата есть в СибГУТИ?",
+    "Сравни очную и заочную форму обучения",
+    "Расскажи про общежития СибГУТИ",
+    "Какие стипендии получают студенты?",
+    "Как связаться с приёмной комиссией?"
+  ];
+
+  const dialog = document.getElementById("dialog");
+  const errorSlot = document.getElementById("errorSlot");
+  const startPanel = document.getElementById("start");
+  const examplesBox = document.getElementById("examples");
+  const form = document.getElementById("composer");
+  const input = document.getElementById("input");
+  const sendBtn = document.getElementById("send");
+  const newDialogBtn = document.getElementById("newDialog");
+
+  let sessionId = "";
+  let sending = false;
+  let lastMessage = "";
+  let pendingNode = null;
+
+  function md(text) {
+    if (window.marked && window.DOMPurify) {
+      try {
+        return window.DOMPurify.sanitize(window.marked.parse(text, { breaks: true, gfm: true }));
+      } catch (e) { /* fall through */ }
+    }
+    const div = document.createElement("div");
+    div.textContent = text;
+    return div.innerHTML.replace(/\n/g, "<br>");
+  }
+
+  function el(tag, className, text) {
+    const node = document.createElement(tag);
+    if (className) node.className = className;
+    if (text !== undefined) node.textContent = text;
+    return node;
+  }
+
+  function addMessage(role, html, meta) {
+    const wrap = el("div", "msg " + role);
+    wrap.appendChild(el("div", "role", role === "user" ? "Вы" : "Ассистент"));
+    const bubble = el("div", "bubble");
+    bubble.innerHTML = html;
+    wrap.appendChild(bubble);
+    if (meta) {
+      const metaBox = el("div", "meta");
+      meta.forEach(function (item) { metaBox.appendChild(el("span", null, item)); });
+      wrap.appendChild(metaBox);
+    }
+    dialog.appendChild(wrap);
+    return wrap;
+  }
+
+  function addSources(wrap, sources) {
+    if (!sources || !sources.length) return;
+    const box = el("div", "sources");
+    box.appendChild(el("h3", null, "Источники"));
+    const list = document.createElement("ol");
+    sources.forEach(function (src) {
+      const li = document.createElement("li");
+      const link = document.createElement("a");
+      link.href = src.url;
+      link.target = "_blank";
+      link.rel = "noopener noreferrer";
+      link.textContent = src.title || src.url;
+      li.appendChild(link);
+      const parts = [];
+      if (src.section) parts.push(src.section);
+      if (src.year_version) parts.push("год: " + src.year_version);
+      if (parts.length) li.appendChild(document.createTextNode(" — " + parts.join(" · ")));
+      list.appendChild(li);
+    });
+    box.appendChild(list);
+    wrap.querySelector(".bubble").appendChild(box);
+  }
+
+  function showTyping() {
+    pendingNode = addMessage("bot", '<span class="typing"><span></span><span></span><span></span></span>');
+    scrollDown();
+  }
+
+  function clearTyping() {
+    if (pendingNode && pendingNode.parentNode) pendingNode.parentNode.removeChild(pendingNode);
+    pendingNode = null;
+  }
+
+  function scrollDown() {
+    window.scrollTo({ top: document.body.scrollHeight, behavior: "smooth" });
+  }
+
+  function showError(text, retryMessage) {
+    errorSlot.innerHTML = "";
+    const box = el("div", "error");
+    box.appendChild(el("span", null, text));
+    if (retryMessage) {
+      const retry = el("button", "btn-ghost", "Повторить запрос");
+      retry.type = "button";
+      retry.addEventListener("click", function () {
+        errorSlot.innerHTML = "";
+        submit(retryMessage);
+      });
+      box.appendChild(retry);
+    }
+    errorSlot.appendChild(box);
+    scrollDown();
+  }
+
+  function setBusy(busy) {
+    sending = busy;
+    sendBtn.disabled = busy;
+    input.disabled = busy;
+    document.querySelectorAll(".example").forEach(function (node) { node.disabled = busy; });
+  }
+
+  async function ensureSession() {
+    if (sessionId) return sessionId;
+    const response = await fetch("/api/session/new", { method: "POST" });
+    if (!response.ok) throw new Error("Не удалось создать сессию (" + response.status + ")");
+    const data = await response.json();
+    sessionId = data.session_id;
+    return sessionId;
+  }
+
+  async function submit(message) {
+    const text = (message || "").trim();
+    if (!text || sending) return;
+    lastMessage = text;
+    errorSlot.innerHTML = "";
+    startPanel.style.display = "none";
+    addMessage("user", md(text));
+    input.value = "";
+    autoGrow();
+    setBusy(true);
+    showTyping();
+    const started = performance.now();
+
+    try {
+      const sid = await ensureSession();
+      const response = await fetch("/api/chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ session_id: sid, message: text })
+      });
+      if (!response.ok) throw new Error("Сервер вернул " + response.status);
+      const data = await response.json();
+      const elapsed = Math.round(performance.now() - started);
+      clearTyping();
+      const meta = ["Ответ за " + (data.latency_ms || elapsed) + " мс"];
+      const wrap = addMessage("bot", md(data.answer_markdown || "Пустой ответ."), meta);
+      addSources(wrap, data.sources);
+      if (data.security_notice) {
+        wrap.querySelector(".bubble").appendChild(el("div", "notice", data.security_notice));
+      }
+      scrollDown();
+    } catch (err) {
+      clearTyping();
+      showError("Не удалось получить ответ: " + err.message + ". Проверьте соединение с сервером.", text);
+    } finally {
+      setBusy(false);
+      input.focus();
+    }
+  }
+
+  function autoGrow() {
+    input.style.height = "auto";
+    input.style.height = Math.min(input.scrollHeight, 160) + "px";
+  }
+
+  EXAMPLES.forEach(function (question) {
+    const button = el("button", "example", question);
+    button.type = "button";
+    button.addEventListener("click", function () { submit(question); });
+    examplesBox.appendChild(button);
+  });
+
+  form.addEventListener("submit", function (event) {
+    event.preventDefault();
+    submit(input.value);
+  });
+
+  input.addEventListener("input", autoGrow);
+  input.addEventListener("keydown", function (event) {
+    if (event.key === "Enter" && !event.shiftKey) {
+      event.preventDefault();
+      submit(input.value);
+    }
+  });
+
+  newDialogBtn.addEventListener("click", async function () {
+    if (sending) return;
+    sessionId = "";
+    dialog.innerHTML = "";
+    errorSlot.innerHTML = "";
+    startPanel.style.display = "";
+    lastMessage = "";
+    try { await ensureSession(); } catch (e) { /* создастся при отправке */ }
+    input.focus();
+  });
+
+  ensureSession().catch(function () { /* создастся при первой отправке */ });
+  input.focus();
+})();
+</script>
+</body>
+</html>
