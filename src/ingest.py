@@ -14,9 +14,10 @@ import re
 import sqlite3
 import sys
 import time
+from collections.abc import Iterable
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Iterable
+from typing import Any
 
 import httpx
 import numpy as np
@@ -86,7 +87,7 @@ def _http_get(client: httpx.Client, url: str) -> httpx.Response:
             response = client.get(url)
             response.raise_for_status()
             return response
-        except Exception as exc:  # noqa: BLE001 - нужен любой сетевой сбой
+        except Exception as exc:
             last_error = exc
             if attempt < config.FETCH_RETRIES:
                 time.sleep(1.5 * (attempt + 1))
@@ -101,19 +102,19 @@ def fetch_url(url: str, use_wayback: bool = True) -> tuple[bytes, str, str, str]
             response = _http_get(client, url)
             ctype = response.headers.get("content-type", "")
             return response.content, ctype, str(response.url), "origin"
-        except Exception as origin_error:  # noqa: BLE001
+        except Exception as origin_error:
             if not use_wayback:
                 raise RuntimeError(f"origin unavailable: {origin_error}") from origin_error
             archive_url = f"https://web.archive.org/web/2025/{url}"
             try:
                 response = _http_get(client, archive_url)
-            except Exception as archive_error:  # noqa: BLE001
+            except Exception as archive_error:
                 raise RuntimeError(
                     f"origin unavailable ({origin_error}); archive unavailable ({archive_error})"
                 ) from archive_error
             text_probe = response.content[:4000].decode("utf-8", errors="ignore").lower()
             if "has not archived that url" in text_probe or "wayback machine doesn't have that page" in text_probe:
-                raise RuntimeError(f"origin unavailable ({origin_error}); no archived copy")
+                raise RuntimeError(f"origin unavailable ({origin_error}); no archived copy") from None
             ctype = response.headers.get("content-type", "")
             return response.content, ctype, str(response.url), "wayback"
 
@@ -224,7 +225,7 @@ def trafilatura_fallback(html: str) -> str:
             favor_precision=False,
         )
         return (text or "").strip()
-    except Exception:  # noqa: BLE001 - фоллбэк не должен ронять пайплайн
+    except Exception:
         return ""
 
 
@@ -238,7 +239,7 @@ def extract_pdf(data: bytes) -> str:
     for page in reader.pages:
         try:
             pages.append(page.extract_text() or "")
-        except Exception:  # noqa: BLE001
+        except Exception:
             pages.append("")
     text = "\n\n".join(p.strip() for p in pages if p.strip())
     return text.strip()
@@ -365,7 +366,7 @@ def embed_texts(texts: list[str], batch_size: int = 32) -> np.ndarray:
                 ordered = sorted(response.data, key=lambda item: item.index)
                 vectors.extend([item.embedding for item in ordered])
                 break
-            except Exception as exc:  # noqa: BLE001
+            except Exception as exc:
                 last_error = exc
                 time.sleep(2.0 * (attempt + 1))
         else:
@@ -420,7 +421,11 @@ def connect_db(path: Path = config.KB_PATH) -> sqlite3.Connection:
 
 def init_db(connection: sqlite3.Connection, rebuild: bool = False) -> None:
     if rebuild:
-        connection.executescript("DROP TABLE IF EXISTS chunks_fts; DROP TABLE IF EXISTS chunks; DROP TABLE IF EXISTS documents;")
+        connection.executescript(
+            "DROP TABLE IF EXISTS chunks_fts; "
+            "DROP TABLE IF EXISTS chunks; "
+            "DROP TABLE IF EXISTS documents;"
+        )
     connection.executescript(SCHEMA)
     connection.commit()
 
@@ -467,7 +472,7 @@ def process_source(
     section = source.get("section") or "Прочее"
     fetched_at = utc_now()
 
-    content, content_type, final_url, via = fetch_url(url, use_wayback=use_wayback)
+    content, content_type, _final_url, via = fetch_url(url, use_wayback=use_wayback)
     fmt = detect_format(url, content_type)
 
     raw_name = f"{doc_id_for(url)}-{slugify(url)}{'.pdf' if fmt == 'pdf' else '.html' if fmt == 'html' else '.' + fmt}"
@@ -600,7 +605,7 @@ def run_urls(seed_path: Path, use_wayback: bool = True) -> dict[str, Any]:
             else:
                 vectors.append(new_vectors)
                 print(f"[{index}/{len(sources)}] ok {chunk_count} chunks {url}")
-        except Exception as exc:  # noqa: BLE001 - один URL не должен ронять сбор
+        except Exception as exc:
             message = str(exc)
             errors.append({"url": url, "error": message, "stage": "fetch+extract"})
             print(f"[{index}/{len(sources)}] ERROR {url}: {message}", file=sys.stderr)
@@ -643,7 +648,8 @@ def run_single_file(
 
     if not markdown:
         write_registry(connection)
-        stats = write_stats(connection, [dict(r) for r in connection.execute("SELECT * FROM documents")], errors, skipped)
+        rows = [dict(r) for r in connection.execute("SELECT * FROM documents")]
+        stats = write_stats(connection, rows, errors, skipped)
         connection.close()
         return stats
 
@@ -682,7 +688,11 @@ def main(argv: Iterable[str] | None = None) -> int:
     parser.add_argument("--title", default="", help="Заголовок документа")
     parser.add_argument("--section", default="Прочее", help="Раздел базы знаний")
     parser.add_argument("--year", default="", help="Версия/год документа")
-    parser.add_argument("--no-wayback", action="store_true", help="Не использовать веб-архив при недоступности источника")
+    parser.add_argument(
+        "--no-wayback",
+        action="store_true",
+        help="Не использовать веб-архив при недоступности источника",
+    )
     args = parser.parse_args(list(argv) if argv is not None else None)
 
     if not args.urls and not args.file:

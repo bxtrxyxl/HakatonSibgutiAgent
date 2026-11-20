@@ -1,0 +1,15 @@
+[tool.ruff]
+# Проект запускается на Python 3.10 (см. README), поэтому линтер не должен
+# предлагать API из 3.11+ (например, datetime.UTC).
+target-version = "py310"
+line-length = 120
+exclude = [".venv", "data", "logs"]
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "UP", "B", "RUF"]
+# Проект русскоязычный: RUF001-003 ложно срабатывают на кириллице.
+ignore = ["RUF001", "RUF002", "RUF003"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-ra"

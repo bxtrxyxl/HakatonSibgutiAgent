@@ -16,6 +16,9 @@ __pycache__/
 logs/
 data/raw/
 data/kb.sqlite
+data/kb.sqlite-*
+*.sqlite-wal
+*.sqlite-shm
 data/embeddings.npy
 data/registry.json
 data/stats.json
