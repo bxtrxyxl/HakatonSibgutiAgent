@@ -394,6 +394,7 @@ def chunk_markdown(markdown: str, title: str, section: str) -> list[dict[str, st
     groups: list[tuple[str, list[str]]] = []
     heading = ""
     current_group: list[str] = []
+    pending_headings: list[str] = []
     for block in blocks:
         if BOILERPLATE_RE.search(block):
             continue
@@ -401,12 +402,18 @@ def chunk_markdown(markdown: str, title: str, section: str) -> list[dict[str, st
             level = len(block) - len(block.lstrip("#"))
             if level <= 3:
                 if current_group:
-                    groups.append((heading, current_group))
+                    if any(not item.startswith("#") for item in current_group):
+                        groups.append((heading, current_group))
+                    else:
+                        # Одиночные заголовки не создают пустой чанк: переносим
+                        # их в следующий раздел, чтобы не терять контекст.
+                        pending_headings.extend(current_group)
                 heading = block.lstrip("#").strip()
-                current_group = [block]
+                current_group = [*pending_headings, block] if pending_headings else [block]
+                pending_headings = []
                 continue
         current_group.append(block)
-    if current_group:
+    if current_group and any(not item.startswith("#") for item in current_group):
         groups.append((heading, current_group))
 
     chunks: list[dict[str, str]] = []
