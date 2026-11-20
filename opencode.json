@@ -39,6 +39,14 @@
     { "action": "shell", "resource": "Remove-Item * -Force *", "effect": "deny" },
     { "action": "shell", "resource": "git clean -fdx *", "effect": "deny" },
     { "action": "shell", "resource": "git reset --hard *", "effect": "deny" },
+    { "action": "shell", "resource": "git status *", "effect": "allow" },
+    { "action": "shell", "resource": "git diff *", "effect": "allow" },
+    { "action": "shell", "resource": "git log *", "effect": "allow" },
+    { "action": "shell", "resource": "git add *", "effect": "allow" },
+    { "action": "shell", "resource": "git commit *", "effect": "allow" },
+    { "action": "shell", "resource": "git add -f *", "effect": "deny" },
+    { "action": "shell", "resource": "git add --force *", "effect": "deny" },
+    { "action": "shell", "resource": "git add *.env*", "effect": "deny" },
     { "action": "shell", "resource": "git push *", "effect": "ask" }
   ]
 }
