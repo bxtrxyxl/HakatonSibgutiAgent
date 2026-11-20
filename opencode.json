@@ -1,0 +1,44 @@
+{
+  "$schema": "https://opencode.ai/config.json",
+  "mcp": {
+    "servers": {
+      "context7": {
+        "type": "remote",
+        "url": "https://mcp.context7.com/mcp",
+        "enabled": true
+      },
+      "playwright": {
+        "type": "local",
+        "command": ["npx", "-y", "@playwright/mcp@latest", "--headless"],
+        "enabled": true
+      }
+    }
+  },
+  "lsp": {
+    "pyright": {
+      "command": [
+        "C:\\Users\\nikit\\OneDrive\\Desktop\\HAKATON\\.venv\\Scripts\\pyright-langserver.exe",
+        "--stdio"
+      ],
+      "extensions": [".py"]
+    }
+  },
+  "permissions": [
+    { "action": "read", "resource": "*.env", "effect": "deny" },
+    { "action": "read", "resource": "*.env.*", "effect": "deny" },
+    { "action": "read", "resource": "*.env.example", "effect": "allow" },
+    { "action": "edit", "resource": "*.env", "effect": "deny" },
+    { "action": "edit", "resource": "*.env.*", "effect": "deny" },
+    { "action": "edit", "resource": "*.env.example", "effect": "allow" },
+    { "action": "shell", "resource": "rm -rf *", "effect": "deny" },
+    { "action": "shell", "resource": "rm -fr *", "effect": "deny" },
+    { "action": "shell", "resource": "rm -r *", "effect": "deny" },
+    { "action": "shell", "resource": "rm -f *", "effect": "deny" },
+    { "action": "shell", "resource": "rm *", "effect": "deny" },
+    { "action": "shell", "resource": "Remove-Item * -Recurse *", "effect": "deny" },
+    { "action": "shell", "resource": "Remove-Item * -Force *", "effect": "deny" },
+    { "action": "shell", "resource": "git clean -fdx *", "effect": "deny" },
+    { "action": "shell", "resource": "git reset --hard *", "effect": "deny" },
+    { "action": "shell", "resource": "git push *", "effect": "ask" }
+  ]
+}

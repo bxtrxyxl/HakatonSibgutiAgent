@@ -1,0 +1,11 @@
+fastapi
+uvicorn
+openai
+httpx
+beautifulsoup4
+trafilatura
+pypdf
+numpy
+python-dotenv
+pydantic
+pytest

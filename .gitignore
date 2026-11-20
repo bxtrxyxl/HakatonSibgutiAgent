@@ -1,0 +1,31 @@
+# Окружение
+.venv/
+.env
+.env.*
+!.env.example
+
+# Кэш Python
+__pycache__/
+*.pyc
+*.pyo
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+
+# Логи и данные
+logs/
+data/raw/
+data/kb.sqlite
+data/embeddings.npy
+data/registry.json
+data/stats.json
+
+# ОС / редакторы
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# Playwright
+test-results/
+playwright-report/
