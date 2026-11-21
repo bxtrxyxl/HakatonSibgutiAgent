@@ -11,9 +11,11 @@ import argparse
 import hashlib
 import json
 import re
+import shutil
 import sqlite3
 import sys
 import time
+import uuid
 from collections.abc import Iterable
 from datetime import datetime, timezone
 from pathlib import Path
@@ -50,6 +52,21 @@ BOILERPLATE_RE = re.compile(
 
 
 # --- Утилиты --------------------------------------------------------------
+
+def _configure_console() -> None:
+    """UTF-8 для логов: под uvicorn консоль Windows иначе падает на кириллице."""
+    for stream in (sys.stdout, sys.stderr):
+        reconfigure = getattr(stream, "reconfigure", None)
+        if reconfigure is None:
+            continue
+        try:
+            reconfigure(encoding="utf-8", errors="replace")
+        except (OSError, ValueError):
+            pass
+
+
+_configure_console()
+
 
 def utc_now() -> str:
     return datetime.now(timezone.utc).isoformat(timespec="seconds")
@@ -947,6 +964,197 @@ def run_single_file(
     stats = write_stats(connection, registry, errors, skipped)
     connection.close()
     return stats
+
+
+# --- Снапшоты базы знаний ------------------------------------------------
+
+BACKUP_ID_RE = re.compile(r"^db_[0-9]{8}_[0-9]{6}_[a-f0-9]{6}$")
+
+
+def read_app_settings() -> dict[str, Any]:
+    """Настройки, которые можно менять без перезапуска (папка источников)."""
+    default_folder = config.DOCS_DIR.relative_to(config.BASE_DIR).as_posix()
+    if not config.APP_SETTINGS_PATH.exists():
+        return {"folder": default_folder}
+    try:
+        payload = json.loads(config.APP_SETTINGS_PATH.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return {"folder": default_folder}
+    if not isinstance(payload, dict):
+        return {"folder": default_folder}
+    payload.setdefault("folder", default_folder)
+    folder = str(payload.get("folder") or default_folder).replace("\\", "/")
+    candidate = Path(folder)
+    if candidate.is_absolute():
+        try:
+            folder = candidate.resolve().relative_to(config.BASE_DIR.resolve()).as_posix()
+        except ValueError:
+            folder = default_folder
+    payload["folder"] = folder
+    return payload
+
+
+def write_app_settings(patch: dict[str, Any]) -> dict[str, Any]:
+    settings = read_app_settings()
+    settings.update({key: value for key, value in patch.items() if value is not None})
+    config.APP_SETTINGS_PATH.write_text(
+        json.dumps(settings, ensure_ascii=False, indent=2), encoding="utf-8"
+    )
+    return settings
+
+
+def resolve_kb_folder(folder: str) -> Path:
+    """Разрешает папку источников только внутри data/ (без выхода за пределы проекта)."""
+    raw = (folder or "").strip()
+    if not raw:
+        raise ValueError("путь к папке не задан")
+    candidate = Path(raw).expanduser()
+    if not candidate.is_absolute():
+        candidate = config.BASE_DIR / candidate
+    resolved = candidate.resolve()
+    data_root = config.DATA_DIR.resolve()
+    if not resolved.is_relative_to(data_root):
+        raise ValueError("папка должна находиться внутри data/")
+    if not resolved.is_dir():
+        raise ValueError(f"папка не найдена: {resolved}")
+    return resolved
+
+
+def _read_stats() -> dict[str, Any]:
+    if not config.STATS_PATH.exists():
+        return {}
+    try:
+        payload = json.loads(config.STATS_PATH.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return {}
+    return payload if isinstance(payload, dict) else {}
+
+
+def _active_database() -> dict[str, Any]:
+    stats = _read_stats()
+    settings = read_app_settings()
+    return {
+        "id": "active",
+        "name": "Активная база",
+        "created_at": stats.get("generated_at") or utc_now(),
+        "docs": int(stats.get("unique_docs", 0)),
+        "chunks": int(stats.get("chunks", 0)),
+        "chars": int(stats.get("total_chars", 0)),
+        "folder": settings.get("folder", config.DOCS_DIR.relative_to(config.BASE_DIR).as_posix()),
+        "has_kb": config.KB_PATH.exists(),
+    }
+
+
+def _backup_meta(backup_dir: Path) -> dict[str, Any] | None:
+    meta_path = backup_dir / "meta.json"
+    if not meta_path.exists():
+        return None
+    try:
+        payload = json.loads(meta_path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return None
+    return payload if isinstance(payload, dict) else None
+
+
+def list_backups() -> list[dict[str, Any]]:
+    backups: list[dict[str, Any]] = []
+    if not config.BACKUPS_DIR.exists():
+        return backups
+    for backup_dir in config.BACKUPS_DIR.iterdir():
+        if not backup_dir.is_dir():
+            continue
+        meta = _backup_meta(backup_dir)
+        if meta and BACKUP_ID_RE.match(str(meta.get("id", ""))):
+            backups.append(meta)
+    backups.sort(key=lambda item: str(item.get("created_at", "")), reverse=True)
+    return backups
+
+
+def create_backup(name: str = "") -> dict[str, Any]:
+    """Создаёт согласованный снапшот kb.sqlite + embeddings.npy и метаданные."""
+    if not config.KB_PATH.exists() or not config.EMBEDDINGS_PATH.exists():
+        raise RuntimeError("база знаний ещё не собрана: нечего копировать")
+
+    now = datetime.now(timezone.utc)
+    backup_id = f"db_{now.strftime('%Y%m%d_%H%M%S')}_{uuid.uuid4().hex[:6]}"
+    backup_dir = config.BACKUPS_DIR / backup_id
+    backup_dir.mkdir(parents=True, exist_ok=False)
+
+    source = sqlite3.connect(config.KB_PATH)
+    target = sqlite3.connect(backup_dir / "kb.sqlite")
+    try:
+        source.backup(target)
+    finally:
+        target.close()
+        source.close()
+
+    for filename in ("embeddings.npy", "registry.json", "stats.json"):
+        source_path = config.DATA_DIR / filename
+        if source_path.exists():
+            shutil.copy2(source_path, backup_dir / filename)
+
+    stats = _read_stats()
+    meta = {
+        "id": backup_id,
+        "name": (name or "").strip() or f"Копия · {now.strftime('%d.%m.%Y %H:%M')}",
+        "created_at": now.isoformat(timespec="seconds"),
+        "docs": int(stats.get("unique_docs", 0)),
+        "chunks": int(stats.get("chunks", 0)),
+        "chars": int(stats.get("total_chars", 0)),
+    }
+    (backup_dir / "meta.json").write_text(
+        json.dumps(meta, ensure_ascii=False, indent=2), encoding="utf-8"
+    )
+    return meta
+
+
+def _backup_dir(backup_id: str) -> Path:
+    if not BACKUP_ID_RE.match(backup_id or ""):
+        raise ValueError("некорректный идентификатор резервной копии")
+    backup_dir = (config.BACKUPS_DIR / backup_id).resolve()
+    if backup_dir.parent != config.BACKUPS_DIR.resolve():
+        raise ValueError("некорректный путь резервной копии")
+    if not backup_dir.is_dir():
+        raise FileNotFoundError(backup_id)
+    return backup_dir
+
+
+def restore_backup(backup_id: str) -> dict[str, Any]:
+    """Заменяет живую базу снапшотом через временные файлы и atomic replace."""
+    backup_dir = _backup_dir(backup_id)
+    required = (backup_dir / "kb.sqlite", backup_dir / "embeddings.npy")
+    if not all(path.exists() for path in required):
+        raise RuntimeError("в резервной копии нет kb.sqlite или embeddings.npy")
+
+    for filename in ("kb.sqlite", "embeddings.npy", "registry.json", "stats.json"):
+        source_path = backup_dir / filename
+        if not source_path.exists():
+            continue
+        target_path = config.DATA_DIR / filename
+        temp_path = target_path.with_name(target_path.name + ".restore-tmp")
+        shutil.copy2(source_path, temp_path)
+        temp_path.replace(target_path)
+
+    return _active_database()
+
+
+def delete_backup(backup_id: str) -> None:
+    backup_dir = _backup_dir(backup_id)
+    shutil.rmtree(backup_dir)
+
+
+def database_status() -> dict[str, Any]:
+    settings = read_app_settings()
+    return {
+        "active": _active_database(),
+        "backups": list_backups(),
+        "folder": settings.get("folder", config.DOCS_DIR.relative_to(config.BASE_DIR).as_posix()),
+        "embed": {
+            "endpoint": config.EMBED_BASE_URL or None,
+            "model": config.EMBED_MODEL or None,
+            "configured": bool(config.EMBED_BASE_URL and config.EMBED_API_KEY and config.EMBED_MODEL),
+        },
+    }
 
 
 def main(argv: Iterable[str] | None = None) -> int:

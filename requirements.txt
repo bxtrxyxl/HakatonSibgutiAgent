@@ -7,5 +7,6 @@ trafilatura
 pypdf
 numpy
 python-dotenv
+python-multipart
 pydantic
 pytest

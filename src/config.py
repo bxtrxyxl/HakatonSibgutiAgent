@@ -25,9 +25,12 @@ EMBEDDINGS_PATH = DATA_DIR / "embeddings.npy"
 REGISTRY_PATH = DATA_DIR / "registry.json"
 STATS_PATH = DATA_DIR / "stats.json"
 SEED_URLS_PATH = DATA_DIR / "seed_urls.json"
+BACKUPS_DIR = DATA_DIR / "backups"
+APP_SETTINGS_PATH = DATA_DIR / "app_settings.json"
+DOCS_DIR = DATA_DIR / "docs"
 EVENTS_LOG = LOGS_DIR / "events.jsonl"
 
-for _directory in (DATA_DIR, RAW_DIR, LOGS_DIR, WEB_DIR):
+for _directory in (DATA_DIR, RAW_DIR, LOGS_DIR, WEB_DIR, BACKUPS_DIR, DOCS_DIR):
     _directory.mkdir(parents=True, exist_ok=True)
 
 load_dotenv(BASE_DIR / ".env")

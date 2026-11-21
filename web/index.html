@@ -2998,6 +2998,12 @@
       white-space: nowrap;
     }
 
+    .db-badge.is-ok {
+      color: var(--success);
+      background: var(--success-bg);
+      border-color: var(--success-border);
+    }
+
     .db-backup-list {
       display: flex;
       flex-direction: column;
@@ -3085,6 +3091,25 @@
       font-size: 11px;
       line-height: 1.45;
       color: var(--text-3);
+    }
+
+    .db-error {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      padding: 9px 11px;
+      border-radius: 12px;
+      background: var(--error-bg);
+      border: 1px solid var(--error-border);
+      color: var(--error);
+      font-size: 11.5px;
+      line-height: 1.4;
+    }
+
+    .db-error .db-mini-btn {
+      color: var(--error);
+      border-color: var(--error-border);
     }
 
     .db-plan {
@@ -3425,7 +3450,7 @@
               <span data-i18n="connModeLabel">Режим работы</span>
             </div>
             <div id="modeSegmented" class="segmented-control">
-              <button class="seg-btn" data-mode="demo" data-i18n="modeDemo">Демо-режим</button>
+              <button class="seg-btn" data-mode="demo" data-i18n="modeDemo">Демо (офлайн)</button>
               <button class="seg-btn" data-mode="fastapi" data-i18n="modeFastApi">Сервер FastAPI</button>
               <button class="seg-btn" data-mode="openai" data-i18n="modeOpenAi">Прямой API</button>
             </div>
@@ -3530,35 +3555,40 @@
 
         <!-- Tab 3: База данных -->
         <div class="tab-pane" data-pane="database">
-          <p class="db-intro" data-i18n="dbIntro">Демо-режим: базы, копии и подключения хранятся только в этом браузере. Реальная сборка индекса появится позже.</p>
+          <p class="db-intro" data-i18n="dbIntro">Данные берутся с FastAPI-сервера. Резервные копии, проверка эмбеддингов и пересборка индекса выполняются на сервере.</p>
+
+          <div id="dbError" class="db-error" style="display:none;">
+            <span id="dbErrorText"></span>
+            <button id="dbRetryBtn" class="db-mini-btn" data-i18n="dbRetry">Повторить</button>
+          </div>
 
           <div class="db-summary">
             <div class="db-summary-head">
               <div>
                 <span class="db-kicker" data-i18n="dbActiveKicker">Активная база</span>
-                <strong id="dbActiveName" class="db-active-name">Основная база · 2026</strong>
+                <strong id="dbActiveName" class="db-active-name">—</strong>
               </div>
-              <span class="status-badge is-ok" data-i18n="dbActiveBadge">активна</span>
+              <span id="dbActiveBadge" class="status-badge" data-i18n="dbActiveBadge">активна</span>
             </div>
             <div class="db-meta">
               <div class="db-meta-item">
                 <span data-i18n="dbDocs">Документы</span>
-                <b id="dbActiveDocs">9</b>
+                <b id="dbActiveDocs">—</b>
               </div>
               <div class="db-meta-item">
                 <span data-i18n="dbChunks">Чанки</span>
-                <b id="dbActiveChunks">179</b>
+                <b id="dbActiveChunks">—</b>
               </div>
               <div class="db-meta-item">
                 <span data-i18n="dbSize">Символы</span>
-                <b id="dbActiveChars">114 299</b>
+                <b id="dbActiveChars">—</b>
               </div>
               <div class="db-meta-item">
                 <span data-i18n="dbUpdated">Обновлена</span>
-                <b id="dbActiveUpdated">21.11.26</b>
+                <b id="dbActiveUpdated">—</b>
               </div>
             </div>
-            <div id="dbActivePath" class="db-path code-font" title="data/docs">data/docs</div>
+            <div id="dbActivePath" class="db-path code-font" title="">—</div>
           </div>
 
           <div class="db-section">
@@ -3579,46 +3609,23 @@
             <div class="db-section-head">
               <div>
                 <span class="db-section-title" data-i18n="dbEmbedTitle">Эмбеддинг-модель</span>
-                <span class="db-section-desc" data-i18n="dbEmbedDesc">API для построения векторов. Ключ хранится только в этом браузере.</span>
+                <span class="db-section-desc" data-i18n="dbEmbedDesc">Модель и ключ задаются на сервере в .env. Браузер получает только название модели.</span>
               </div>
-              <span class="db-badge" data-i18n="dbDemoBadge">демо</span>
+              <span id="embedConfigBadge" class="db-badge" data-i18n="dbEmbedNotConfigured">не настроена</span>
             </div>
 
-            <div class="db-field-grid">
-              <div class="field-group">
-                <div class="field-label-row">
-                  <span data-i18n="dbEmbedEndpoint">URL API</span>
-                </div>
-                <input id="embedEndpointInput" class="text-input code-font" type="text" placeholder="https://api.openai.com/v1" />
+            <div class="db-meta" style="grid-template-columns:1.4fr 1fr;">
+              <div class="db-meta-item">
+                <span data-i18n="dbEmbedEndpoint">URL API</span>
+                <b id="embedEndpointValue" class="code-font">—</b>
               </div>
-              <div class="field-group">
-                <div class="field-label-row">
-                  <span data-i18n="dbEmbedModel">Модель</span>
-                </div>
-                <input id="embedModelInput" class="text-input code-font" type="text" placeholder="text-embedding-3-small" />
+              <div class="db-meta-item">
+                <span data-i18n="dbEmbedModel">Модель</span>
+                <b id="embedModelValue" class="code-font">—</b>
               </div>
             </div>
 
-            <div class="db-field-grid">
-              <div class="field-group">
-                <div class="field-label-row">
-                  <span data-i18n="dbEmbedKey">API-ключ</span>
-                  <span class="field-hint" data-i18n="localOnlyHint">Хранится только в этом браузере</span>
-                </div>
-                <div class="input-with-eye">
-                  <input id="embedApiKeyInput" class="text-input code-font" type="password" placeholder="sk-..." autocomplete="off" />
-                  <button id="toggleEmbedKeyEyeBtn" class="eye-btn" type="button" title="Показать или скрыть">
-                    <svg class="svg-icon" style="width:15px;height:15px;" viewBox="0 0 24 24"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
-                  </button>
-                </div>
-              </div>
-              <div class="field-group">
-                <div class="field-label-row">
-                  <span data-i18n="dbEmbedDims">Размерность</span>
-                </div>
-                <input id="embedDimsInput" class="text-input tabular" type="text" placeholder="1024" />
-              </div>
-            </div>
+            <p class="db-note" data-i18n="dbEmbedKeyNote">API-ключ хранится в .env на сервере и никогда не передаётся в браузер.</p>
 
             <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;">
               <button id="testEmbedBtn" class="btn-pill-ghost">
@@ -3633,15 +3640,15 @@
             <div class="db-section-head">
               <div>
                 <span class="db-section-title" data-i18n="dbFolderTitle">Папка с .md файлами</span>
-                <span class="db-section-desc" data-i18n="dbFolderDesc">Сборка идёт только по вашим файлам. Укажите путь к папке с Markdown.</span>
+                <span class="db-section-desc" data-i18n="dbFolderDesc">Сборка идёт только по вашим файлам внутри data/. Укажите путь к папке с Markdown.</span>
               </div>
               <span class="db-badge" data-i18n="dbLocalBadge">локально</span>
             </div>
             <div class="db-folder-row">
               <input id="kbFolderInput" class="text-input code-font" type="text" placeholder="data/docs" />
-              <button id="connectFolderBtn" class="btn-pill-ghost" style="height:34px;" data-i18n="dbConnectFolder">Подключить папку</button>
+              <button id="rebuildFolderBtn" class="btn-pill-ghost" style="height:34px;" data-i18n="dbRebuildFolder">Сохранить и пересобрать</button>
             </div>
-            <p class="db-note" data-i18n="dbFolderNote">Путь сохраняется в настройках базы. Сканирование и сборка индекса — в следующем этапе.</p>
+            <p class="db-note" data-i18n="dbFolderNote">Пересборка полностью обновляет FTS-индекс и эмбеддинги. Папка должна находиться внутри data/.</p>
           </div>
 
           <div class="db-section db-plan">
@@ -3815,7 +3822,23 @@
           tabConnection: 'Подключение',
           tabInterface: 'Интерфейс',
           tabDatabase: 'База данных',
-          dbIntro: 'Демо-режим: базы, копии и подключения хранятся только в этом браузере. Реальная сборка индекса появится позже.',
+          dbIntro: 'Данные берутся с FastAPI-сервера. Резервные копии, проверка эмбеддингов и пересборка индекса выполняются на сервере.',
+          dbRetry: 'Повторить',
+          dbLoading: 'Загрузка...',
+          dbServerError: 'Сервер базы недоступен',
+          dbOffline: 'офлайн',
+          dbNoBackups: 'Резервных копий пока нет',
+          dbEmbedNotConfigured: 'не настроена',
+          dbEmbedConfigured: 'подключена',
+          dbRebuildFolder: 'Сохранить и пересобрать',
+          dbRebuilding: 'Пересборка...',
+          dbBackupCreated: 'Резервная копия создана',
+          dbRestored: 'База восстановлена из копии',
+          dbDeleted: 'Резервная копия удалена',
+          dbFolderSaved: 'Папка сохранена',
+          dbFolderRebuilt: 'База пересобрана',
+          dbUploadFailed: 'Не удалось загрузить документ',
+          dbEmbedOk: 'Модель доступна',
           dbActiveKicker: 'Активная база',
           dbActiveBadge: 'активна',
           dbDocs: 'Документы',
@@ -3832,17 +3855,18 @@
           dbDocsShort: 'док.',
           dbChunksShort: 'чанков',
           dbEmbedTitle: 'Эмбеддинг-модель',
-          dbEmbedDesc: 'API для построения векторов. Ключ хранится только в этом браузере.',
+          dbEmbedDesc: 'Модель и ключ задаются на сервере в .env. Браузер получает только название модели.',
           dbEmbedEndpoint: 'URL API',
           dbEmbedKey: 'API-ключ',
           dbEmbedModel: 'Модель',
           dbEmbedDims: 'Размерность',
+          dbEmbedKeyNote: 'API-ключ хранится в .env на сервере и никогда не передаётся в браузер.',
           dbTestEmbed: 'Проверить модель',
           dbDemoBadge: 'демо',
           dbFolderTitle: 'Папка с .md файлами',
-          dbFolderDesc: 'Сборка идёт только по вашим файлам. Укажите путь к папке с Markdown.',
-          dbConnectFolder: 'Подключить папку',
-          dbFolderNote: 'Путь сохраняется в настройках базы. Сканирование и сборка индекса — в следующем этапе.',
+          dbFolderDesc: 'Сборка идёт только по вашим файлам внутри data/. Укажите путь к папке с Markdown.',
+          dbConnectFolder: 'Сохранить и пересобрать',
+          dbFolderNote: 'Пересборка полностью обновляет FTS-индекс и эмбеддинги. Папка должна находиться внутри data/.',
           dbLocalBadge: 'локально',
           dbAutoTitle: 'Автообновление с сайта',
           dbAutoDesc: 'Планируемый парсинг официальных страниц по расписанию. Пока выключено.',
@@ -3856,7 +3880,7 @@
           toastFolderEmpty: 'Укажите путь к папке',
           toastEmbedOk: 'Модель доступна (демо)',
           connModeLabel: 'Режим работы',
-          modeDemo: 'Демо-режим',
+          modeDemo: 'Демо (офлайн)',
           modeFastApi: 'Сервер FastAPI',
           modeOpenAi: 'Прямой API',
           endpointLabel: 'URL эндпоинта',
@@ -3967,7 +3991,23 @@
           tabConnection: 'Connection',
           tabInterface: 'Interface',
           tabDatabase: 'Database',
-          dbIntro: 'Demo mode: databases, backups, and connections are stored in this browser only. Real index builds come later.',
+          dbIntro: 'Data comes from the FastAPI server. Backups, embedding checks, and index rebuilds run on the server.',
+          dbRetry: 'Retry',
+          dbLoading: 'Loading...',
+          dbServerError: 'Database server is unreachable',
+          dbOffline: 'offline',
+          dbNoBackups: 'No backups yet',
+          dbEmbedNotConfigured: 'not configured',
+          dbEmbedConfigured: 'configured',
+          dbRebuildFolder: 'Save and rebuild',
+          dbRebuilding: 'Rebuilding...',
+          dbBackupCreated: 'Backup created',
+          dbRestored: 'Database restored from backup',
+          dbDeleted: 'Backup deleted',
+          dbFolderSaved: 'Folder saved',
+          dbFolderRebuilt: 'Database rebuilt',
+          dbUploadFailed: 'Failed to upload document',
+          dbEmbedOk: 'Model available',
           dbActiveKicker: 'Active database',
           dbActiveBadge: 'active',
           dbDocs: 'Documents',
@@ -3984,17 +4024,18 @@
           dbDocsShort: 'docs',
           dbChunksShort: 'chunks',
           dbEmbedTitle: 'Embedding model',
-          dbEmbedDesc: 'API used to build vectors. The key stays in this browser.',
+          dbEmbedDesc: 'The model and key are configured on the server in .env. The browser only receives the model name.',
           dbEmbedEndpoint: 'API URL',
           dbEmbedKey: 'API key',
           dbEmbedModel: 'Model',
           dbEmbedDims: 'Dimensions',
+          dbEmbedKeyNote: 'The API key lives in the server .env and is never sent to the browser.',
           dbTestEmbed: 'Test model',
           dbDemoBadge: 'demo',
           dbFolderTitle: '.md source folder',
-          dbFolderDesc: 'Builds use only your files. Point to the Markdown folder.',
-          dbConnectFolder: 'Connect folder',
-          dbFolderNote: 'The path is saved in database settings. Scanning and index builds come next.',
+          dbFolderDesc: 'Builds use only your files inside data/. Point to the Markdown folder.',
+          dbConnectFolder: 'Save and rebuild',
+          dbFolderNote: 'A rebuild replaces the FTS index and embeddings. The folder must be inside data/.',
           dbLocalBadge: 'local',
           dbAutoTitle: 'Automatic site updates',
           dbAutoDesc: 'Planned scheduled parsing of official pages. Off for now.',
@@ -4008,7 +4049,7 @@
           toastFolderEmpty: 'Enter a folder path',
           toastEmbedOk: 'Model available (demo)',
           connModeLabel: 'Connection mode',
-          modeDemo: 'Demo mode',
+          modeDemo: 'Demo (offline)',
           modeFastApi: 'FastAPI server',
           modeOpenAi: 'Direct API',
           endpointLabel: 'Endpoint URL',
@@ -4419,50 +4460,11 @@
         ];
       }
 
-      function createInitialDatabases() {
-        return [
-          {
-            id: 'db_main_2026',
-            name: 'Основная база · 2026',
-            nameEn: 'Main knowledge base · 2026',
-            createdAt: '2026-11-21T03:29:00+00:00',
-            docs: 9,
-            chunks: 179,
-            chars: 114299,
-            path: 'data/docs'
-          },
-          {
-            id: 'db_backup_admission',
-            name: 'Копия перед обновлением',
-            nameEn: 'Backup before update',
-            createdAt: '2026-11-21T02:15:00+00:00',
-            docs: 9,
-            chunks: 178,
-            chars: 113879,
-            path: 'data/docs'
-          },
-          {
-            id: 'db_initial_set',
-            name: 'Базовый набор',
-            nameEn: 'Initial set',
-            createdAt: '2026-11-18T10:00:00+00:00',
-            docs: 6,
-            chunks: 129,
-            chars: 89796,
-            path: 'data/docs'
-          }
-        ];
-      }
-
       const DEFAULT_SETTINGS = {
-        mode: 'demo', // 'demo' | 'fastapi' | 'openai'
+        mode: 'fastapi', // 'fastapi' | 'openai' | 'demo' (offline fallback)
         endpoint: 'http://127.0.0.1:8000',
         apiKey: '',
         model: 'deepseek-chat',
-        embedEndpoint: 'https://api.openai.com/v1',
-        embedApiKey: '',
-        embedModel: 'text-embedding-3-small',
-        embedDims: '1024',
         lang: 'ru',
         theme: 'dark',
         showQuotes: true,
@@ -4471,6 +4473,8 @@
       };
 
       let state = loadState();
+      let databaseView = { active: null, backups: [], folder: '', embed: null };
+      let isDbLoading = false;
       let overviewData = JSON.parse(JSON.stringify(DEFAULT_OVERVIEW));
       let activeScoreMode = 'budget';
       let selectedScoreDirection = 'ivt';
@@ -4487,17 +4491,11 @@
             const settings = Object.assign({}, DEFAULT_SETTINGS, parsed.settings || {});
             const chats = Array.isArray(parsed.chats) && parsed.chats.length ? parsed.chats : createInitialChats();
             const activeChatId = chats.some((c) => c.id === parsed.activeChatId) ? parsed.activeChatId : chats[0].id;
-            const databases = Array.isArray(parsed.databases) && parsed.databases.length ? parsed.databases : createInitialDatabases();
-            const activeDatabaseId = databases.some((db) => db.id === parsed.activeDatabaseId)
-              ? parsed.activeDatabaseId
-              : databases[0].id;
             return {
               settings,
               chats,
               activeChatId,
               uploadedDocs: Array.isArray(parsed.uploadedDocs) ? parsed.uploadedDocs : [],
-              databases,
-              activeDatabaseId,
               leftOpen: parsed.leftOpen !== false,
               rightOpen: parsed.rightOpen !== false
             };
@@ -4506,14 +4504,11 @@
           console.warn('Restore fallback:', err);
         }
         const chats = createInitialChats();
-        const databases = createInitialDatabases();
         return {
           settings: Object.assign({}, DEFAULT_SETTINGS),
           chats,
           activeChatId: chats[0].id,
           uploadedDocs: [],
-          databases,
-          activeDatabaseId: databases[0].id,
           leftOpen: true,
           rightOpen: true
         };
@@ -4607,17 +4602,19 @@
         dbActiveChars: document.getElementById('dbActiveChars'),
         dbActiveUpdated: document.getElementById('dbActiveUpdated'),
         dbActivePath: document.getElementById('dbActivePath'),
+        dbActiveBadge: document.getElementById('dbActiveBadge'),
         dbBackupList: document.getElementById('dbBackupList'),
         createDbBackupBtn: document.getElementById('createDbBackupBtn'),
-        embedEndpointInput: document.getElementById('embedEndpointInput'),
-        embedApiKeyInput: document.getElementById('embedApiKeyInput'),
-        toggleEmbedKeyEyeBtn: document.getElementById('toggleEmbedKeyEyeBtn'),
-        embedModelInput: document.getElementById('embedModelInput'),
-        embedDimsInput: document.getElementById('embedDimsInput'),
+        dbError: document.getElementById('dbError'),
+        dbErrorText: document.getElementById('dbErrorText'),
+        dbRetryBtn: document.getElementById('dbRetryBtn'),
+        embedEndpointValue: document.getElementById('embedEndpointValue'),
+        embedModelValue: document.getElementById('embedModelValue'),
+        embedConfigBadge: document.getElementById('embedConfigBadge'),
         testEmbedBtn: document.getElementById('testEmbedBtn'),
         embedTestBadge: document.getElementById('embedTestBadge'),
         kbFolderInput: document.getElementById('kbFolderInput'),
-        connectFolderBtn: document.getElementById('connectFolderBtn'),
+        rebuildFolderBtn: document.getElementById('rebuildFolderBtn'),
         exportJsonBtn: document.getElementById('exportJsonBtn'),
         clearHistoryBtn: document.getElementById('clearHistoryBtn'),
         ingestFileInput: document.getElementById('ingestFileInput'),
@@ -5607,25 +5604,8 @@
         closeScoreDetail();
       }
 
-      /* Optional sync with FastAPI /api/overview if backend is connected */
-      async function tryFetchBackendOverview() {
-        if (state.settings.mode !== 'fastapi') return;
-        try {
-          const base = state.settings.endpoint.replace(/\/+$/, '');
-          const res = await fetch(`${base}/api/overview`);
-          if (!res.ok) return;
-          const data = await res.json();
-          if (data && typeof data === 'object') {
-            overviewData = Object.assign({}, overviewData, data);
-            renderOverviewPanel();
-          }
-        } catch (err) {
-          // Silently retain built-in official summary
-        }
-      }
-
       /* ------------------------------------------------------------------------
-         10. BUILT-IN SMART DEMO ENGINE + FASTAPI / OPENAI API CONNECTOR
+         10. FASTAPI / OPENAI API CONNECTOR
          ------------------------------------------------------------------------ */
       function isPromptInjection(text) {
         const s = text.toLowerCase();
@@ -6136,17 +6116,31 @@
         resetClearButton();
       }
 
-      function getActiveDatabase() {
-        if (!Array.isArray(state.databases) || !state.databases.length) {
-          state.databases = createInitialDatabases();
-          state.activeDatabaseId = state.databases[0].id;
-        }
-        return state.databases.find((db) => db.id === state.activeDatabaseId) || state.databases[0];
+      function dbApiBase() {
+        const configured =
+          state.settings.mode === 'fastapi' ? state.settings.endpoint : 'http://127.0.0.1:8000';
+        return configured.trim().replace(/\/+$/, '');
       }
 
-      function dbDisplayName(db) {
-        if (!db) return '—';
-        return state.settings.lang === 'en' && db.nameEn ? db.nameEn : db.name;
+      function setDbError(message) {
+        if (!el.dbError) return;
+        el.dbError.style.display = message ? 'flex' : 'none';
+        el.dbErrorText.textContent = message || '';
+      }
+
+      async function dbFetch(path, options) {
+        const response = await fetch(`${dbApiBase()}${path}`, options);
+        let payload = null;
+        try {
+          payload = await response.json();
+        } catch (err) {
+          payload = null;
+        }
+        if (!response.ok) {
+          const detail = payload && payload.detail ? payload.detail : `HTTP ${response.status}`;
+          throw new Error(detail);
+        }
+        return payload;
       }
 
       function formatDbNumber(value) {
@@ -6166,35 +6160,54 @@
 
       function renderDatabaseTab() {
         if (!el.dbActiveName) return;
-        const active = getActiveDatabase();
-        el.dbActiveName.textContent = dbDisplayName(active);
-        el.dbActiveDocs.textContent = formatDbNumber(active.docs);
-        el.dbActiveChunks.textContent = formatDbNumber(active.chunks);
-        el.dbActiveChars.textContent = formatDbNumber(active.chars);
-        el.dbActiveUpdated.textContent = formatDbDate(active.createdAt);
-        el.dbActivePath.textContent = active.path || '—';
-        el.dbActivePath.title = active.path || '';
-
-        if (el.kbFolderInput && document.activeElement !== el.kbFolderInput) {
-          el.kbFolderInput.value = active.path || '';
+        const active = databaseView.active;
+        if (active) {
+          el.dbActiveName.textContent = active.name || '—';
+          el.dbActiveDocs.textContent = formatDbNumber(active.docs);
+          el.dbActiveChunks.textContent = formatDbNumber(active.chunks);
+          el.dbActiveChars.textContent = formatDbNumber(active.chars);
+          el.dbActiveUpdated.textContent = formatDbDate(active.created_at);
+          el.dbActivePath.textContent = active.folder || '—';
+          el.dbActivePath.title = active.folder || '';
+          el.dbActiveBadge.textContent = t('dbActiveBadge');
+          el.dbActiveBadge.classList.remove('is-err');
+          el.dbActiveBadge.classList.add('is-ok');
+        } else {
+          el.dbActiveName.textContent = '—';
+          el.dbActiveDocs.textContent = '—';
+          el.dbActiveChunks.textContent = '—';
+          el.dbActiveChars.textContent = '—';
+          el.dbActiveUpdated.textContent = '—';
+          el.dbActivePath.textContent = '—';
+          el.dbActivePath.title = '';
         }
 
-        el.dbBackupList.innerHTML = state.databases
+        if (el.kbFolderInput && document.activeElement !== el.kbFolderInput) {
+          el.kbFolderInput.value = databaseView.folder || '';
+        }
+
+        const embed = databaseView.embed || {};
+        el.embedEndpointValue.textContent = embed.endpoint || '—';
+        el.embedModelValue.textContent = embed.model || '—';
+        el.embedConfigBadge.textContent = embed.configured ? t('dbEmbedConfigured') : t('dbEmbedNotConfigured');
+        el.embedConfigBadge.classList.toggle('is-ok', Boolean(embed.configured));
+
+        const backups = databaseView.backups || [];
+        if (!backups.length) {
+          el.dbBackupList.innerHTML = `<p class="db-note">${escapeHtml(t('dbNoBackups'))}</p>`;
+          return;
+        }
+        el.dbBackupList.innerHTML = backups
           .map((db) => {
-            const isActive = db.id === state.activeDatabaseId;
-            const meta = `${formatDbNumber(db.docs)} ${t('dbDocsShort')} · ${formatDbNumber(db.chunks)} ${t('dbChunksShort')} · ${formatDbDate(db.createdAt)}`;
+            const meta = `${formatDbNumber(db.docs)} ${t('dbDocsShort')} · ${formatDbNumber(db.chunks)} ${t('dbChunksShort')} · ${formatDbDate(db.created_at)}`;
             return (
-              `<div class="db-backup-item${isActive ? ' is-active' : ''}" data-db-id="${escapeHtml(db.id)}">` +
+              `<div class="db-backup-item" data-db-id="${escapeHtml(db.id)}">` +
                 '<div class="db-backup-main">' +
-                  `<span class="db-backup-name">${escapeHtml(dbDisplayName(db))}` +
-                    (isActive ? ` <span class="db-badge">${escapeHtml(t('dbActiveBadge'))}</span>` : '') +
-                  '</span>' +
+                  `<span class="db-backup-name">${escapeHtml(db.name || db.id)}</span>` +
                   `<span class="db-backup-meta">${escapeHtml(meta)}</span>` +
                 '</div>' +
                 '<div class="db-backup-actions">' +
-                  (isActive
-                    ? ''
-                    : `<button type="button" class="db-mini-btn" data-action="restore" data-db-id="${escapeHtml(db.id)}">${escapeHtml(t('dbRestore'))}</button>`) +
+                  `<button type="button" class="db-mini-btn" data-action="restore" data-db-id="${escapeHtml(db.id)}">${escapeHtml(t('dbRestore'))}</button>` +
                   `<button type="button" class="db-mini-btn is-danger" data-action="delete" data-db-id="${escapeHtml(db.id)}">${escapeHtml(t('dbDelete'))}</button>` +
                 '</div>' +
               '</div>'
@@ -6203,75 +6216,121 @@
           .join('');
       }
 
-      function createDatabaseBackup() {
-        const active = getActiveDatabase();
-        if (!active) return;
-        const now = new Date();
-        const dateRu = now.toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit', year: '2-digit' });
-        const dateEn = now.toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: '2-digit' });
-        state.databases.unshift({
-          id: 'db_' + now.getTime(),
-          name: `Копия · ${dateRu}`,
-          nameEn: `Backup · ${dateEn}`,
-          createdAt: now.toISOString(),
-          docs: active.docs,
-          chunks: active.chunks,
-          chars: active.chars,
-          path: active.path
-        });
-        saveState();
-        renderDatabaseTab();
-        showToast(t('toastDbBackup'), 'ok');
-      }
-
-      function restoreDatabase(id) {
-        const target = state.databases.find((db) => db.id === id);
-        if (!target) return;
-        state.activeDatabaseId = target.id;
-        saveState();
-        renderDatabaseTab();
-        showToast(t('toastDbRestored'), 'ok');
-      }
-
-      function deleteDatabase(id) {
-        if (state.databases.length <= 1) {
-          showToast(t('toastDbLast'), 'err');
-          return;
+      async function fetchDatabaseView() {
+        if (isDbLoading) return;
+        isDbLoading = true;
+        setDbError('');
+        el.dbActiveBadge.textContent = t('dbLoading');
+        el.dbActiveBadge.classList.remove('is-ok', 'is-err');
+        try {
+          const data = await dbFetch('/api/databases');
+          databaseView = {
+            active: data.active || null,
+            backups: Array.isArray(data.backups) ? data.backups : [],
+            folder: data.folder || '',
+            embed: data.embed || null
+          };
+          renderDatabaseTab();
+        } catch (err) {
+          setDbError(`${t('dbServerError')}: ${err.message}`);
+          el.dbActiveBadge.textContent = t('dbOffline');
+          el.dbActiveBadge.classList.remove('is-ok');
+          el.dbActiveBadge.classList.add('is-err');
+        } finally {
+          isDbLoading = false;
         }
-        const index = state.databases.findIndex((db) => db.id === id);
-        if (index < 0) return;
-        state.databases.splice(index, 1);
-        if (state.activeDatabaseId === id) {
-          state.activeDatabaseId = state.databases[0].id;
-        }
-        saveState();
-        renderDatabaseTab();
-        showToast(t('toastDbDeleted'), 'ok');
       }
 
-      function testEmbeddingModel() {
-        const model = el.embedModelInput.value.trim() || DEFAULT_SETTINGS.embedModel;
+      async function createDatabaseBackup() {
+        el.createDbBackupBtn.disabled = true;
+        try {
+          const data = await dbFetch('/api/databases/backup', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ name: '' })
+          });
+          databaseView = data.databases;
+          renderDatabaseTab();
+          showToast(t('dbBackupCreated'), 'ok');
+        } catch (err) {
+          showToast(err.message, 'err');
+          setDbError(err.message);
+        } finally {
+          el.createDbBackupBtn.disabled = false;
+        }
+      }
+
+      async function restoreDatabase(id) {
+        try {
+          const data = await dbFetch(`/api/databases/${encodeURIComponent(id)}/restore`, { method: 'POST' });
+          databaseView = data.databases;
+          renderDatabaseTab();
+          showToast(t('dbRestored'), 'ok');
+        } catch (err) {
+          showToast(err.message, 'err');
+          setDbError(err.message);
+        }
+      }
+
+      async function deleteDatabase(id) {
+        try {
+          const data = await dbFetch(`/api/databases/${encodeURIComponent(id)}`, { method: 'DELETE' });
+          databaseView = data.databases;
+          renderDatabaseTab();
+          showToast(t('dbDeleted'), 'ok');
+        } catch (err) {
+          showToast(err.message, 'err');
+          setDbError(err.message);
+        }
+      }
+
+      async function testEmbeddingModel() {
         el.embedTestBadge.style.display = 'inline-flex';
         el.embedTestBadge.classList.remove('is-ok', 'is-err');
         el.embedTestBadge.textContent = '...';
-        window.setTimeout(() => {
+        try {
+          const data = await dbFetch('/api/embeddings/test', { method: 'POST' });
           el.embedTestBadge.classList.add('is-ok');
-          el.embedTestBadge.textContent = `${model} · Demo OK`;
-          showToast(t('toastEmbedOk'), 'ok');
-        }, 420);
+          el.embedTestBadge.textContent = `${data.model} · ${data.dimensions} · ${data.latency_ms} ms`;
+          showToast(t('dbEmbedOk'), 'ok');
+        } catch (err) {
+          el.embedTestBadge.classList.add('is-err');
+          el.embedTestBadge.textContent = err.message;
+        }
       }
 
-      function connectKbFolder() {
-        const path = el.kbFolderInput.value.trim();
-        if (!path) {
+      async function rebuildFolder() {
+        const folder = el.kbFolderInput.value.trim();
+        if (!folder) {
           showToast(t('toastFolderEmpty'), 'err');
           return;
         }
-        const active = getActiveDatabase();
-        active.path = path;
-        saveState();
-        renderDatabaseTab();
-        showToast(t('toastFolderConnected'), 'ok');
+        const button = el.rebuildFolderBtn;
+        const original = button.textContent;
+        button.disabled = true;
+        button.textContent = t('dbRebuilding');
+        setDbError('');
+        try {
+          await dbFetch('/api/databases/folder', {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ folder })
+          });
+          const data = await dbFetch('/api/ingest/directory', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ path: folder })
+          });
+          databaseView = data.databases;
+          renderDatabaseTab();
+          showToast(t('dbFolderRebuilt'), 'ok');
+        } catch (err) {
+          showToast(err.message, 'err');
+          setDbError(err.message);
+        } finally {
+          button.disabled = false;
+          button.textContent = original;
+        }
       }
 
       function syncSettingsUI() {
@@ -6289,13 +6348,10 @@
         el.toggleCompact.setAttribute('aria-checked', String(s.compactMode));
         el.testConnBadge.style.display = 'none';
 
-        el.embedEndpointInput.value = s.embedEndpoint;
-        el.embedApiKeyInput.value = s.embedApiKey;
-        el.embedModelInput.value = s.embedModel;
-        el.embedDimsInput.value = s.embedDims;
         el.embedTestBadge.style.display = 'none';
         el.embedTestBadge.classList.remove('is-ok', 'is-err');
         renderDatabaseTab();
+        fetchDatabaseView();
       }
 
       async function testConnection() {
@@ -6308,8 +6364,8 @@
         el.testConnBadge.textContent = '...';
 
         if (mode === 'demo') {
-          el.testConnBadge.classList.add('is-ok');
-          el.testConnBadge.textContent = 'Demo · 1 ms';
+          el.testConnBadge.classList.add('is-err');
+          el.testConnBadge.textContent = state.settings.lang === 'en' ? 'Offline demo' : 'Офлайн-демо';
           return;
         }
 
@@ -6339,51 +6395,49 @@
         const file = el.ingestFileInput.files && el.ingestFileInput.files[0];
         const url = el.ingestUrlInput.value.trim() || 'https://sibsutis.ru/abitur/uploaded-doc/';
         const year = (el.ingestYearInput.value.trim() || '2026').slice(0, 4);
-        let content = el.ingestTextInput.value.trim();
-        const title = file ? file.name.replace(/\.[^.]+$/, '') : 'Загруженный документ';
+        const pasted = el.ingestTextInput.value.trim();
+        const title = file ? file.name.replace(/\.[^.]+$/, '') : 'Вставленный документ';
 
-        if (file && !content && /\.(txt|md|html|htm)$/i.test(file.name)) {
-          content = await file.text();
-        }
-
-        if (!file && !content) {
+        if (!file && !pasted) {
           showToast(state.settings.lang === 'en' ? 'Choose a file or paste text' : 'Выберите файл или вставьте текст', 'err');
           return;
         }
 
-        if (state.settings.mode === 'fastapi' && file) {
-          try {
-            const fd = new FormData();
-            fd.append('file', file);
-            fd.append('url', url);
-            fd.append('year', year);
-            fd.append('title', title);
-            const base = state.settings.endpoint.replace(/\/+$/, '');
-            const res = await fetch(`${base}/api/ingest/file`, { method: 'POST', body: fd });
-            if (!res.ok) throw new Error(`HTTP ${res.status}`);
-            showToast(t('toastUploaded'), 'ok');
-            el.ingestFileInput.value = '';
-            el.ingestFileLabel.textContent = t('chooseFileHint');
-            el.ingestTextInput.value = '';
-            return;
-          } catch (err) {
-            showToast(`Upload error: ${err.message}`, 'err');
-            return;
-          }
+        const formData = new FormData();
+        if (file) {
+          formData.append('file', file);
+        } else {
+          formData.append('file', new File([pasted], 'pasted.md', { type: 'text/markdown' }));
         }
+        formData.append('url', url);
+        formData.append('year', year);
+        formData.append('title', title);
 
-        state.uploadedDocs.unshift({
-          id: 'doc_' + Date.now(),
-          title,
-          url,
-          year,
-          content: content || title
-        });
-        saveState();
-        el.ingestFileInput.value = '';
-        el.ingestFileLabel.textContent = t('chooseFileHint');
-        el.ingestTextInput.value = '';
-        showToast(t('toastUploaded'), 'ok');
+        const button = el.uploadDocBtn;
+        button.disabled = true;
+        setDbError('');
+        try {
+          const response = await fetch(`${dbApiBase()}/api/ingest/file`, { method: 'POST', body: formData });
+          let payload = null;
+          try {
+            payload = await response.json();
+          } catch (err) {
+            payload = null;
+          }
+          if (!response.ok) {
+            throw new Error(payload && payload.detail ? payload.detail : `HTTP ${response.status}`);
+          }
+          el.ingestFileInput.value = '';
+          el.ingestFileLabel.textContent = t('chooseFileHint');
+          el.ingestTextInput.value = '';
+          showToast(t('toastUploaded'), 'ok');
+          await fetchDatabaseView();
+        } catch (err) {
+          showToast(`${t('dbUploadFailed')}: ${err.message}`, 'err');
+          setDbError(err.message);
+        } finally {
+          button.disabled = false;
+        }
       }
 
       /* ------------------------------------------------------------------------
@@ -6515,12 +6569,10 @@
         });
         el.testConnBtn.addEventListener('click', testConnection);
 
-        el.toggleEmbedKeyEyeBtn.addEventListener('click', () => {
-          el.embedApiKeyInput.type = el.embedApiKeyInput.type === 'password' ? 'text' : 'password';
-        });
         el.testEmbedBtn.addEventListener('click', testEmbeddingModel);
         el.createDbBackupBtn.addEventListener('click', createDatabaseBackup);
-        el.connectFolderBtn.addEventListener('click', connectKbFolder);
+        el.rebuildFolderBtn.addEventListener('click', rebuildFolder);
+        el.dbRetryBtn.addEventListener('click', fetchDatabaseView);
         el.dbBackupList.addEventListener('click', (event) => {
           const btn = event.target.closest('[data-action]');
           if (!btn) return;
@@ -6540,21 +6592,12 @@
           state.settings.endpoint = el.endpointInput.value.trim() || 'http://127.0.0.1:8000';
           state.settings.apiKey = el.apiKeyInput.value.trim();
           state.settings.model = el.modelNameInput.value.trim() || 'deepseek-chat';
-          state.settings.embedEndpoint = el.embedEndpointInput.value.trim() || DEFAULT_SETTINGS.embedEndpoint;
-          state.settings.embedApiKey = el.embedApiKeyInput.value.trim();
-          state.settings.embedModel = el.embedModelInput.value.trim() || DEFAULT_SETTINGS.embedModel;
-          state.settings.embedDims = el.embedDimsInput.value.trim() || DEFAULT_SETTINGS.embedDims;
-          const activeDb = getActiveDatabase();
-          if (activeDb && el.kbFolderInput.value.trim()) {
-            activeDb.path = el.kbFolderInput.value.trim();
-          }
           state.settings.showQuotes = el.toggleQuotes.getAttribute('aria-checked') === 'true';
           state.settings.showResponseTime = el.toggleResponseTime.getAttribute('aria-checked') === 'true';
           state.settings.compactMode = el.toggleCompact.getAttribute('aria-checked') === 'true';
           saveState();
           applyLayoutPrefs();
           renderChatArea();
-          tryFetchBackendOverview();
           closeSettings();
           showToast(t('toastSaved'), 'ok');
         });
@@ -6613,7 +6656,6 @@
         applyI18n();
         bindEvents();
         updateSendButton();
-        tryFetchBackendOverview();
       }
 
       window.addEventListener('DOMContentLoaded', init);

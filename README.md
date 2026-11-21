@@ -144,7 +144,14 @@ web/index.html    одностраничный UI без сборки
 | GET | `/` | интерфейс |
 | POST | `/api/session/new` | новая сессия `{session_id}` |
 | POST | `/api/chat` | `{session_id, message}` → `{answer_markdown, sources, latency_ms, security_notice?}` |
-| POST | `/api/ingest/file` | догрузка документа |
+| POST | `/api/ingest/file` | загрузка файла (multipart: `file`, `url`, `title`, `section`, `year`) |
+| POST | `/api/ingest/directory` | пересборка индекса из папки внутри `data/` |
+| GET | `/api/databases` | активная база, снапшоты, папка и статус эмбеддингов |
+| POST | `/api/databases/backup` | создать резервную копию |
+| POST | `/api/databases/{id}/restore` | восстановить базу из копии |
+| DELETE | `/api/databases/{id}` | удалить резервную копию |
+| PUT | `/api/databases/folder` | сохранить папку источников внутри `data/` |
+| POST | `/api/embeddings/test` | проверить эмбеддинг-модель на сервере (ключ не покидает сервер) |
 | GET | `/api/stats` | статистика базы |
 | GET | `/api/health` | статус и конфигурация (без секретов) |
 

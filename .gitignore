@@ -22,6 +22,8 @@ data/kb.sqlite-*
 data/embeddings.npy
 data/registry.json
 data/stats.json
+data/backups/
+data/app_settings.json
 
 # ОС / редакторы
 .DS_Store
