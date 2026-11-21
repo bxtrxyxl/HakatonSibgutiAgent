@@ -1700,6 +1700,11 @@ def database_status() -> dict[str, Any]:
             "model": config.EMBED_MODEL or None,
             "configured": bool(config.EMBED_BASE_URL and config.EMBED_API_KEY and config.EMBED_MODEL),
         },
+        "admin": {
+            "auth_enabled": bool(config.ADMIN_TOKEN),
+            "rate_limit_max": config.ADMIN_RATE_LIMIT_MAX,
+            "rate_limit_window_sec": config.ADMIN_RATE_LIMIT_WINDOW_SEC,
+        },
     }
 
 

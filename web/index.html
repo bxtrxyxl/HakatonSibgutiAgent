@@ -3112,6 +3112,19 @@
       color: var(--text);
     }
 
+    .db-badge.is-err {
+      background: var(--error-bg);
+      border-color: var(--error-border);
+      color: var(--error);
+    }
+
+    .db-token-row {
+      display: grid;
+      grid-template-columns: 1fr auto auto;
+      gap: 8px;
+      align-items: center;
+    }
+
     .db-progress-bar {
       height: 100%;
       width: 0;
@@ -3630,6 +3643,22 @@
           <div class="db-section">
             <div class="db-section-head">
               <div>
+                <span class="db-section-title" data-i18n="dbAdminTitle">Админ-доступ</span>
+                <span class="db-section-desc" data-i18n="dbAdminDesc">Защита тяжёлых и изменяющих операций базы (X-Admin-Token). Токен хранится только в текущей сессии вкладки.</span>
+              </div>
+              <span id="adminAuthBadge" class="db-badge">—</span>
+            </div>
+            <div class="db-token-row">
+              <input id="adminTokenInput" class="text-input code-font" type="password" autocomplete="off" data-i18n-placeholder="dbAdminPlaceholder" placeholder="Введите ADMIN_TOKEN из .env" />
+              <button id="applyAdminTokenBtn" class="btn-pill-ghost" style="height:34px;" data-i18n="dbAdminApply">Применить</button>
+              <button id="clearAdminTokenBtn" class="db-mini-btn" style="height:34px;" data-i18n="dbAdminClear">Сбросить</button>
+            </div>
+            <p id="adminAuthNote" class="db-note" data-i18n="dbAdminNote">Токен не сохраняется в localStorage и сбрасывается при закрытии вкладки.</p>
+          </div>
+
+          <div class="db-section">
+            <div class="db-section-head">
+              <div>
                 <span class="db-section-title" data-i18n="dbBackupsTitle">Резервные копии</span>
                 <span class="db-section-desc" data-i18n="dbBackupsDesc">Храните снимки базы, чтобы вернуться к ним, если новая загрузка повредит данные.</span>
               </div>
@@ -3996,6 +4025,22 @@
           dbAutoChanged: 'Изменено',
           dbJobBusy: 'Уже выполняется другая задача',
           dbImportSummary: 'Импорт отдельного документа',
+          dbAdminTitle: 'Админ-доступ',
+          dbAdminDesc: 'Защита тяжёлых и изменяющих операций базы (X-Admin-Token). Токен хранится только в текущей сессии вкладки.',
+          dbAdminPlaceholder: 'Введите ADMIN_TOKEN из .env',
+          dbAdminApply: 'Применить',
+          dbAdminClear: 'Сбросить',
+          dbAdminNote: 'Токен не сохраняется в localStorage и сбрасывается при закрытии вкладки.',
+          dbAdminLocal: 'локальный режим',
+          dbAdminRequired: 'нужен токен',
+          dbAdminActive: 'токен задан',
+          dbAdminVerified: 'Админ-доступ подтверждён',
+          dbAdminInvalid: 'Неверный админ-токен',
+          dbAdminCleared: 'Админ-токен сброшен',
+          dbAdminRateLimit: 'Лимит админ-запросов',
+          dbAdminLocalHint: 'На сервере ADMIN_TOKEN не задан — защита отключена.',
+          dbAuthRequired: 'Требуется админ-токен (укажите его в блоке «Админ-доступ»)',
+          dbRateLimited: 'Превышен лимит запросов, подождите немного',
           toastDbBackup: 'Резервная копия создана',
           toastDbRestored: 'База восстановлена из копии',
           toastDbDeleted: 'Резервная копия удалена',
@@ -4199,6 +4244,22 @@
           dbAutoChanged: 'Changed',
           dbJobBusy: 'Another job is already running',
           dbImportSummary: 'Import a single document',
+          dbAdminTitle: 'Admin access',
+          dbAdminDesc: 'Protects heavy and mutating database operations (X-Admin-Token). Stored only for the current tab session.',
+          dbAdminPlaceholder: 'Enter ADMIN_TOKEN from .env',
+          dbAdminApply: 'Apply',
+          dbAdminClear: 'Clear',
+          dbAdminNote: 'The token is never stored in localStorage and clears when the tab closes.',
+          dbAdminLocal: 'local mode',
+          dbAdminRequired: 'token required',
+          dbAdminActive: 'token set',
+          dbAdminVerified: 'Admin access verified',
+          dbAdminInvalid: 'Invalid admin token',
+          dbAdminCleared: 'Admin token cleared',
+          dbAdminRateLimit: 'Admin rate limit',
+          dbAdminLocalHint: 'ADMIN_TOKEN is not set on the server — auth is disabled.',
+          dbAuthRequired: 'Admin token required (enter it in the Admin access card)',
+          dbRateLimited: 'Rate limit exceeded, please wait a moment',
           toastDbBackup: 'Backup created',
           toastDbRestored: 'Database restored from backup',
           toastDbDeleted: 'Backup deleted',
@@ -4299,8 +4360,32 @@
         compactMode: false
       };
 
+      const ADMIN_TOKEN_SESSION_KEY = 'sibsutis_admin_token';
+
+      function readSessionAdminToken() {
+        try {
+          return sessionStorage.getItem(ADMIN_TOKEN_SESSION_KEY) || '';
+        } catch (err) {
+          return '';
+        }
+      }
+
+      function writeSessionAdminToken(value) {
+        adminSessionToken = (value || '').trim();
+        try {
+          if (adminSessionToken) {
+            sessionStorage.setItem(ADMIN_TOKEN_SESSION_KEY, adminSessionToken);
+          } else {
+            sessionStorage.removeItem(ADMIN_TOKEN_SESSION_KEY);
+          }
+        } catch (err) {
+          // sessionStorage unavailable; keep in memory only
+        }
+      }
+
       let state = loadState();
-      let databaseView = { active: null, backups: [], folder: '', embed: null };
+      let adminSessionToken = readSessionAdminToken();
+      let databaseView = { active: null, backups: [], folder: '', embed: null, admin: null };
       let isDbLoading = false;
       let overviewData = JSON.parse(JSON.stringify(DEFAULT_OVERVIEW));
       let activeScoreMode = 'budget';
@@ -4436,6 +4521,11 @@
         dbError: document.getElementById('dbError'),
         dbErrorText: document.getElementById('dbErrorText'),
         dbRetryBtn: document.getElementById('dbRetryBtn'),
+        adminAuthBadge: document.getElementById('adminAuthBadge'),
+        adminTokenInput: document.getElementById('adminTokenInput'),
+        applyAdminTokenBtn: document.getElementById('applyAdminTokenBtn'),
+        clearAdminTokenBtn: document.getElementById('clearAdminTokenBtn'),
+        adminAuthNote: document.getElementById('adminAuthNote'),
         embedEndpointValue: document.getElementById('embedEndpointValue'),
         embedModelValue: document.getElementById('embedModelValue'),
         embedConfigBadge: document.getElementById('embedConfigBadge'),
@@ -5630,8 +5720,19 @@
         el.dbErrorText.textContent = message || '';
       }
 
-      async function dbFetch(path, options) {
-        const response = await fetch(`${dbApiBase()}${path}`, options);
+      function adminHeaders(extra) {
+        const headers = Object.assign({}, extra || {});
+        if (adminSessionToken) {
+          headers['X-Admin-Token'] = adminSessionToken;
+        }
+        return headers;
+      }
+
+      async function dbFetch(path, options = {}) {
+        const fetchOptions = Object.assign({}, options, {
+          headers: adminHeaders(options && options.headers)
+        });
+        const response = await fetch(`${dbApiBase()}${path}`, fetchOptions);
         let payload = null;
         try {
           payload = await response.json();
@@ -5639,7 +5740,13 @@
           payload = null;
         }
         if (!response.ok) {
-          const detail = payload && payload.detail ? payload.detail : `HTTP ${response.status}`;
+          let detail = payload && payload.detail ? payload.detail : `HTTP ${response.status}`;
+          if (response.status === 401) {
+            renderAdminAuth();
+            if (state.settings.lang === 'en') detail = t('dbAuthRequired');
+          } else if (response.status === 429 && state.settings.lang === 'en') {
+            detail = t('dbRateLimited');
+          }
           const error = new Error(detail);
           error.status = response.status;
           throw error;
@@ -5707,6 +5814,8 @@
         el.embedConfigBadge.textContent = embed.configured ? t('dbEmbedConfigured') : t('dbEmbedNotConfigured');
         el.embedConfigBadge.classList.toggle('is-ok', Boolean(embed.configured));
 
+        renderAdminAuth();
+
         const backups = databaseView.backups || [];
         if (!backups.length) {
           el.dbBackupList.innerHTML = `<p class="db-note">${escapeHtml(t('dbNoBackups'))}</p>`;
@@ -5731,6 +5840,68 @@
           .join('');
       }
 
+      function renderAdminAuth() {
+        if (!el.adminAuthBadge) return;
+        const admin = databaseView.admin || {};
+        const authEnabled = Boolean(admin.auth_enabled);
+        const hasToken = Boolean(adminSessionToken);
+        const maxReq = Number(admin.rate_limit_max || 10);
+        const windowSec = Number(admin.rate_limit_window_sec || 60);
+
+        el.adminAuthBadge.classList.remove('is-ok', 'is-err');
+        if (!authEnabled) {
+          el.adminAuthBadge.textContent = t('dbAdminLocal');
+        } else if (hasToken) {
+          el.adminAuthBadge.textContent = t('dbAdminActive');
+          el.adminAuthBadge.classList.add('is-ok');
+        } else {
+          el.adminAuthBadge.textContent = t('dbAdminRequired');
+          el.adminAuthBadge.classList.add('is-err');
+        }
+
+        if (el.adminTokenInput && document.activeElement !== el.adminTokenInput) {
+          el.adminTokenInput.value = adminSessionToken;
+        }
+
+        if (el.adminAuthNote) {
+          const limitLabel = `${t('dbAdminRateLimit')}: ${maxReq} / ${windowSec} ${t('secUnit')}.`;
+          const modeHint = authEnabled ? t('dbAdminNote') : `${t('dbAdminLocalHint')} ${t('dbAdminNote')}`;
+          el.adminAuthNote.textContent = `${limitLabel} ${modeHint}`;
+        }
+      }
+
+      async function applyAdminToken() {
+        const candidate = (el.adminTokenInput ? el.adminTokenInput.value : '').trim();
+        writeSessionAdminToken(candidate);
+        el.applyAdminTokenBtn.disabled = true;
+        setDbError('');
+        try {
+          await dbFetch('/api/admin/verify', { method: 'POST' });
+          renderAdminAuth();
+          showToast(t('dbAdminVerified'), 'ok');
+        } catch (err) {
+          if (err.status === 401) {
+            writeSessionAdminToken('');
+            if (el.adminTokenInput) el.adminTokenInput.value = '';
+            renderAdminAuth();
+            showToast(t('dbAdminInvalid'), 'err');
+            setDbError(t('dbAdminInvalid'));
+          } else {
+            showToast(err.message, 'err');
+            setDbError(err.message);
+          }
+        } finally {
+          el.applyAdminTokenBtn.disabled = false;
+        }
+      }
+
+      function clearAdminToken() {
+        writeSessionAdminToken('');
+        if (el.adminTokenInput) el.adminTokenInput.value = '';
+        renderAdminAuth();
+        showToast(t('dbAdminCleared'), 'ok');
+      }
+
       async function fetchDatabaseView() {
         if (isDbLoading) return;
         isDbLoading = true;
@@ -5743,7 +5914,8 @@
             active: data.active || null,
             backups: Array.isArray(data.backups) ? data.backups : [],
             folder: data.folder || '',
-            embed: data.embed || null
+            embed: data.embed || null,
+            admin: data.admin || null
           };
           renderDatabaseTab();
         } catch (err) {
@@ -6236,7 +6408,11 @@
         button.disabled = true;
         setDbError('');
         try {
-          const response = await fetch(`${dbApiBase()}/api/ingest/file`, { method: 'POST', body: formData });
+          const response = await fetch(`${dbApiBase()}/api/ingest/file`, {
+            method: 'POST',
+            headers: adminHeaders(),
+            body: formData
+          });
           let payload = null;
           try {
             payload = await response.json();
@@ -6244,7 +6420,14 @@
             payload = null;
           }
           if (!response.ok) {
-            throw new Error(payload && payload.detail ? payload.detail : `HTTP ${response.status}`);
+            let detail = payload && payload.detail ? payload.detail : `HTTP ${response.status}`;
+            if (response.status === 401) {
+              renderAdminAuth();
+              if (state.settings.lang === 'en') detail = t('dbAuthRequired');
+            } else if (response.status === 429 && state.settings.lang === 'en') {
+              detail = t('dbRateLimited');
+            }
+            throw new Error(detail);
           }
           el.ingestFileInput.value = '';
           el.ingestFileLabel.textContent = t('chooseFileHint');
@@ -6389,6 +6572,14 @@
         el.testConnBtn.addEventListener('click', testConnection);
 
         el.testEmbedBtn.addEventListener('click', testEmbeddingModel);
+        el.applyAdminTokenBtn.addEventListener('click', applyAdminToken);
+        el.clearAdminTokenBtn.addEventListener('click', clearAdminToken);
+        el.adminTokenInput.addEventListener('keydown', (event) => {
+          if (event.key === 'Enter') {
+            event.preventDefault();
+            applyAdminToken();
+          }
+        });
         el.createDbBackupBtn.addEventListener('click', createDatabaseBackup);
         el.rebuildFolderBtn.addEventListener('click', rebuildFolder);
         el.refreshProgramsBtn.addEventListener('click', refreshPrograms);

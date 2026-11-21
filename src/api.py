@@ -10,11 +10,11 @@ from contextlib import asynccontextmanager
 from pathlib import Path
 from typing import Annotated, Any
 
-from fastapi import FastAPI, File, Form, HTTPException, UploadFile
+from fastapi import Depends, FastAPI, File, Form, Header, HTTPException, Request, UploadFile
 from fastapi.responses import FileResponse, JSONResponse
 from pydantic import BaseModel, Field
 
-from src import config
+from src import config, security
 from src.agent import get_agent
 from src.ingest import (
     DB_LOCK,
@@ -101,10 +101,55 @@ def _site_rebuild_task(progress: Any) -> dict[str, Any]:
 
 def _safe_error(exc: Exception) -> str:
     message = f"{type(exc).__name__}: {exc}"
-    for secret in (config.LLM_API_KEY, config.EMBED_API_KEY):
+    for secret in (config.LLM_API_KEY, config.EMBED_API_KEY, config.ADMIN_TOKEN):
         if secret:
             message = message.replace(secret, "***")
     return message
+
+
+def require_admin(
+    request: Request,
+    x_admin_token: Annotated[str | None, Header(alias="X-Admin-Token")] = None,
+    authorization: Annotated[str | None, Header(alias="Authorization")] = None,
+) -> None:
+    """Проверяет rate limit и админ-токен для тяжёлых и изменяющих операций."""
+    client_ip = (request.client.host if request.client else "") or "unknown"
+    allowed, retry_after = security.admin_rate_limiter.check(client_ip)
+    if not allowed:
+        security.log_event(
+            {
+                "session_id": "admin",
+                "status": "rate_limited",
+                "security_flags": ["rate_limit_exceeded"],
+                "error": f"{request.method} {request.url.path}",
+            }
+        )
+        raise HTTPException(
+            status_code=429,
+            detail=f"Слишком много запросов. Повторите через {retry_after} с.",
+            headers={"Retry-After": str(retry_after)},
+        )
+
+    provided = security.extract_admin_token(x_admin_token, authorization)
+    if not security.verify_admin_token(provided):
+        security.log_event(
+            {
+                "session_id": "admin",
+                "status": "unauthorized",
+                "security_flags": ["admin_auth_failed"],
+                "error": f"{request.method} {request.url.path}",
+            }
+        )
+        raise HTTPException(
+            status_code=401,
+            detail="Требуется действующий админ-токен (заголовок X-Admin-Token)",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+
+
+@app.post("/api/admin/verify", dependencies=[Depends(require_admin)])
+def verify_admin() -> dict[str, Any]:
+    return {"status": "ok", "auth_enabled": bool(config.ADMIN_TOKEN)}
 
 
 @app.get("/")
@@ -135,7 +180,7 @@ def chat(request: ChatRequest) -> dict[str, Any]:
     return agent.answer(session_id, request.message)
 
 
-@app.post("/api/ingest/file")
+@app.post("/api/ingest/file", dependencies=[Depends(require_admin)])
 async def ingest_file(
     file: Annotated[UploadFile, File()],
     url: Annotated[str, Form()] = "",
@@ -185,7 +230,7 @@ def databases() -> dict[str, Any]:
     return database_status()
 
 
-@app.post("/api/databases/backup")
+@app.post("/api/databases/backup", dependencies=[Depends(require_admin)])
 def backup_database(request: BackupRequest) -> dict[str, Any]:
     try:
         with _DB_LOCK:
@@ -195,7 +240,7 @@ def backup_database(request: BackupRequest) -> dict[str, Any]:
     return {"status": "ok", "backup": backup, "databases": database_status()}
 
 
-@app.post("/api/databases/{backup_id}/restore")
+@app.post("/api/databases/{backup_id}/restore", dependencies=[Depends(require_admin)])
 def restore_database(backup_id: str) -> dict[str, Any]:
     try:
         with _DB_LOCK:
@@ -208,7 +253,7 @@ def restore_database(backup_id: str) -> dict[str, Any]:
     return {"status": "ok", "databases": database_status()}
 
 
-@app.delete("/api/databases/{backup_id}")
+@app.delete("/api/databases/{backup_id}", dependencies=[Depends(require_admin)])
 def remove_database(backup_id: str) -> dict[str, Any]:
     try:
         with _DB_LOCK:
@@ -220,7 +265,7 @@ def remove_database(backup_id: str) -> dict[str, Any]:
     return {"status": "ok", "databases": database_status()}
 
 
-@app.put("/api/databases/folder")
+@app.put("/api/databases/folder", dependencies=[Depends(require_admin)])
 def update_folder(request: FolderRequest) -> dict[str, Any]:
     from src.ingest import resolve_kb_folder
 
@@ -232,7 +277,7 @@ def update_folder(request: FolderRequest) -> dict[str, Any]:
     return {"status": "ok", "databases": database_status()}
 
 
-@app.post("/api/ingest/directory")
+@app.post("/api/ingest/directory", dependencies=[Depends(require_admin)])
 def ingest_directory(request: DirectoryIngestRequest) -> dict[str, Any]:
     from src.ingest import read_app_settings, resolve_kb_folder
 
@@ -255,7 +300,7 @@ def ingest_directory(request: DirectoryIngestRequest) -> dict[str, Any]:
     return {"status": "ok", "stats": stats, "databases": database_status()}
 
 
-@app.post("/api/embeddings/test")
+@app.post("/api/embeddings/test", dependencies=[Depends(require_admin)])
 def test_embeddings() -> dict[str, Any]:
     try:
         config.require_embeddings()
@@ -306,7 +351,7 @@ def achievements() -> dict[str, Any]:
     return load_achievements_catalog()
 
 
-@app.post("/api/achievements/refresh")
+@app.post("/api/achievements/refresh", dependencies=[Depends(require_admin)])
 def refresh_achievements() -> dict[str, Any]:
     try:
         with _DB_LOCK:
@@ -327,7 +372,7 @@ def min_scores() -> dict[str, Any]:
     return load_min_scores_catalog()
 
 
-@app.post("/api/min-scores/refresh")
+@app.post("/api/min-scores/refresh", dependencies=[Depends(require_admin)])
 def refresh_min_scores() -> dict[str, Any]:
     try:
         with _DB_LOCK:
@@ -343,7 +388,7 @@ def refresh_min_scores() -> dict[str, Any]:
     }
 
 
-@app.post("/api/programs/refresh")
+@app.post("/api/programs/refresh", dependencies=[Depends(require_admin)])
 def refresh_programs() -> dict[str, Any]:
     try:
         with _DB_LOCK:
@@ -358,7 +403,7 @@ def refresh_programs() -> dict[str, Any]:
     }
 
 
-@app.post("/api/site/sources")
+@app.post("/api/site/sources", dependencies=[Depends(require_admin)])
 def site_sources() -> dict[str, Any]:
     try:
         sources = discover_site_sources()
@@ -367,7 +412,7 @@ def site_sources() -> dict[str, Any]:
     return {"status": "ok", "count": len(sources), "sources": sources}
 
 
-@app.post("/api/site/refresh")
+@app.post("/api/site/refresh", dependencies=[Depends(require_admin)])
 def site_refresh(request: SiteRefreshRequest) -> dict[str, Any]:
     if not request.ingest:
         try:
@@ -393,12 +438,12 @@ def autoupdate() -> dict[str, Any]:
     return autoupdate_status()
 
 
-@app.post("/api/autoupdate")
+@app.post("/api/autoupdate", dependencies=[Depends(require_admin)])
 def update_autoupdate(request: AutoUpdateRequest) -> dict[str, Any]:
     return configure_autoupdate(request.enabled, request.interval_hours)
 
 
-@app.post("/api/autoupdate/run")
+@app.post("/api/autoupdate/run", dependencies=[Depends(require_admin)])
 def run_autoupdate_now() -> dict[str, Any]:
     try:
         job = start_job("autoupdate", run_autoupdate)

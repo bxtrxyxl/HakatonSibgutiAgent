@@ -15,6 +15,7 @@
 | Элемент UI | Что делает сейчас | Осталось |
 | --- | --- | --- |
 | Карточка «Активная база» | Данные из `GET /api/databases` | — |
+| «Админ-доступ» | Поле ввода `ADMIN_TOKEN` (хранится только в памяти и `sessionStorage` вкладки), проверка через `POST /api/admin/verify`, отправка в `X-Admin-Token` | — |
 | «Резервные копии» | Реальные снапшоты `kb.sqlite` + `embeddings.npy`; создать / восстановить / удалить | — |
 | «Эмбеддинг-модель» | Показывает серверные URL и модель; `POST /api/embeddings/test` реально вызывает API | — |
 | «Папка с .md файлами» | `PUT /api/databases/folder` + `POST /api/ingest/directory`, полная пересборка FTS и эмбеддингов | — |
@@ -64,10 +65,21 @@
 - Бейдж `siteRebuildBadge` показывает «Пересборка идёт» / «База пересобрана» / «Пересборка не удалась»; полоса `siteRebuildProgressBar` и подпись `siteRebuildNote` показывают процент, шаг и итоговые документы/чанки.
 - Пока задача идёт, кнопка заблокирована; при занятости другим заданием API отвечает `409`, UI показывает «Уже выполняется другая задача».
 
+### Авторизация и лимиты для тяжёлых задач
+
+Защита изменяющих и ресурсоёмких эндпоинтов при публичном запуске.
+
+- Переменные окружения в `.env`:
+  - `ADMIN_TOKEN` — если пусто, действует локальный режим без токена; если задано, требуется в заголовке `X-Admin-Token` или `Authorization: Bearer <token>`.
+  - `ADMIN_RATE_LIMIT_MAX` (по умолчанию `10`) — максимум запросов к защищённым эндпоинтам с одного IP за окно.
+  - `ADMIN_RATE_LIMIT_WINDOW_SEC` (по умолчанию `60`) — длительность окна rate limit в секундах.
+- Защищённые эндпоинты: `POST /api/site/refresh`, `POST /api/site/sources`, `POST /api/ingest/file`, `POST /api/ingest/directory`, `POST /api/programs/refresh`, `POST /api/achievements/refresh`, `POST /api/min-scores/refresh`, `POST /api/autoupdate`, `POST /api/autoupdate/run`, `POST /api/databases/backup`, `POST /api/databases/{id}/restore`, `DELETE /api/databases/{id}`, `PUT /api/databases/folder`, `POST /api/embeddings/test`, `POST /api/admin/verify`.
+- При отсутствии или неверном токене сервер возвращает `401`, при превышении лимита — `429` с заголовком `Retry-After`. События отказа пишутся в `logs/events.jsonl` без секретов.
+- В настройках → «База данных» отображается карточка «Админ-доступ» (`adminAuthBadge`, `adminTokenInput`, `applyAdminTokenBtn`, `clearAdminTokenBtn`, `adminAuthNote`). Токен хранится только в памяти и `sessionStorage` (`sibsutis_admin_token`) и никогда не попадает в `localStorage` или код.
+
 ### Следующие шаги
 
-1. Добавить авторизацию и лимиты для публичного запуска.
-2. Ограничить частоту полной пересборки, чтобы её нельзя было запускать чаще раза в сутки.
+1. Ограничить частоту полной пересборки, чтобы её нельзя было запускать чаще раза в сутки.
 
 ---
 

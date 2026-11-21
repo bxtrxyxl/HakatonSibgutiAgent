@@ -2,8 +2,13 @@
 
 from __future__ import annotations
 
+import hmac
 import json
+import math
 import re
+import threading
+import time
+from collections import deque
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
@@ -52,6 +57,7 @@ NEUTRALIZE_PATTERNS = [pattern for _, pattern in INJECTION_PATTERNS] + [
 REDACTION_PATTERNS = [
     re.compile(r"sk-[A-Za-z0-9_\-]{8,}"),
     re.compile(r"(?i)bearer\s+[A-Za-z0-9._\-]{8,}"),
+    re.compile(r"(?i)x-admin-token\s*[=:]\s*[^\s,;\"']+"),
     re.compile(r"(?i)(api[_-]?key|token|secret|password)\s*[=:]\s*[^\s,;\"']+"),
 ]
 
@@ -95,9 +101,74 @@ def sanitize_chunks(chunks: list[dict[str, Any]]) -> str:
 def redact(text: str) -> str:
     """Удаляет из строки всё, похожее на ключи и токены."""
     cleaned = str(text)
+    for secret in (config.LLM_API_KEY, config.EMBED_API_KEY, config.ADMIN_TOKEN):
+        if secret:
+            cleaned = cleaned.replace(secret, "[redacted]")
     for pattern in REDACTION_PATTERNS:
         cleaned = pattern.sub("[redacted]", cleaned)
     return cleaned[:MAX_LOG_TEXT]
+
+
+def extract_admin_token(x_admin_token: str | None, authorization: str | None) -> str:
+    """Извлекает админ-токен из заголовков X-Admin-Token или Authorization: Bearer."""
+    if x_admin_token and x_admin_token.strip():
+        return x_admin_token.strip()
+    if authorization:
+        auth = authorization.strip()
+        if auth.lower().startswith("bearer "):
+            return auth[7:].strip()
+    return ""
+
+
+def verify_admin_token(provided: str | None) -> bool:
+    """Проверяет админ-токен. Если ADMIN_TOKEN в .env не задан, разрешает локальный доступ."""
+    expected = config.ADMIN_TOKEN
+    if not expected:
+        return True
+    if not provided:
+        return False
+    return hmac.compare_digest(provided.strip(), expected)
+
+
+class RateLimiter:
+    """Потокобезопасный скользящий лимитер запросов по ключу (например, IP)."""
+
+    def __init__(self) -> None:
+        self._lock = threading.Lock()
+        self._buckets: dict[str, deque[float]] = {}
+
+    def check(
+        self,
+        key: str,
+        *,
+        limit: int | None = None,
+        window_sec: int | None = None,
+    ) -> tuple[bool, int]:
+        """Возвращает `(allowed, retry_after_sec)` для указанного ключа."""
+        max_req = config.ADMIN_RATE_LIMIT_MAX if limit is None else limit
+        window = config.ADMIN_RATE_LIMIT_WINDOW_SEC if window_sec is None else window_sec
+        if max_req <= 0 or window <= 0:
+            return True, 0
+
+        now = time.monotonic()
+        cutoff = now - window
+        with self._lock:
+            bucket = self._buckets.setdefault(key, deque())
+            while bucket and bucket[0] <= cutoff:
+                bucket.popleft()
+            if len(bucket) >= max_req:
+                retry_after = max(1, math.ceil(window - (now - bucket[0])))
+                return False, retry_after
+            bucket.append(now)
+            return True, 0
+
+    def reset(self) -> None:
+        """Сбрасывает все счётчики (для тестов и перезапуска лимитов)."""
+        with self._lock:
+            self._buckets.clear()
+
+
+admin_rate_limiter = RateLimiter()
 
 
 def log_event(event: dict[str, Any], path: Path = config.EVENTS_LOG) -> None:

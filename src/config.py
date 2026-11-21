@@ -49,6 +49,14 @@ def _env(name: str, default: str = "") -> str:
     return (os.getenv(name) or default).strip()
 
 
+def _env_int(name: str, default: int) -> int:
+    raw = _env(name, str(default))
+    try:
+        return int(raw)
+    except ValueError:
+        return default
+
+
 LLM_BASE_URL = _env("LLM_BASE_URL")
 LLM_API_KEY = _env("LLM_API_KEY")
 LLM_MODEL = _env("LLM_MODEL")
@@ -74,6 +82,11 @@ EMBED_MAX_CHARS = 6000
 USER_AGENT = "SibSUTIS-Agent/1.0 (+educational hackathon project)"
 FETCH_TIMEOUT = 20.0
 FETCH_RETRIES = 1
+
+# Авторизация и лимиты тяжёлых/админ-операций
+ADMIN_TOKEN = _env("ADMIN_TOKEN")
+ADMIN_RATE_LIMIT_MAX = _env_int("ADMIN_RATE_LIMIT_MAX", 10)
+ADMIN_RATE_LIMIT_WINDOW_SEC = _env_int("ADMIN_RATE_LIMIT_WINDOW_SEC", 60)
 
 
 # --- Валидация ------------------------------------------------------------
@@ -119,4 +132,5 @@ def status() -> dict[str, object]:
         "embed_model": EMBED_MODEL or None,
         "top_k": TOP_K,
         "data_dir": str(DATA_DIR),
+        "admin_auth_enabled": bool(ADMIN_TOKEN),
     }
