@@ -3364,7 +3364,7 @@
             <div class="card-head">
               <span class="card-title" data-i18n="cardScores">Проходные баллы</span>
               <div class="score-head-actions">
-                <span class="card-caption tabular" data-i18n="scoreDemoCaption">2026 · демо</span>
+                <span class="card-caption tabular" data-i18n="scoreDemoCaption">2026</span>
                 <button id="expandScoresBtn" class="card-expand-btn" data-i18n-title="expandScores" title="Развернуть" aria-label="Развернуть сравнение направлений">
                   <svg viewBox="0 0 24 24"><polyline points="15 3 21 3 21 9"></polyline><polyline points="9 21 3 21 3 15"></polyline><line x1="21" y1="3" x2="14" y2="10"></line><line x1="3" y1="21" x2="10" y2="14"></line></svg>
                 </button>
@@ -3381,7 +3381,7 @@
           <div class="info-card">
             <div class="card-head">
               <span class="card-title" data-i18n="cardMinScores">Минимальные баллы по предметам</span>
-              <span class="card-caption" data-i18n="demoBadge">демо</span>
+              <span class="card-caption" data-i18n="demoBadge">2026</span>
             </div>
             <div id="minScoresList" class="min-scores-list"></div>
             <span id="minScoresNote" class="min-scores-note"></span>
@@ -3410,7 +3410,7 @@
           <div class="info-card">
             <div class="card-head">
               <span class="card-title" data-i18n="cardSalary">Средние зарплаты выпускников</span>
-              <span class="card-caption" data-i18n="medianSalary">медиана · демо</span>
+              <span class="card-caption" data-i18n="medianSalary">медиана</span>
             </div>
             <div id="salaryList" class="salary-list"></div>
           </div>
@@ -3722,7 +3722,7 @@
       <div class="modal-header">
         <div>
           <h2 id="scoreOverlayTitle" class="modal-title" data-i18n="scoreOverlayTitle">Сравнение направлений</h2>
-          <span class="card-caption" data-i18n="scoreOverlaySub">Проходные баллы и предметы · демо</span>
+          <span class="card-caption" data-i18n="scoreOverlaySub">Проходные баллы и предметы</span>
         </div>
         <div class="score-modal-actions">
           <div id="scoreOverlayToggle" class="score-tabs score-tabs-compact"></div>
@@ -3794,7 +3794,7 @@
           cardTuition: 'Стоимость обучения',
           perSemester: 'за семестр',
           cardScores: 'Проходные баллы',
-          scoreDemoCaption: '2026 · демо',
+          scoreDemoCaption: '2026',
           scoreBudget: 'Бюджет',
           scorePaid: 'Платное',
           scoreMin: 'Минимум',
@@ -3803,10 +3803,10 @@
           expandScores: 'Развернуть',
           cardMinScores: 'Минимальные баллы по предметам',
           cardSalary: 'Средние зарплаты выпускников',
-          medianSalary: 'медиана · демо',
-          demoBadge: 'демо',
+          medianSalary: 'медиана',
+          demoBadge: '2026',
           scoreOverlayTitle: 'Сравнение направлений',
-          scoreOverlaySub: 'Проходные баллы и предметы · демо',
+          scoreOverlaySub: 'Проходные баллы и предметы',
           scoreCarouselHint: 'Листайте направления',
           scoreLegend: 'Высота столбца — проходной балл',
           scorePrev: 'Предыдущее направление',
@@ -3821,7 +3821,7 @@
           scoreChanceCta: 'Рассчитать шанс в чате',
           scoreDetailClose: 'Закрыть описание',
           scoreDetailHint: 'Выберите направление, чтобы увидеть описание',
-          scoreDemoNote: 'Демонстрационные данные для интерфейса',
+          scoreDemoNote: 'Данные из каталога направлений',
           close: 'Закрыть',
           cardSeats: 'Структура приёма (места)',
           cardCampus: 'Стипендии и кампус',
@@ -3972,7 +3972,7 @@
           cardTuition: 'Tuition fees',
           perSemester: 'per semester',
           cardScores: 'Passing scores',
-          scoreDemoCaption: '2026 · demo',
+          scoreDemoCaption: '2026',
           scoreBudget: 'Budget',
           scorePaid: 'Paid',
           scoreMin: 'Minimum',
@@ -3981,10 +3981,10 @@
           expandScores: 'Expand',
           cardMinScores: 'Minimum subject scores',
           cardSalary: 'Average graduate salaries',
-          medianSalary: 'median · demo',
-          demoBadge: 'demo',
+          medianSalary: 'median',
+          demoBadge: '2026',
           scoreOverlayTitle: 'Program comparison',
-          scoreOverlaySub: 'Passing scores and subjects · demo',
+          scoreOverlaySub: 'Passing scores and subjects',
           scoreCarouselHint: 'Swipe through programs',
           scoreLegend: 'Bar height = passing score',
           scorePrev: 'Previous program',
@@ -3999,7 +3999,7 @@
           scoreChanceCta: 'Estimate chance in chat',
           scoreDetailClose: 'Close details',
           scoreDetailHint: 'Select a program to see details',
-          scoreDemoNote: 'Demo data for the interface',
+          scoreDemoNote: 'Data from the program catalog',
           close: 'Close',
           cardSeats: 'Admission seats',
           cardCampus: 'Scholarships & campus',
@@ -4132,282 +4132,14 @@
          2. RIGHT PANEL DATA (Easily refreshed from GET /api/overview)
          ------------------------------------------------------------------------ */
       const DEFAULT_OVERVIEW = {
-        tuition: [
-          {
-            id: 'bachelor',
-            labelRu: 'Бакалавриат',
-            labelEn: 'Bachelor',
-            priceRu: 'от 84 000 ₽',
-            priceEn: 'from 84,000 ₽',
-            pct: 91,
-            prompt: 'Сколько стоит обучение на бакалавриате в СибГУТИ за семестр и за год?'
-          },
-          {
-            id: 'specialist',
-            labelRu: 'Специалитет',
-            labelEn: 'Specialist',
-            priceRu: 'от 89 000 ₽',
-            priceEn: 'from 89,000 ₽',
-            pct: 96,
-            prompt: 'Сколько стоит обучение на специалитете в СибГУТИ и какие есть специальности?'
-          },
-          {
-            id: 'master',
-            labelRu: 'Магистратура',
-            labelEn: 'Master',
-            priceRu: 'от 92 000 ₽',
-            priceEn: 'from 92,000 ₽',
-            pct: 100,
-            prompt: 'Сколько стоит обучение в магистратуре СибГУТИ и какие программы доступны?'
-          },
-          {
-            id: 'spo',
-            labelRu: 'Колледж (СПО)',
-            labelEn: 'College (SPO)',
-            priceRu: 'от 48 000 ₽',
-            priceEn: 'from 48,000 ₽',
-            pct: 52,
-            prompt: 'Сколько стоит обучение в колледже (СПО) при СибГУТИ и как поступить после 9 или 11 класса?'
-          }
-        ],
-        scoreDirections: [
-          {
-            id: 'ivt',
-            code: '09.03.01',
-            shortRu: 'ИВТ',
-            shortEn: 'CS',
-            nameRu: 'Информатика и вычислительная техника',
-            nameEn: 'Computer Science and Engineering',
-            facultyRu: 'Институт информатики и вычислительной техники',
-            facultyEn: 'Institute of Computer Science and Engineering',
-            budget: 221,
-            paid: 168,
-            budgetSeats: 258,
-            paidSeats: 101,
-            chanceBudget: 85,
-            chancePaid: 92,
-            subjectsRu: ['Математика (профиль)', 'Информатика', 'Русский язык'],
-            subjectsEn: ['Mathematics (profile)', 'Computer science', 'Russian language'],
-            descriptionRu: 'Флагманское ИТ-направление: алгоритмы, разработка ПО, базы данных, сети и высоконагруженные системы. Подойдёт тем, кто хочет писать код и строить сервисы.',
-            descriptionEn: 'The flagship IT program: algorithms, software development, databases, networks and high-load systems. For those who want to write code and build services.'
-          },
-          {
-            id: 'ib',
-            code: '10.03.01',
-            shortRu: 'ИБ',
-            shortEn: 'SEC',
-            nameRu: 'Информационная безопасность',
-            nameEn: 'Information Security',
-            facultyRu: 'Институт безопасности',
-            facultyEn: 'Institute of Security',
-            budget: 213,
-            paid: 172,
-            budgetSeats: 38,
-            paidSeats: 52,
-            chanceBudget: 78,
-            chancePaid: 88,
-            subjectsRu: ['Математика (профиль)', 'Информатика', 'Русский язык'],
-            subjectsEn: ['Mathematics (profile)', 'Computer science', 'Russian language'],
-            descriptionRu: 'Защита информации, криптография, сети и аудит. Для тех, кто хочет заниматься кибербезопасностью и защитой инфраструктуры.',
-            descriptionEn: 'Information protection, cryptography, networks and audit. For those who want to work in cybersecurity and infrastructure protection.'
-          },
-          {
-            id: 'comm',
-            code: '11.03.02',
-            shortRu: 'Связь',
-            shortEn: 'TEL',
-            nameRu: 'Инфокоммуникационные технологии и системы связи',
-            nameEn: 'Infocommunication Technologies and Communication Systems',
-            facultyRu: 'Институт телекоммуникаций',
-            facultyEn: 'Institute of Telecommunications',
-            budget: 191,
-            paid: 160,
-            budgetSeats: 196,
-            paidSeats: 44,
-            chanceBudget: 82,
-            chancePaid: 90,
-            subjectsRu: ['Математика (профиль)', 'Физика', 'Русский язык'],
-            subjectsEn: ['Mathematics (profile)', 'Physics', 'Russian language'],
-            descriptionRu: 'Сети связи, маршрутизация, оптические и беспроводные технологии. Для будущих инженеров операторов связи и сетевой инфраструктуры.',
-            descriptionEn: 'Communication networks, routing, optical and wireless technologies. For future engineers at telecom operators and network infrastructure.'
-          },
-          {
-            id: 'radio',
-            code: '11.03.01',
-            shortRu: 'Радио',
-            shortEn: 'RADIO',
-            nameRu: 'Радиотехника',
-            nameEn: 'Radio Engineering',
-            facultyRu: 'Институт телекоммуникаций',
-            facultyEn: 'Institute of Telecommunications',
-            budget: 178,
-            paid: 151,
-            budgetSeats: 112,
-            paidSeats: 15,
-            chanceBudget: 74,
-            chancePaid: 86,
-            subjectsRu: ['Физика', 'Математика (профиль)', 'Русский язык'],
-            subjectsEn: ['Physics', 'Mathematics (profile)', 'Russian language'],
-            descriptionRu: 'Радиосигналы, антенны, приёмопередатчики и цифровая обработка сигналов. Для любителей физики, электроники и космической связи.',
-            descriptionEn: 'Radio signals, antennas, transceivers and digital signal processing. For enthusiasts of physics, electronics and space communications.'
-          },
-          {
-            id: 'electronics',
-            code: '11.03.03',
-            shortRu: 'Электро',
-            shortEn: 'ELEC',
-            nameRu: 'Конструирование и технология электронных средств',
-            nameEn: 'Design and Technology of Electronic Means',
-            facultyRu: 'Институт телекоммуникаций',
-            facultyEn: 'Institute of Telecommunications',
-            budget: 171,
-            paid: 149,
-            budgetSeats: 112,
-            paidSeats: 8,
-            chanceBudget: 70,
-            chancePaid: 84,
-            subjectsRu: ['Физика', 'Математика (профиль)', 'Русский язык'],
-            subjectsEn: ['Physics', 'Mathematics (profile)', 'Russian language'],
-            descriptionRu: 'Микроэлектроника, схемотехника и нанотехнологии. Для тех, кто хочет проектировать чипы и электронные устройства.',
-            descriptionEn: 'Microelectronics, circuit design and nanotechnologies. For those who want to design chips and electronic devices.'
-          },
-          {
-            id: 'media',
-            code: '42.03.01',
-            shortRu: 'Реклама',
-            shortEn: 'MEDIA',
-            nameRu: 'Реклама и связи с общественностью',
-            nameEn: 'Advertising and Public Relations',
-            facultyRu: 'Институт базовых дисциплин',
-            facultyEn: 'Institute of Basic Disciplines',
-            budget: 145,
-            paid: 138,
-            budgetSeats: 0,
-            paidSeats: 50,
-            chanceBudget: 65,
-            chancePaid: 80,
-            subjectsRu: ['Обществознание', 'История', 'Русский язык'],
-            subjectsEn: ['Social studies', 'History', 'Russian language'],
-            descriptionRu: 'Коммуникации, медиа, SMM и рекламные кампании. Для творческих людей, которые хотят работать с аудиторией и брендами.',
-            descriptionEn: 'Communications, media, SMM and advertising campaigns. For creative people who want to work with audiences and brands.'
-          }
-        ],
-        minSubjectScores: {
-          noteRu: 'Минимальные пороги, ниже которых документы не рассматриваются. Демо-данные.',
-          noteEn: 'Minimum thresholds below which applications are not considered. Demo data.',
-          subjects: [
-            { nameRu: 'Математика (профиль)', nameEn: 'Mathematics (profile)', budget: 40, paid: 36 },
-            { nameRu: 'Физика', nameEn: 'Physics', budget: 40, paid: 36 },
-            { nameRu: 'Информатика', nameEn: 'Computer science', budget: 45, paid: 40 },
-            { nameRu: 'Русский язык', nameEn: 'Russian language', budget: 40, paid: 36 },
-            { nameRu: 'Обществознание', nameEn: 'Social studies', budget: 45, paid: 40 }
-          ]
-        },
-        salaries: [
-          { id: 'ivt', labelRu: 'ИТ и разработка ПО', labelEn: 'IT & software', valueRu: '110 000 ₽', valueEn: '110,000 ₽', pct: 100 },
-          { id: 'ib', labelRu: 'Информационная безопасность', labelEn: 'Cybersecurity', valueRu: '105 000 ₽', valueEn: '105,000 ₽', pct: 95 },
-          { id: 'comm', labelRu: 'Связь и телеком', labelEn: 'Telecom', valueRu: '95 000 ₽', valueEn: '95,000 ₽', pct: 86 },
-          { id: 'media', labelRu: 'Медиа и реклама', labelEn: 'Media & advertising', valueRu: '70 000 ₽', valueEn: '70,000 ₽', pct: 64 }
-        ],
-        seats: [
-          {
-            id: 'budget',
-            cls: 's1',
-            colorVar: 'var(--seg-1)',
-            labelRu: 'Бюджет (общий конкурс)',
-            labelEn: 'State-funded (general)',
-            count: 685,
-            prompt: 'Сколько бюджетных мест по общему конкурсу выделено в СибГУТИ?'
-          },
-          {
-            id: 'quotas',
-            cls: 's2',
-            colorVar: 'var(--seg-2)',
-            labelRu: 'Целевая и спецквоты',
-            labelEn: 'Target & special quotas',
-            count: 245,
-            prompt: 'Как устроены целевая, особая и отдельная квоты при поступлении в СибГУТИ?'
-          },
-          {
-            id: 'paid',
-            cls: 's3',
-            colorVar: 'var(--seg-3)',
-            labelRu: 'Платные места',
-            labelEn: 'Tuition-based seats',
-            count: 490,
-            prompt: 'Сколько платных мест доступно в СибГУТИ и можно ли потом перевестись на бюджет?'
-          }
-        ],
-        campus: [
-          {
-            labelRu: 'Академическая',
-            labelEn: 'Academic',
-            valRu: 'от 2 900 ₽/мес',
-            valEn: 'from 2,900 ₽/mo',
-            prompt: 'Какие условия и размер государственной академической стипендии в СибГУТИ?'
-          },
-          {
-            labelRu: 'Повышенная',
-            labelEn: 'Enhanced',
-            valRu: 'до 12 000 ₽/мес',
-            valEn: 'up to 12,000 ₽/mo',
-            prompt: 'За какие достижения назначается повышенная академическая стипендия в СибГУТИ?'
-          },
-          {
-            labelRu: 'Общежитие',
-            labelEn: 'Dormitory',
-            valRu: 'от 1 100 ₽/мес',
-            valEn: 'from 1,100 ₽/mo',
-            prompt: 'Как получить место в общежитии СибГУТИ и сколько стоит проживание?'
-          },
-          {
-            labelRu: 'Доп. баллы ИД',
-            labelEn: 'Bonus points',
-            valRu: 'до +10 баллов',
-            valEn: 'up to +10 pts',
-            prompt: 'За какие индивидуальные достижения СибГУТИ начисляет дополнительные баллы при поступлении?'
-          }
-        ],
-        timeline: [
-          {
-            titleRu: 'Подача документов',
-            titleEn: 'Application submission',
-            periodRu: '20 июня — 25 июля',
-            periodEn: 'Jun 20 — Jul 25',
-            current: true,
-            prompt: 'Какие сроки и способы подачи документов в СибГУТИ в этом году?'
-          },
-          {
-            titleRu: 'Приоритетное зачисление',
-            titleEn: 'Priority enrollment',
-            periodRu: 'конец июля (БВИ и квоты)',
-            periodEn: 'late July (quotas)',
-            current: false,
-            prompt: 'Как проходит этап приоритетного зачисления по квотам и БВИ в СибГУТИ?'
-          },
-          {
-            titleRu: 'Основной этап',
-            titleEn: 'Main enrollment stage',
-            periodRu: 'начало августа (бюджет)',
-            periodEn: 'early August (state-funded)',
-            current: false,
-            prompt: 'Когда публикуются конкурсные списки и приказы основного этапа зачисления в СибГУТИ?'
-          },
-          {
-            titleRu: 'Заселение в общежития',
-            titleEn: 'Dormitory check-in',
-            periodRu: 'конец августа',
-            periodEn: 'late August',
-            current: false,
-            prompt: 'Когда и какие документы нужны для заселения в общежитие СибГУТИ?'
-          }
-        ]
+        tuition: [],
+        scoreDirections: [],
+        minSubjectScores: { noteRu: '', noteEn: '', subjects: [] },
+        salaries: [],
+        seats: [],
+        campus: [],
+        timeline: []
       };
-
-      /* ------------------------------------------------------------------------
-         3. STATE & STORAGE
-         ------------------------------------------------------------------------ */
-      const STORAGE_KEY = 'sibsutis_assistant_v3';
 
       function generateUuid() {
         return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function (c) {
@@ -4422,75 +4154,10 @@
         return [
           {
             id: generateUuid(),
-            title: 'Проходные баллы по направлениям',
-            pinned: true,
-            updatedAt: now - 1000 * 60 * 12,
-            messages: [
-              {
-                role: 'user',
-                content: 'Сравни проходные баллы на бюджет и платное по направлениям',
-                timestamp: now - 1000 * 60 * 13
-              },
-              {
-                role: 'assistant',
-                content:
-                  'Проходные баллы по направлениям СибГУТИ (очная форма, бакалавриат, **демо-данные**):\n\n' +
-                  '| Код | Направление | Бюджет | Платное | Профильные ЕГЭ |\n' +
-                  '| :--- | :--- | :--- | :--- | :--- |\n' +
-                  '| `09.03.01` | Информатика и ВТ (ИВТ) | 221 | 168 | Математика, Инф./Физ., Русский |\n' +
-                  '| `10.03.01` | Информационная безопасность (ИБ) | 213 | 172 | Математика, Инф./Физ., Русский |\n' +
-                  '| `11.03.02` | Инфокоммуникации и связь | 191 | 160 | Математика, Физ., Русский |\n' +
-                  '| `11.03.01` | Радиотехника | 178 | 151 | Физика, Математика, Русский |\n' +
-                  '| `11.03.03` | Электроника и робототехника | 171 | 149 | Физика, Математика, Русский |\n' +
-                  '| `42.03.01` | Реклама и связи с общественностью | 145 | 138 | Обществознание, История, Русский |\n\n' +
-                  'Цифры демонстрационные: они показывают, как работает сравнение, а не заменяют официальные итоги конкурса.',
-                durationSec: 0.8,
-                sources: [
-                  {
-                    title: 'Проходные баллы по направлениям (демо)',
-                    year: '2026',
-                    url: 'https://sibsutis.ru/abitur/scores/',
-                    quote: 'Демонстрационная сводка: ИВТ — 221/168, ИБ — 213/172, Связь — 191/160, Радиотехника — 178/151, Электроника — 171/149, Реклама — 145/138 (бюджет/платное).'
-                  }
-                ],
-                timestamp: now - 1000 * 60 * 12
-              }
-            ]
-          },
-          {
-            id: generateUuid(),
-            title: 'Стоимость обучения и перевод',
+            title: 'Новый диалог',
             pinned: false,
-            updatedAt: now - 1000 * 60 * 84,
-            messages: [
-              {
-                role: 'user',
-                content: 'Сколько стоит обучение на бакалавриате и магистратуре?',
-                timestamp: now - 1000 * 60 * 85
-              },
-              {
-                role: 'assistant',
-                content:
-                  'Ориентировочная стоимость очного обучения по договору (редакция **2026 года**):\n\n' +
-                  '| Уровень обучения | За семестр | За учебный год |\n' +
-                  '| :--- | :--- | :--- |\n' +
-                  '| Бакалавриат | от `84 000 ₽` | от `168 000 ₽` |\n' +
-                  '| Специалитет | от `89 000 ₽` | от `178 000 ₽` |\n' +
-                  '| Магистратура | от `92 000 ₽` | от `184 000 ₽` |\n' +
-                  '| Колледж (СПО) | от `48 000 ₽` | от `96 000 ₽` |\n\n' +
-                  'Оплата возможна по семестрам, а также средствами материнского капитала или образовательного кредита с господдержкой.',
-                durationSec: 0.7,
-                sources: [
-                  {
-                    title: 'Приказ о стоимости обучения 2026',
-                    year: '2026',
-                    url: 'https://sibsutis.ru/abitur/tuition-2026/',
-                    quote: 'Установить минимальную стоимость обучения по очной форме: бакалавриат — от 84 000 руб./семестр, специалитет — от 89 000 руб./семестр, магистратура — от 92 000 руб./семестр.'
-                  }
-                ],
-                timestamp: now - 1000 * 60 * 84
-              }
-            ]
+            updatedAt: now,
+            messages: []
           }
         ];
       }
@@ -5239,6 +4906,22 @@
       /* ------------------------------------------------------------------------
          9. RIGHT PANEL: «Актуальное о СибГУТИ»
          ------------------------------------------------------------------------ */
+      async function tryFetchBackendOverview() {
+        if (state.settings.mode !== 'fastapi') return;
+        try {
+          const base = state.settings.endpoint.replace(/\/+$/, '');
+          const response = await fetch(`${base}/api/overview`);
+          if (!response.ok) return;
+          const data = await response.json();
+          if (data && Array.isArray(data.scoreDirections)) {
+            overviewData = data;
+            renderOverviewPanel();
+          }
+        } catch (err) {
+          // Сервер недоступен: панель остаётся пустой, без выдуманных данных.
+        }
+      }
+
       function renderOverviewPanel() {
         const isEn = state.settings.lang === 'en';
 
@@ -5753,8 +5436,8 @@
             query: text,
             message:
               state.settings.lang === 'en'
-                ? `Unable to reach the server (${err.message}). Check settings or switch to Demo mode.`
-                : `Не удалось получить ответ (${err.message}). Проверьте подключение в настройках или включите демо-режим.`
+                ? `Unable to reach the server (${err.message}). Check the endpoint and API settings.`
+                : `Не удалось получить ответ (${err.message}). Проверьте адрес сервера и настройки подключения.`
           };
         } finally {
           isGenerating = false;
@@ -6325,6 +6008,7 @@
           saveState();
           applyLayoutPrefs();
           renderChatArea();
+          tryFetchBackendOverview();
           closeSettings();
           showToast(t('toastSaved'), 'ok');
         });
@@ -6383,6 +6067,7 @@
         applyI18n();
         bindEvents();
         updateSendButton();
+        tryFetchBackendOverview();
       }
 
       window.addEventListener('DOMContentLoaded', init);

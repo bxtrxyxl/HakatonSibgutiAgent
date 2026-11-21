@@ -47,3 +47,13 @@ def test_api_programs(client: TestClient) -> None:
     response = client.get("/api/programs")
     assert response.status_code == 200
     assert response.json()["count"] >= 30
+
+
+def test_api_overview(client: TestClient) -> None:
+    response = client.get("/api/overview")
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["tuition"]
+    assert len(payload["scoreDirections"]) >= 4
+    assert payload["minSubjectScores"]["subjects"]
+    assert payload["seats"]

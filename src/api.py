@@ -29,7 +29,7 @@ from src.ingest import (
     run_urls,
     write_app_settings,
 )
-from src.retrieval import recommend_programs
+from src.retrieval import build_overview, recommend_programs
 
 app = FastAPI(title="Ассистент СибГУТИ", version="1.0.0")
 
@@ -264,6 +264,11 @@ def recommend(request: RecommendRequest) -> dict[str, Any]:
 @app.get("/api/programs")
 def programs() -> dict[str, Any]:
     return load_program_catalog()
+
+
+@app.get("/api/overview")
+def overview() -> dict[str, Any]:
+    return build_overview()
 
 
 @app.post("/api/programs/refresh")

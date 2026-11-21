@@ -410,3 +410,279 @@ def recommend_programs(query: str, limit: int = 5) -> list[dict[str, Any]]:
             break
     return unique
 
+
+SHORT_NAMES = {
+    "02.03.02": ("ФИИТ", "FCS"),
+    "09.03.01": ("ИВТ", "CS"),
+    "09.03.02": ("ИСиТ", "IST"),
+    "09.03.03": ("ПИ", "AI"),
+    "10.03.01": ("ИБ", "SEC"),
+    "11.03.01": ("Радио", "RADIO"),
+    "11.03.02": ("Связь", "TEL"),
+    "11.03.03": ("Электроника", "ELEC"),
+    "11.03.04": ("Электроника", "ELEC"),
+    "42.03.01": ("Реклама", "MEDIA"),
+    "10.05.02": ("ИБТС", "SEC"),
+    "11.05.01": ("РЭС", "RADIO"),
+    "11.05.04": ("ИСС", "TEL"),
+    "09.04.01": ("ИВТ (маг.)", "CS (MSc)"),
+    "09.04.02": ("ИСиТ (маг.)", "IST (MSc)"),
+    "09.04.03": ("ПИ (маг.)", "AI (MSc)"),
+    "10.04.01": ("ИБ (маг.)", "SEC (MSc)"),
+    "11.04.02": ("Связь (маг.)", "TEL (MSc)"),
+    "42.04.01": ("Реклама (маг.)", "MEDIA (MSc)"),
+    "20.03.01": ("Техносферная", "SAFETY"),
+}
+
+SUBJECTS_BY_CODE = {
+    "02.03.02": ["Математика (профиль)", "Информатика / Физика", "Русский язык"],
+    "09.03.01": ["Математика (профиль)", "Информатика / Физика", "Русский язык"],
+    "09.03.02": ["Математика (профиль)", "Информатика / Физика", "Русский язык"],
+    "09.03.03": ["Математика (профиль)", "Информатика / Физика", "Русский язык"],
+    "10.03.01": ["Математика (профиль)", "Информатика / Физика", "Русский язык"],
+    "11.03.01": ["Физика", "Информатика / Математика", "Русский язык"],
+    "11.03.02": ["Математика (профиль)", "Физика", "Русский язык"],
+    "11.03.03": ["Физика", "Информатика / Математика", "Русский язык"],
+    "11.03.04": ["Физика", "Информатика / Математика", "Русский язык"],
+    "42.03.01": ["Обществознание", "История / Информатика", "Русский язык"],
+    "10.05.02": ["Математика (профиль)", "Информатика / Физика", "Русский язык"],
+    "11.05.01": ["Физика", "Информатика / Математика", "Русский язык"],
+    "11.05.04": ["Математика (профиль)", "Информатика / Физика", "Русский язык"],
+}
+
+
+def _money_value(text: str) -> int:
+    digits = re.sub(r"\D", "", text or "")
+    return int(digits) if digits else 0
+
+
+def build_overview() -> dict[str, Any]:
+    """Собирает данные для правой панели из каталога и официальных констант 2026."""
+    try:
+        payload = json.loads(config.PROGRAMS_PATH.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        payload = {}
+    programs = payload.get("programs") if isinstance(payload, dict) else []
+    programs = [
+        item
+        for item in programs
+        if isinstance(item, dict)
+        and "Очная" in str(item.get("form", ""))
+        and "Заочная" not in str(item.get("form", ""))
+    ]
+
+    levels = [("Бакалавриат", "Bachelor"), ("Специалитет", "Specialist"), ("Магистратура", "Master")]
+    tuition = []
+    for ru, en in levels:
+        prices = [
+            _money_value(item.get("tuition", ""))
+            for item in programs
+            if item.get("level") == ru and _money_value(item.get("tuition", ""))
+        ]
+        if not prices:
+            continue
+        price = min(prices)
+        tuition.append(
+            {
+                "id": ru.lower(),
+                "labelRu": ru,
+                "labelEn": en,
+                "priceRu": f"от {price:,} ₽".replace(",", " "),
+                "priceEn": f"from {price:,} ₽".replace(",", " "),
+                "pct": 100 if ru == "Бакалавриат" else 90 if ru == "Специалитет" else 95,
+                "prompt": f"Сколько стоит обучение на уровне «{ru}» в СибГУТИ за семестр и за год?",
+            }
+        )
+
+    grouped: dict[str, dict[str, Any]] = {}
+    for item in programs:
+        code = str(item.get("code", ""))
+        level = str(item.get("level", ""))
+        if not code or level not in {"Бакалавриат", "Специалитет"}:
+            continue
+        current = grouped.get(code)
+        candidate = {
+            "code": code,
+            "profile": item.get("profile", ""),
+            "direction": item.get("direction", ""),
+            "institute": item.get("institute", ""),
+            "budget": item.get("pass_score") or 0,
+            "paid": 0,
+            "budgetSeats": item.get("budget") or 0,
+            "paidSeats": item.get("paid") or 0,
+            "description": item.get("description", ""),
+        }
+        if current is None:
+            grouped[code] = candidate
+        else:
+            current["budgetSeats"] = max(current["budgetSeats"], candidate["budgetSeats"])
+            current["paidSeats"] = max(current["paidSeats"], candidate["paidSeats"])
+            if candidate["budget"] > current["budget"]:
+                current.update(
+                    {
+                        "budget": candidate["budget"],
+                        "profile": candidate["profile"],
+                        "description": candidate["description"],
+                    }
+                )
+
+    directions = sorted(grouped.values(), key=lambda item: -item["budget"])[:6]
+    score_directions = []
+    for item in directions:
+        short_ru, short_en = SHORT_NAMES.get(item["code"], (item["code"], item["code"]))
+        score_directions.append(
+            {
+                "id": item["code"].replace(".", "-"),
+                "code": item["code"],
+                "shortRu": short_ru,
+                "shortEn": short_en,
+                "nameRu": item["direction"],
+                "nameEn": item["direction"],
+                "facultyRu": item["institute"],
+                "facultyEn": item["institute"],
+                "budget": item["budget"],
+                "paid": item["paid"],
+                "budgetSeats": item["budgetSeats"],
+                "paidSeats": item["paidSeats"],
+                "subjectsRu": SUBJECTS_BY_CODE.get(item["code"], []),
+                "subjectsEn": SUBJECTS_BY_CODE.get(item["code"], []),
+                "descriptionRu": item["description"][:500],
+                "descriptionEn": item["description"][:500],
+            }
+        )
+
+    salaries_grouped: dict[str, dict[str, Any]] = {}
+    for item in programs:
+        value = _money_value(item.get("salary", ""))
+        code = str(item.get("code", ""))
+        if not value or not code:
+            continue
+        short_ru, short_en = SHORT_NAMES.get(code, (code, code))
+        current = salaries_grouped.get(code)
+        if current is None or value > _money_value(current["valueRu"]):
+            salaries_grouped[code] = {
+                "id": code.replace(".", "-"),
+                "labelRu": f"{short_ru} · {item.get('direction', '')[:40]}",
+                "labelEn": f"{short_en} · {item.get('direction', '')[:40]}",
+                "valueRu": f"{value:,} ₽".replace(",", " "),
+                "valueEn": f"{value:,} ₽".replace(",", " "),
+                "pct": 0,
+            }
+    salaries = sorted(salaries_grouped.values(), key=lambda item: -_money_value(item["valueRu"]))[:4]
+    max_salary = max((_money_value(item["valueRu"]) for item in salaries), default=1)
+    for item in salaries:
+        item["pct"] = round(_money_value(item["valueRu"]) / max_salary * 100)
+
+    return {
+        "generated_at": payload.get("generated_at", ""),
+        "source": "catalog",
+        "tuition": tuition,
+        "scoreDirections": score_directions,
+        "minSubjectScores": {
+            "noteRu": "Минимальные баллы 2026. Ниже порога документы не принимают.",
+            "noteEn": "Minimum scores 2026. Applications below the threshold are not accepted.",
+            "subjects": [
+                {"nameRu": "Математика (профиль)", "nameEn": "Mathematics (profile)", "budget": 27, "paid": 27},
+                {"nameRu": "Русский язык", "nameEn": "Russian language", "budget": 36, "paid": 36},
+                {"nameRu": "Информатика", "nameEn": "Computer science", "budget": 40, "paid": 40},
+                {"nameRu": "Физика", "nameEn": "Physics", "budget": 36, "paid": 36},
+                {"nameRu": "Обществознание", "nameEn": "Social studies", "budget": 44, "paid": 44},
+                {"nameRu": "История", "nameEn": "History", "budget": 34, "paid": 34},
+            ],
+        },
+        "salaries": salaries,
+        "seats": [
+            {
+                "id": "budget",
+                "cls": "s1",
+                "colorVar": "var(--seg-1)",
+                "labelRu": "Бюджет (общий конкурс)",
+                "labelEn": "State-funded (general)",
+                "count": 711,
+                "prompt": "Сколько бюджетных мест по общему конкурсу выделено в СибГУТИ?",
+            },
+            {
+                "id": "quotas",
+                "cls": "s2",
+                "colorVar": "var(--seg-2)",
+                "labelRu": "Целевая и спецквоты",
+                "labelEn": "Target & special quotas",
+                "count": 229,
+                "prompt": "Как устроены целевая, особая и отдельная квоты при поступлении в СибГУТИ?",
+            },
+            {
+                "id": "paid",
+                "cls": "s3",
+                "colorVar": "var(--seg-3)",
+                "labelRu": "Платные места",
+                "labelEn": "Tuition-based seats",
+                "count": 557,
+                "prompt": "Сколько платных мест доступно в СибГУТИ и можно ли потом перевестись на бюджет?",
+            },
+        ],
+        "campus": [
+            {
+                "labelRu": "Академическая",
+                "labelEn": "Academic",
+                "valRu": "от 2 900 ₽/мес",
+                "valEn": "from 2,900 ₽/mo",
+                "prompt": "Какие условия и размер государственной академической стипендии в СибГУТИ?",
+            },
+            {
+                "labelRu": "Повышенная",
+                "labelEn": "Enhanced",
+                "valRu": "до 12 000 ₽/мес",
+                "valEn": "up to 12,000 ₽/mo",
+                "prompt": "За какие достижения назначается повышенная академическая стипендия в СибГУТИ?",
+            },
+            {
+                "labelRu": "Общежитие",
+                "labelEn": "Dormitory",
+                "valRu": "от 1 100 ₽/мес",
+                "valEn": "from 1,100 ₽/mo",
+                "prompt": "Как получить место в общежитии СибГУТИ и сколько стоит проживание?",
+            },
+            {
+                "labelRu": "Доп. баллы ИД",
+                "labelEn": "Bonus points",
+                "valRu": "до +10 баллов",
+                "valEn": "up to +10 pts",
+                "prompt": "За какие индивидуальные достижения СибГУТИ начисляет дополнительные баллы?",
+            },
+        ],
+        "timeline": [
+            {
+                "titleRu": "Подача документов",
+                "titleEn": "Application submission",
+                "periodRu": "20 июня — 25 июля",
+                "periodEn": "Jun 20 — Jul 25",
+                "current": True,
+                "prompt": "Какие сроки и способы подачи документов в СибГУТИ?",
+            },
+            {
+                "titleRu": "Приоритетное зачисление",
+                "titleEn": "Priority enrollment",
+                "periodRu": "конец июля — начало августа",
+                "periodEn": "late July — early August",
+                "current": False,
+                "prompt": "Как проходит приоритетное зачисление по квотам и БВИ?",
+            },
+            {
+                "titleRu": "Основной этап",
+                "titleEn": "Main stage",
+                "periodRu": "начало августа",
+                "periodEn": "early August",
+                "current": False,
+                "prompt": "Когда публикуются конкурсные списки и приказы основного этапа?",
+            },
+            {
+                "titleRu": "Заселение в общежития",
+                "titleEn": "Dorm move-in",
+                "periodRu": "конец августа",
+                "periodEn": "late August",
+                "current": False,
+                "prompt": "Когда и как заселяются в общежития СибГУТИ?",
+            },
+        ],
+    }
+
