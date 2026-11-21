@@ -1549,6 +1549,39 @@ def write_app_settings(patch: dict[str, Any]) -> dict[str, Any]:
     return settings
 
 
+SITE_REBUILD_MIN_INTERVAL_SEC = 24 * 60 * 60
+
+
+def site_rebuild_cooldown() -> dict[str, Any]:
+    """Проверяет суточный лимит на полную пересборку базы с сайта.
+
+    Полная пересборка обходит десятки страниц и PDF, поэтому повторный запуск
+    раньше чем через сутки блокируется, чтобы не нагружать сайт вуза.
+    """
+    raw = str(read_app_settings().get("last_site_rebuild_at") or "").strip()
+    last_dt: datetime | None = None
+    if raw:
+        try:
+            last_dt = datetime.fromisoformat(raw)
+        except ValueError:
+            last_dt = None
+        if last_dt is not None and last_dt.tzinfo is None:
+            last_dt = last_dt.replace(tzinfo=timezone.utc)
+    if last_dt is None:
+        return {"last_at": "", "next_at": "", "remaining_sec": 0, "allowed": True}
+
+    next_dt = last_dt + timedelta(seconds=SITE_REBUILD_MIN_INTERVAL_SEC)
+    remaining = int((next_dt - datetime.now(timezone.utc)).total_seconds())
+    if remaining <= 0:
+        return {"last_at": raw, "next_at": "", "remaining_sec": 0, "allowed": True}
+    return {
+        "last_at": raw,
+        "next_at": next_dt.isoformat(timespec="seconds"),
+        "remaining_sec": remaining,
+        "allowed": False,
+    }
+
+
 def resolve_kb_folder(folder: str) -> Path:
     """Разрешает папку источников только внутри data/ (без выхода за пределы проекта)."""
     raw = (folder or "").strip()
@@ -1799,33 +1832,43 @@ def run_site_rebuild(progress: Callable[..., None] | None = None) -> dict[str, A
     состоянию: частично собранная база хуже прежней.
     """
     before_docs = int(_read_stats().get("unique_docs") or 0)
+    previous_stamp = str(read_app_settings().get("last_site_rebuild_at") or "")
+    # Отметку ставим сразу: суточный лимит защищает сайт и от повторных неудачных попыток.
+    write_app_settings(
+        {"last_site_rebuild_at": datetime.now(timezone.utc).isoformat(timespec="seconds")}
+    )
 
-    backup: dict[str, Any] | None = None
-    if config.KB_PATH.exists() and config.EMBEDDINGS_PATH.exists():
+    try:
+        backup: dict[str, Any] | None = None
+        if config.KB_PATH.exists() and config.EMBEDDINGS_PATH.exists():
+            if progress is not None:
+                progress(0, 1, "Резервная копия перед пересборкой")
+            backup = create_backup("Перед пересборкой с сайта")
+
         if progress is not None:
-            progress(0, 1, "Резервная копия перед пересборкой")
-        backup = create_backup("Перед пересборкой с сайта")
+            progress(0, 1, "Поиск ссылок на сайте")
+        sources = discover_site_sources()
+        stats = run_urls(config.SITE_SOURCES_PATH, use_wayback=False, progress=progress)
 
-    if progress is not None:
-        progress(0, 1, "Поиск ссылок на сайте")
-    sources = discover_site_sources()
-    stats = run_urls(config.SITE_SOURCES_PATH, use_wayback=False, progress=progress)
+        after_docs = int(stats.get("unique_docs") or 0)
+        degraded = before_docs > 0 and after_docs < before_docs * 0.5
+        if after_docs == 0 or degraded:
+            if backup is not None:
+                restore_backup(str(backup["id"]))
+            raise RuntimeError(
+                f"сайт отдал {after_docs} документов вместо {before_docs} — "
+                "база восстановлена из копии"
+            )
 
-    after_docs = int(stats.get("unique_docs") or 0)
-    degraded = before_docs > 0 and after_docs < before_docs * 0.5
-    if after_docs == 0 or degraded:
-        if backup is not None:
-            restore_backup(str(backup["id"]))
-        raise RuntimeError(
-            f"сайт отдал {after_docs} документов вместо {before_docs} — "
-            "база восстановлена из копии"
-        )
-
-    return {
-        "sources": len(sources),
-        "stats": stats,
-        "backup_id": str(backup["id"]) if backup else "",
-    }
+        return {
+            "sources": len(sources),
+            "stats": stats,
+            "backup_id": str(backup["id"]) if backup else "",
+        }
+    except Exception:
+        # Неудачная попытка не должна блокировать повторный запуск на сутки.
+        write_app_settings({"last_site_rebuild_at": previous_stamp})
+        raise
 
 
 def _catalog_body_hash(path: Path) -> str:

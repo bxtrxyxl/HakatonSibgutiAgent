@@ -36,6 +36,7 @@ from src.ingest import (
     run_directory,
     run_single_file,
     run_site_rebuild,
+    site_rebuild_cooldown,
     start_autoupdate_scheduler,
     start_job,
     write_app_settings,
@@ -431,11 +432,28 @@ def site_refresh(request: SiteRefreshRequest) -> dict[str, Any]:
             raise HTTPException(status_code=502, detail=_safe_error(exc)) from exc
         return {"status": "discovered", "count": len(sources), "sources": sources}
 
+    cooldown = site_rebuild_cooldown()
+    if not cooldown["allowed"]:
+        raise HTTPException(
+            status_code=429,
+            detail={
+                "message": "Полная пересборка с сайта уже выполнялась менее суток назад",
+                "next_at": cooldown["next_at"],
+                "remaining_sec": cooldown["remaining_sec"],
+            },
+            headers={"Retry-After": str(cooldown["remaining_sec"])},
+        )
+
     try:
         job = start_job("site_rebuild", _site_rebuild_task)
     except RuntimeError as exc:
         raise HTTPException(status_code=409, detail=str(exc)) from exc
     return {"status": "started", "job": job}
+
+
+@app.get("/api/site/rebuild-status")
+def site_rebuild_status() -> dict[str, Any]:
+    return site_rebuild_cooldown()
 
 
 @app.get("/api/jobs/current")

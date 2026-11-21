@@ -2,6 +2,9 @@
 
 from __future__ import annotations
 
+import json
+from datetime import datetime, timezone
+from pathlib import Path
 from types import SimpleNamespace
 
 import pytest
@@ -9,6 +12,7 @@ from fastapi.testclient import TestClient
 
 from src import config, security
 from src.api import app
+from src.ingest import site_rebuild_cooldown
 from src.retrieval import build_overview, refresh_overview
 
 pytestmark = pytest.mark.skipif(
@@ -174,6 +178,40 @@ def test_admin_token_redacted_from_logs(monkeypatch: pytest.MonkeyPatch) -> None
     cleaned = security.redact("failed with super-secret-xyz-999 and X-Admin-Token: another-secret")
     assert "super-secret-xyz-999" not in cleaned
     assert "another-secret" not in cleaned
+
+
+def test_site_rebuild_cooldown_allows_once_per_day(
+    client: TestClient, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    settings_path = tmp_path / "app_settings.json"
+    monkeypatch.setattr(config, "APP_SETTINGS_PATH", settings_path)
+
+    assert site_rebuild_cooldown()["allowed"] is True
+    status = client.get("/api/site/rebuild-status")
+    assert status.status_code == 200
+    assert status.json()["allowed"] is True
+
+    now = datetime.now(timezone.utc).isoformat(timespec="seconds")
+    settings_path.write_text(
+        json.dumps({"folder": "data/docs", "last_site_rebuild_at": now}, ensure_ascii=False),
+        encoding="utf-8",
+    )
+
+    blocked = site_rebuild_cooldown()
+    assert blocked["allowed"] is False
+    assert 0 < blocked["remaining_sec"] <= 24 * 60 * 60
+    assert blocked["next_at"]
+
+    status = client.get("/api/site/rebuild-status")
+    assert status.status_code == 200
+    assert status.json()["allowed"] is False
+
+    blocked_call = client.post(
+        "/api/site/refresh", json={"ingest": True}, headers=_admin_headers()
+    )
+    assert blocked_call.status_code == 429
+    assert int(blocked_call.headers["Retry-After"]) >= 1
+    assert blocked_call.json()["detail"]["next_at"]
 
 
 def test_overview_refresh_persists_snapshot(client: TestClient) -> None:

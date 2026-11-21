@@ -4068,6 +4068,9 @@
           dbSiteRun: 'Пересобрать с сайта',
           dbSiteRunning: 'Пересборка идёт',
           dbSiteNote: 'Задача идёт в фоне. Если сайт отдал слишком мало документов, база восстановится из копии.',
+          dbSiteCooldownBadge: 'Доступно позже',
+          dbSiteCooldownNote: 'Полная пересборка доступна не чаще раза в сутки. Следующий запуск:',
+          dbSiteCooldown: 'Пересборка с сайта уже выполнялась менее суток назад',
           dbSiteDone: 'База пересобрана',
           dbSiteFailed: 'Пересборка не удалась',
           dbSiteBackup: 'Копия',
@@ -4292,6 +4295,9 @@
           dbSiteRun: 'Rebuild from site',
           dbSiteRunning: 'Rebuilding',
           dbSiteNote: 'The job runs in the background. If the site returns too few documents, the database is restored from the backup.',
+          dbSiteCooldownBadge: 'Available later',
+          dbSiteCooldownNote: 'A full rebuild is allowed once a day. Next run:',
+          dbSiteCooldown: 'A full site rebuild ran less than a day ago',
           dbSiteDone: 'Database rebuilt',
           dbSiteFailed: 'Rebuild failed',
           dbSiteBackup: 'Backup',
@@ -6041,6 +6047,7 @@
             admin: data.admin || null
           };
           renderDatabaseTab();
+          fetchSiteCooldown();
         } catch (err) {
           setDbError(`${t('dbServerError')}: ${err.message}`);
           el.dbActiveBadge.textContent = t('dbOffline');
@@ -6136,12 +6143,39 @@
 
       let siteRebuildTimer = null;
       let siteRebuildActive = false;
+      let siteCooldown = null;
 
       function stopSiteRebuildPolling() {
         if (siteRebuildTimer) {
           clearTimeout(siteRebuildTimer);
           siteRebuildTimer = null;
         }
+      }
+
+      function applySiteCooldown() {
+        if (siteRebuildActive) return;
+        if (siteCooldown && !siteCooldown.allowed) {
+          el.rebuildSiteBtn.disabled = true;
+          el.siteRebuildBadge.style.display = '';
+          el.siteRebuildBadge.classList.remove('is-run', 'is-ok');
+          el.siteRebuildBadge.textContent = t('dbSiteCooldownBadge');
+          el.siteRebuildNote.textContent =
+            `${t('dbSiteCooldownNote')} ${formatDbDateTime(siteCooldown.next_at)}`;
+          return;
+        }
+        el.rebuildSiteBtn.disabled = false;
+        el.siteRebuildBadge.style.display = 'none';
+        el.siteRebuildProgressWrap.style.display = 'none';
+        el.siteRebuildNote.textContent = t('dbSiteNote');
+      }
+
+      async function fetchSiteCooldown() {
+        try {
+          siteCooldown = await dbFetch('/api/site/rebuild-status');
+        } catch (err) {
+          siteCooldown = null;
+        }
+        applySiteCooldown();
       }
 
       function renderSiteJob(job) {
@@ -6183,9 +6217,7 @@
         }
         if (!job || job.kind !== 'site_rebuild' || job.status === 'idle') {
           siteRebuildActive = false;
-          el.rebuildSiteBtn.disabled = false;
-          el.siteRebuildBadge.style.display = 'none';
-          el.siteRebuildProgressWrap.style.display = 'none';
+          applySiteCooldown();
           return;
         }
         const wasActive = siteRebuildActive;
@@ -6199,6 +6231,7 @@
         if (job.status === 'done') {
           showToast(t('dbSiteDone'), 'ok');
           fetchDatabaseView();
+          fetchSiteCooldown();
           tryFetchBackendOverview();
         } else {
           showToast(`${t('dbSiteFailed')}: ${job.error || ''}`, 'err');
@@ -6219,7 +6252,12 @@
           siteRebuildTimer = setTimeout(fetchSiteJob, 1200);
         } catch (err) {
           el.rebuildSiteBtn.disabled = false;
-          showToast(err.status === 409 ? t('dbJobBusy') : err.message, 'err');
+          if (err.status === 429) {
+            showToast(t('dbSiteCooldown'), 'err');
+            fetchSiteCooldown();
+          } else {
+            showToast(err.status === 409 ? t('dbJobBusy') : err.message, 'err');
+          }
         }
       }
 
