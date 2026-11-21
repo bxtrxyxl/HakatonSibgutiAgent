@@ -3093,6 +3093,43 @@
       color: var(--text-3);
     }
 
+    .db-progress {
+      height: 6px;
+      border-radius: 999px;
+      background: var(--track);
+      overflow: hidden;
+    }
+
+    .db-badge.is-ok {
+      background: var(--success-bg);
+      border-color: var(--success-border);
+      color: var(--success);
+    }
+
+    .db-badge.is-run {
+      background: var(--accent-soft, var(--glass-2));
+      border-color: var(--border-hover);
+      color: var(--text);
+    }
+
+    .db-progress-bar {
+      height: 100%;
+      width: 0;
+      border-radius: 999px;
+      background: var(--fill);
+      transition: width 0.3s ease;
+    }
+
+    .db-select {
+      height: 34px;
+      padding: 0 10px;
+      border-radius: 10px;
+      border: 1px solid var(--border);
+      background: var(--tile-bg);
+      color: var(--text);
+      font-size: 12px;
+    }
+
     .db-error {
       display: flex;
       align-items: center;
@@ -3670,14 +3707,35 @@
             <p id="programCatalogStatus" class="db-note" data-i18n="dbProgramsNote">Каталог обновляется с portal.sibsutis.ru и не меняет основную базу, пока вы не запустите пересборку.</p>
           </div>
 
-          <div class="db-section db-plan">
+          <div class="db-section">
+            <div class="db-section-head">
+              <div>
+                <span class="db-section-title" data-i18n="dbAutoTitle">Автообновление по расписанию</span>
+                <span class="db-section-desc" data-i18n="dbAutoDesc">Сервер сам обновляет каталог, достижения, минимальные баллы и ссылки для парсинга. База знаний пересобирается отдельно.</span>
+              </div>
+              <span id="autoUpdateBadge" class="db-badge">—</span>
+            </div>
             <div class="toggle-row" style="padding:0;">
               <div class="toggle-info">
-                <span class="toggle-title" data-i18n="dbAutoTitle">Автообновление по расписанию</span>
-                <span class="toggle-desc" data-i18n="dbAutoDesc">Планировщик будет сам обновлять каталог и базу. Пока обновление запускается вручную.</span>
+                <span class="toggle-title" data-i18n="dbAutoToggle">Включить автообновление</span>
+                <span id="autoUpdateStatus" class="toggle-desc">—</span>
               </div>
-              <span class="db-badge" data-i18n="dbSoonBadge">план</span>
+              <button id="toggleAutoUpdate" class="switch" role="switch" aria-checked="false" aria-label="Автообновление"></button>
             </div>
+            <div class="db-folder-row" style="margin-top:10px;">
+              <select id="autoUpdateInterval" class="db-select">
+                <option value="6">6 ч</option>
+                <option value="12">12 ч</option>
+                <option value="24">24 ч</option>
+                <option value="72">3 дня</option>
+                <option value="168">7 дней</option>
+              </select>
+              <button id="runAutoUpdateBtn" class="btn-pill-ghost" style="height:34px;" data-i18n="dbAutoRun">Обновить сейчас</button>
+            </div>
+            <div id="autoUpdateProgressWrap" class="db-progress" style="display:none;margin-top:10px;">
+              <div id="autoUpdateProgressBar" class="db-progress-bar"></div>
+            </div>
+            <p id="autoUpdateNote" class="db-note" data-i18n="dbAutoNote">Фоновые задачи выполняются по одной. Прогресс виден здесь.</p>
           </div>
 
           <!-- Secondary manual import utility for jury/admin verification -->
@@ -3900,8 +3958,20 @@
           dbSourcesFound: 'Ссылок найдено',
           dbLocalBadge: 'локально',
           dbAutoTitle: 'Автообновление по расписанию',
-          dbAutoDesc: 'Планировщик будет сам обновлять каталог и базу. Пока обновление запускается вручную.',
-          dbSoonBadge: 'план',
+          dbAutoDesc: 'Сервер сам обновляет каталог, достижения, минимальные баллы и ссылки для парсинга. База знаний пересобирается отдельно.',
+          dbAutoToggle: 'Включить автообновление',
+          dbAutoRun: 'Обновить сейчас',
+          dbAutoNote: 'Фоновые задачи выполняются по одной. Прогресс виден здесь.',
+          dbAutoLast: 'последний запуск',
+          dbAutoOn: 'включено',
+          dbAutoOff: 'выключено',
+          dbAutoNever: 'ещё не запускалось',
+          dbAutoNext: 'следующий запуск',
+          dbAutoRunning: 'Выполняется',
+          dbAutoUpdated: 'Автообновление завершено',
+          dbAutoNoChanges: 'Изменений нет',
+          dbAutoChanged: 'Изменено',
+          dbJobBusy: 'Уже выполняется другая задача',
           dbImportSummary: 'Импорт отдельного документа',
           toastDbBackup: 'Резервная копия создана',
           toastDbRestored: 'База восстановлена из копии',
@@ -4083,8 +4153,20 @@
           dbSourcesFound: 'Links found',
           dbLocalBadge: 'local',
           dbAutoTitle: 'Scheduled updates',
-          dbAutoDesc: 'A scheduler will refresh the catalog and database automatically. For now updates are manual.',
-          dbSoonBadge: 'planned',
+          dbAutoDesc: 'The server refreshes the catalog, achievements, minimum scores and parsing links. The knowledge base is rebuilt separately.',
+          dbAutoToggle: 'Enable scheduled updates',
+          dbAutoRun: 'Update now',
+          dbAutoNote: 'Background jobs run one at a time. Progress is shown here.',
+          dbAutoLast: 'last run',
+          dbAutoOn: 'enabled',
+          dbAutoOff: 'disabled',
+          dbAutoNever: 'never run',
+          dbAutoNext: 'next run',
+          dbAutoRunning: 'Running',
+          dbAutoUpdated: 'Scheduled update finished',
+          dbAutoNoChanges: 'No changes',
+          dbAutoChanged: 'Changed',
+          dbJobBusy: 'Another job is already running',
           dbImportSummary: 'Import a single document',
           toastDbBackup: 'Backup created',
           toastDbRestored: 'Database restored from backup',
@@ -4335,6 +4417,14 @@
         discoverSourcesBtn: document.getElementById('discoverSourcesBtn'),
         refreshAchievementsBtn: document.getElementById('refreshAchievementsBtn'),
         refreshMinScoresBtn: document.getElementById('refreshMinScoresBtn'),
+        toggleAutoUpdate: document.getElementById('toggleAutoUpdate'),
+        autoUpdateBadge: document.getElementById('autoUpdateBadge'),
+        autoUpdateStatus: document.getElementById('autoUpdateStatus'),
+        autoUpdateInterval: document.getElementById('autoUpdateInterval'),
+        runAutoUpdateBtn: document.getElementById('runAutoUpdateBtn'),
+        autoUpdateProgressWrap: document.getElementById('autoUpdateProgressWrap'),
+        autoUpdateProgressBar: document.getElementById('autoUpdateProgressBar'),
+        autoUpdateNote: document.getElementById('autoUpdateNote'),
         programCatalogStatus: document.getElementById('programCatalogStatus'),
         exportJsonBtn: document.getElementById('exportJsonBtn'),
         clearHistoryBtn: document.getElementById('clearHistoryBtn'),
@@ -5481,10 +5571,12 @@
       function openSettings() {
         syncSettingsUI();
         el.settingsModal.classList.add('open');
+        fetchAutoUpdate({ silent: true });
       }
 
       function closeSettings() {
         el.settingsModal.classList.remove('open');
+        stopAutoUpdatePolling();
         resetClearButton();
       }
 
@@ -5510,7 +5602,9 @@
         }
         if (!response.ok) {
           const detail = payload && payload.detail ? payload.detail : `HTTP ${response.status}`;
-          throw new Error(detail);
+          const error = new Error(detail);
+          error.status = response.status;
+          throw error;
         }
         return payload;
       }
@@ -5527,6 +5621,17 @@
           day: '2-digit',
           month: '2-digit',
           year: '2-digit'
+        });
+      }
+
+      function formatDbDateTime(iso) {
+        const date = new Date(iso);
+        if (Number.isNaN(date.getTime())) return '—';
+        return date.toLocaleString(state.settings.lang === 'en' ? 'en-GB' : 'ru-RU', {
+          day: '2-digit',
+          month: '2-digit',
+          hour: '2-digit',
+          minute: '2-digit'
         });
       }
 
@@ -5691,6 +5796,137 @@
           setDbError(err.message);
         } finally {
           button.disabled = false;
+        }
+      }
+
+      /* --- Автообновление по расписанию ---------------------------------- */
+
+      let autoUpdateView = null;
+      let autoUpdatePollTimer = null;
+
+      function stopAutoUpdatePolling() {
+        if (autoUpdatePollTimer) {
+          clearTimeout(autoUpdatePollTimer);
+          autoUpdatePollTimer = null;
+        }
+      }
+
+      function scheduleAutoUpdatePolling() {
+        stopAutoUpdatePolling();
+        if (!el.settingsModal || !el.settingsModal.classList.contains('open')) return;
+        const running = autoUpdateView && autoUpdateView.job && autoUpdateView.job.status === 'running';
+        autoUpdatePollTimer = setTimeout(
+          () => fetchAutoUpdate({ silent: true }),
+          running ? 1500 : 6000
+        );
+      }
+
+      function renderAutoUpdate() {
+        if (!el.toggleAutoUpdate) return;
+        const data = autoUpdateView;
+        if (!data) return;
+
+        const enabled = Boolean(data.enabled);
+        const job = data.job || {};
+        const running = job.status === 'running';
+
+        el.toggleAutoUpdate.setAttribute('aria-checked', String(enabled));
+        if (document.activeElement !== el.autoUpdateInterval) {
+          el.autoUpdateInterval.value = String(data.interval_hours || 24);
+        }
+
+        el.autoUpdateBadge.classList.toggle('is-ok', enabled && !running);
+        el.autoUpdateBadge.classList.toggle('is-run', running);
+        el.autoUpdateBadge.textContent = running
+          ? t('dbAutoRunning')
+          : (enabled ? t('dbAutoOn') : t('dbAutoOff'));
+
+        const parts = [];
+        parts.push(data.last_run ? `${t('dbAutoLast')}: ${formatDbDateTime(data.last_run)}` : t('dbAutoNever'));
+        if (data.next_run && enabled) {
+          parts.push(`${t('dbAutoNext')}: ${formatDbDateTime(data.next_run)}`);
+        }
+        if (running) {
+          parts.push(`${t('dbAutoRunning')} · ${job.step || ''} ${job.progress || 0}%`);
+        }
+        el.autoUpdateStatus.textContent = parts.join(' · ');
+
+        el.autoUpdateProgressWrap.style.display = running ? 'block' : 'none';
+        el.autoUpdateProgressBar.style.width = `${running ? (job.progress || 0) : 0}%`;
+        el.runAutoUpdateBtn.disabled = running;
+
+        const changed = (data.last_summary && data.last_summary.changed) || [];
+        if (running) {
+          el.autoUpdateNote.textContent = `${t('dbAutoRunning')}: ${job.step || ''} ${job.progress || 0}%`;
+        } else if (data.last_run) {
+          el.autoUpdateNote.textContent = changed.length
+            ? `${t('dbAutoChanged')}: ${changed.join(', ')}`
+            : t('dbAutoNoChanges');
+        } else {
+          el.autoUpdateNote.textContent = t('dbAutoNote');
+        }
+      }
+
+      async function fetchAutoUpdate(options = {}) {
+        try {
+          const data = await dbFetch('/api/autoupdate');
+          autoUpdateView = data;
+          renderAutoUpdate();
+          scheduleAutoUpdatePolling();
+        } catch (err) {
+          if (!options.silent) {
+            el.autoUpdateBadge.textContent = '—';
+            el.autoUpdateStatus.textContent = err.message;
+          }
+        }
+      }
+
+      async function toggleAutoUpdate() {
+        const enabled = el.toggleAutoUpdate.getAttribute('aria-checked') !== 'true';
+        el.toggleAutoUpdate.setAttribute('aria-checked', String(enabled));
+        try {
+          autoUpdateView = await dbFetch('/api/autoupdate', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              enabled,
+              interval_hours: Number(el.autoUpdateInterval.value) || 24
+            })
+          });
+          renderAutoUpdate();
+          showToast(enabled ? t('dbAutoOn') : t('dbAutoOff'), 'ok');
+        } catch (err) {
+          el.toggleAutoUpdate.setAttribute('aria-checked', String(!enabled));
+          showToast(err.message, 'err');
+        }
+      }
+
+      async function changeAutoUpdateInterval() {
+        try {
+          autoUpdateView = await dbFetch('/api/autoupdate', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              enabled: Boolean(autoUpdateView && autoUpdateView.enabled),
+              interval_hours: Number(el.autoUpdateInterval.value) || 24
+            })
+          });
+          renderAutoUpdate();
+        } catch (err) {
+          showToast(err.message, 'err');
+        }
+      }
+
+      async function runAutoUpdateNow() {
+        el.runAutoUpdateBtn.disabled = true;
+        try {
+          const data = await dbFetch('/api/autoupdate/run', { method: 'POST' });
+          autoUpdateView = Object.assign({}, autoUpdateView || {}, { job: data.job });
+          renderAutoUpdate();
+          scheduleAutoUpdatePolling();
+        } catch (err) {
+          el.runAutoUpdateBtn.disabled = false;
+          showToast(err.status === 409 ? t('dbJobBusy') : err.message, 'err');
         }
       }
 
@@ -6030,6 +6266,9 @@
         el.discoverSourcesBtn.addEventListener('click', discoverSources);
         el.refreshAchievementsBtn.addEventListener('click', refreshAchievements);
         el.refreshMinScoresBtn.addEventListener('click', refreshMinScores);
+        el.toggleAutoUpdate.addEventListener('click', toggleAutoUpdate);
+        el.autoUpdateInterval.addEventListener('change', changeAutoUpdateInterval);
+        el.runAutoUpdateBtn.addEventListener('click', runAutoUpdateNow);
         el.dbRetryBtn.addEventListener('click', fetchDatabaseView);
         el.dbBackupList.addEventListener('click', (event) => {
           const btn = event.target.closest('[data-action]');

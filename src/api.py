@@ -5,8 +5,8 @@ from __future__ import annotations
 import json
 import os
 import tempfile
-import threading
 import time
+from contextlib import asynccontextmanager
 from pathlib import Path
 from typing import Annotated, Any
 
@@ -17,27 +17,41 @@ from pydantic import BaseModel, Field
 from src import config
 from src.agent import get_agent
 from src.ingest import (
+    DB_LOCK,
+    autoupdate_status,
     build_achievements_catalog,
     build_min_scores_catalog,
     build_program_catalog,
+    configure_autoupdate,
     create_backup,
     database_status,
     delete_backup,
     discover_site_sources,
+    job_status,
     load_achievements_catalog,
     load_min_scores_catalog,
     load_program_catalog,
     restore_backup,
+    run_autoupdate,
     run_directory,
     run_single_file,
-    run_urls,
+    run_site_rebuild,
+    start_autoupdate_scheduler,
+    start_job,
     write_app_settings,
 )
 from src.retrieval import build_overview, recommend_programs
 
-app = FastAPI(title="Ассистент СибГУТИ", version="1.0.0")
 
-_DB_LOCK = threading.Lock()
+@asynccontextmanager
+async def _lifespan(_app: FastAPI):
+    start_autoupdate_scheduler()
+    yield
+
+
+app = FastAPI(title="Ассистент СибГУТИ", version="1.0.0", lifespan=_lifespan)
+
+_DB_LOCK = DB_LOCK
 _ALLOWED_UPLOADS = {".html", ".htm", ".pdf", ".txt", ".md"}
 _MAX_UPLOAD_BYTES = 25 * 1024 * 1024
 
@@ -68,9 +82,20 @@ class SiteRefreshRequest(BaseModel):
     ingest: bool = Field(default=False, description="Сразу собрать базу из найденных ссылок")
 
 
+class AutoUpdateRequest(BaseModel):
+    enabled: bool = Field(default=True)
+    interval_hours: int = Field(default=24, ge=1, le=168)
+
+
 def _reset_retriever() -> None:
     agent = get_agent()
     agent.retriever = type(agent.retriever)()
+
+
+def _site_rebuild_task(progress: Any) -> dict[str, Any]:
+    result = run_site_rebuild(progress)
+    _reset_retriever()
+    return result
 
 
 def _safe_error(exc: Exception) -> str:
@@ -343,21 +368,42 @@ def site_sources() -> dict[str, Any]:
 
 @app.post("/api/site/refresh")
 def site_refresh(request: SiteRefreshRequest) -> dict[str, Any]:
-    try:
-        sources = discover_site_sources()
-    except Exception as exc:
-        raise HTTPException(status_code=502, detail=_safe_error(exc)) from exc
-
     if not request.ingest:
+        try:
+            sources = discover_site_sources()
+        except Exception as exc:
+            raise HTTPException(status_code=502, detail=_safe_error(exc)) from exc
         return {"status": "discovered", "count": len(sources), "sources": sources}
 
     try:
-        with _DB_LOCK:
-            stats = run_urls(config.SITE_SOURCES_PATH, use_wayback=False)
-        _reset_retriever()
-    except Exception as exc:
-        raise HTTPException(status_code=500, detail=_safe_error(exc)) from exc
-    return {"status": "ok", "sources": len(sources), "stats": stats}
+        job = start_job("site_rebuild", _site_rebuild_task)
+    except RuntimeError as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
+    return {"status": "started", "job": job}
+
+
+@app.get("/api/jobs/current")
+def current_job() -> dict[str, Any]:
+    return job_status()
+
+
+@app.get("/api/autoupdate")
+def autoupdate() -> dict[str, Any]:
+    return autoupdate_status()
+
+
+@app.post("/api/autoupdate")
+def update_autoupdate(request: AutoUpdateRequest) -> dict[str, Any]:
+    return configure_autoupdate(request.enabled, request.interval_hours)
+
+
+@app.post("/api/autoupdate/run")
+def run_autoupdate_now() -> dict[str, Any]:
+    try:
+        job = start_job("autoupdate", run_autoupdate)
+    except RuntimeError as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
+    return {"status": "started", "job": job}
 
 
 @app.get("/api/stats")

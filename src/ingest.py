@@ -8,16 +8,18 @@
 from __future__ import annotations
 
 import argparse
+import copy
 import hashlib
 import json
 import re
 import shutil
 import sqlite3
 import sys
+import threading
 import time
 import uuid
-from collections.abc import Iterable
-from datetime import datetime, timezone
+from collections.abc import Callable, Iterable
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any
 from urllib.parse import parse_qs, urljoin, urlparse
@@ -30,6 +32,9 @@ from pypdf import PdfReader
 from src import config
 
 # --- Константы ------------------------------------------------------------
+
+# Один замок на все записи в базу: ручные эндпоинты и фоновые задачи не пересекаются.
+DB_LOCK = threading.Lock()
 
 REMOVE_TAGS = (
     "script", "style", "nav", "header", "footer", "aside", "form",
@@ -766,7 +771,12 @@ def write_stats(
     return stats
 
 
-def run_urls(seed_path: Path, use_wayback: bool = True, resume: bool = False) -> dict[str, Any]:
+def run_urls(
+    seed_path: Path,
+    use_wayback: bool = True,
+    resume: bool = False,
+    progress: Callable[[int, int, str], None] | None = None,
+) -> dict[str, Any]:
     sources = json.loads(seed_path.read_text(encoding="utf-8"))
     connection = connect_db()
     init_db(connection, rebuild=not resume)
@@ -781,6 +791,8 @@ def run_urls(seed_path: Path, use_wayback: bool = True, resume: bool = False) ->
 
     for index, source in enumerate(sources, start=1):
         url = source.get("url", "?")
+        if progress is not None:
+            progress(index, len(sources), url)
         if url in done_urls:
             print(f"[{index}/{len(sources)}] skip (already indexed) {url}")
             continue
@@ -1615,6 +1627,268 @@ def database_status() -> dict[str, Any]:
             "configured": bool(config.EMBED_BASE_URL and config.EMBED_API_KEY and config.EMBED_MODEL),
         },
     }
+
+
+# --- Фоновые задачи и автообновление --------------------------------------
+
+_JOB_GUARD = threading.Lock()
+_JOB_STATE: dict[str, Any] = {
+    "id": "",
+    "kind": "",
+    "status": "idle",
+    "progress": 0,
+    "step": "",
+    "started_at": "",
+    "finished_at": "",
+    "duration_ms": 0,
+    "result": None,
+    "error": "",
+}
+_SCHEDULER_THREAD: threading.Thread | None = None
+
+
+def job_status() -> dict[str, Any]:
+    with _JOB_GUARD:
+        return copy.deepcopy(_JOB_STATE)
+
+
+def _job_progress(done: int, total: int, step: str = "") -> None:
+    total = max(1, int(total))
+    percent = max(0, min(100, int(done / total * 100)))
+    with _JOB_GUARD:
+        _JOB_STATE["progress"] = percent
+        _JOB_STATE["step"] = step
+
+
+def start_job(kind: str, target: Callable[[Callable[..., None]], Any]) -> dict[str, Any]:
+    """Запускает фоновую задачу; одновременно выполняется только одна."""
+    with _JOB_GUARD:
+        if _JOB_STATE["status"] == "running":
+            raise RuntimeError(f"уже выполняется задача: {_JOB_STATE['kind']}")
+        _JOB_STATE.update(
+            {
+                "id": uuid.uuid4().hex[:12],
+                "kind": kind,
+                "status": "running",
+                "progress": 0,
+                "step": "Запуск",
+                "started_at": utc_now(),
+                "finished_at": "",
+                "duration_ms": 0,
+                "result": None,
+                "error": "",
+            }
+        )
+    thread = threading.Thread(target=_run_job, args=(kind, target), name=f"job-{kind}", daemon=True)
+    thread.start()
+    return job_status()
+
+
+def _run_job(kind: str, target: Callable[[Callable[..., None]], Any]) -> None:
+    started = time.perf_counter()
+    try:
+        with DB_LOCK:
+            result = target(_job_progress)
+        with _JOB_GUARD:
+            _JOB_STATE.update(
+                {
+                    "status": "done",
+                    "progress": 100,
+                    "step": "Готово",
+                    "finished_at": utc_now(),
+                    "duration_ms": int((time.perf_counter() - started) * 1000),
+                    "result": result,
+                }
+            )
+    except Exception as exc:
+        with _JOB_GUARD:
+            _JOB_STATE.update(
+                {
+                    "status": "error",
+                    "finished_at": utc_now(),
+                    "duration_ms": int((time.perf_counter() - started) * 1000),
+                    "error": f"{type(exc).__name__}: {exc}",
+                }
+            )
+
+
+def run_site_rebuild(progress: Callable[..., None] | None = None) -> dict[str, Any]:
+    """Находит ссылки и полностью пересобирает базу из сайта."""
+    if progress is not None:
+        progress(0, 1, "Поиск ссылок на сайте")
+    sources = discover_site_sources()
+    stats = run_urls(config.SITE_SOURCES_PATH, use_wayback=False, progress=progress)
+    return {"sources": len(sources), "stats": stats}
+
+
+def _catalog_body_hash(path: Path) -> str:
+    """Хэш JSON без служебных полей: позволяет понять, изменились ли данные."""
+    if not path.exists():
+        return ""
+    try:
+        payload = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return ""
+    if isinstance(payload, dict):
+        payload = {key: value for key, value in payload.items() if key not in {"generated_at", "changed"}}
+    return sha256_text(json.dumps(payload, ensure_ascii=False, sort_keys=True))
+
+
+def _file_hash(path: Path) -> str:
+    if not path.exists():
+        return ""
+    try:
+        return sha256_text(path.read_text(encoding="utf-8"))
+    except OSError:
+        return ""
+
+
+def run_autoupdate(progress: Callable[..., None] | None = None) -> dict[str, Any]:
+    """Обновляет каталог, достижения, минимальные баллы и ссылки парсинга."""
+    started_at = utc_now()
+    targets: list[tuple[str, str, Callable[[], dict[str, Any]], Path]] = [
+        ("programs", "Каталог направлений", build_program_catalog, config.PROGRAMS_PATH),
+        ("achievements", "Индивидуальные достижения", build_achievements_catalog, config.ACHIEVEMENTS_PATH),
+        ("min_scores", "Минимальные баллы", build_min_scores_catalog, config.MIN_SCORES_PATH),
+    ]
+    total = len(targets) + 1
+    steps: list[dict[str, Any]] = []
+
+    for index, (key, title, builder, path) in enumerate(targets, start=1):
+        if progress is not None:
+            progress(index, total, title)
+        before = _catalog_body_hash(path)
+        try:
+            payload = builder()
+            changed = _catalog_body_hash(path) != before
+            steps.append(
+                {
+                    "key": key,
+                    "title": title,
+                    "status": "ok",
+                    "changed": changed,
+                    "generated_at": payload.get("generated_at", ""),
+                }
+            )
+        except Exception as exc:
+            steps.append(
+                {"key": key, "title": title, "status": "error", "error": f"{type(exc).__name__}: {exc}"}
+            )
+
+    if progress is not None:
+        progress(total, total, "Ссылки для парсинга")
+    before_sources = _file_hash(config.SITE_SOURCES_PATH)
+    try:
+        sources = discover_site_sources()
+        steps.append(
+            {
+                "key": "site_sources",
+                "title": "Ссылки для парсинга",
+                "status": "ok",
+                "changed": _file_hash(config.SITE_SOURCES_PATH) != before_sources,
+                "count": len(sources),
+            }
+        )
+    except Exception as exc:
+        steps.append(
+            {
+                "key": "site_sources",
+                "title": "Ссылки для парсинга",
+                "status": "error",
+                "error": f"{type(exc).__name__}: {exc}",
+            }
+        )
+
+    changed = [step["title"] for step in steps if step.get("changed")]
+    status = "ok" if all(step["status"] == "ok" for step in steps) else "partial"
+    summary = {
+        "started_at": started_at,
+        "finished_at": utc_now(),
+        "status": status,
+        "changed": changed,
+        "steps": steps,
+    }
+
+    cfg = _autoupdate_config()
+    cfg["last_run"] = summary["finished_at"]
+    cfg["last_status"] = status
+    cfg["last_summary"] = summary
+    write_app_settings({"autoupdate": cfg})
+    return summary
+
+
+def _autoupdate_config() -> dict[str, Any]:
+    settings = read_app_settings()
+    raw = settings.get("autoupdate")
+    raw = raw if isinstance(raw, dict) else {}
+    try:
+        interval = int(raw.get("interval_hours", 24))
+    except (TypeError, ValueError):
+        interval = 24
+    return {
+        "enabled": bool(raw.get("enabled", False)),
+        "interval_hours": max(1, min(168, interval)),
+        "last_run": str(raw.get("last_run") or ""),
+        "last_status": str(raw.get("last_status") or ""),
+        "last_summary": raw.get("last_summary") or {},
+    }
+
+
+def autoupdate_status() -> dict[str, Any]:
+    cfg = _autoupdate_config()
+    next_run = ""
+    due = True
+    if cfg["last_run"]:
+        try:
+            last_run = datetime.fromisoformat(cfg["last_run"])
+            next_dt = last_run + timedelta(hours=cfg["interval_hours"])
+            next_run = next_dt.isoformat(timespec="seconds")
+            due = datetime.now(timezone.utc) >= next_dt
+        except ValueError:
+            due = True
+    cfg["next_run"] = next_run
+    cfg["due"] = due
+    cfg["job"] = job_status()
+    return cfg
+
+
+def configure_autoupdate(enabled: bool, interval_hours: int) -> dict[str, Any]:
+    cfg = _autoupdate_config()
+    cfg["enabled"] = bool(enabled)
+    try:
+        hours = int(interval_hours)
+    except (TypeError, ValueError):
+        hours = 24
+    cfg["interval_hours"] = max(1, min(168, hours))
+    write_app_settings({"autoupdate": cfg})
+    return autoupdate_status()
+
+
+def start_autoupdate_scheduler() -> bool:
+    """Запускает фоновый поток планировщика (идемпотентно)."""
+    global _SCHEDULER_THREAD
+    with _JOB_GUARD:
+        if _SCHEDULER_THREAD is not None and _SCHEDULER_THREAD.is_alive():
+            return False
+        _SCHEDULER_THREAD = threading.Thread(
+            target=_scheduler_loop, name="autoupdate", daemon=True
+        )
+        _SCHEDULER_THREAD.start()
+        return True
+
+
+def _scheduler_loop() -> None:
+    while True:
+        time.sleep(30)
+        try:
+            cfg = autoupdate_status()
+            if not cfg["enabled"] or not cfg["due"]:
+                continue
+            if cfg["job"]["status"] == "running":
+                continue
+            start_job("autoupdate", run_autoupdate)
+        except Exception as exc:
+            print(f"autoupdate warning: {exc}", file=sys.stderr)
 
 
 def main(argv: Iterable[str] | None = None) -> int:
