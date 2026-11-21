@@ -1382,6 +1382,49 @@ SITE_PAGES: list[tuple[str, str, str]] = [
     ("https://sibsutis.ru/sveden/grants/", "Стипендии", "Стипендии и поддержка"),
     ("https://sibsutis.ru/sveden/education/", "Программы", "Образовательные программы"),
     ("https://sibsutis.ru/abitur/konkursnye-spiski/", "Поступление", "Конкурсные списки"),
+    ("https://sibsutis.ru/abitur/obshchezhitiya/", "Общежития", "Общежития и кампусы"),
+    ("https://sibsutis.ru/abitur/oplata-za-obshchezhitie.php", "Общежития", "Оплата за общежитие"),
+    ("https://portal.sibsutis.ru/abitur/profile/", "Программы", "Каталог направлений и профилей"),
+    (
+        "https://sibsutis.ru/applicants/documents/%D0%9F%D1%80%D0%B8%D0%B5%D0%BC%202026/"
+        "%D0%98%D1%82%D0%BE%D0%B3%D0%B8%20%D0%BF%D1%80%D0%B8%D0%B5%D0%BC%D0%B0%202026.pdf",
+        "Поступление",
+        "Итоги приёма 2026",
+    ),
+    (
+        "https://sibsutis.ru/students/info/%D0%9E%20%D1%81%D1%82%D0%B8%D0%BF%D0%B5%D0%BD%D0%B4"
+        "%D0%B8%D0%B0%D0%BB%D1%8C%D0%BD%D0%BE%D0%BC%20%D0%BE%D0%B1%D0%B5%D1%81%D0%BF%D0%B5"
+        "%D1%87%D0%B5%D0%BD%D0%B8%D0%B8/2026-2027/4-1836%D0%BE-26.pdf",
+        "Стипендии",
+        "Размер стипендий 2026/2027",
+    ),
+    (
+        "https://sibsutis.ru/students/info/%D0%9E%20%D1%81%D1%82%D0%B8%D0%BF%D0%B5%D0%BD%D0%B4"
+        "%D0%B8%D0%B0%D0%BB%D1%8C%D0%BD%D0%BE%D0%BC%20%D0%BE%D0%B1%D0%B5%D1%81%D0%BF%D0%B5"
+        "%D1%87%D0%B5%D0%BD%D0%B8%D0%B8/4-1559%D0%BE-26.pdf",
+        "Стипендии",
+        "Специальная стипендия 2026",
+    ),
+    (
+        "https://sibsutis.ru/students/info/%D0%9E%20%D0%BD%D0%B0%D0%BB%D0%B8%D1%87%D0%B8%D0%B8"
+        "%20%D0%BE%D0%B1%D1%89%D0%B5%D0%B6%D0%B8%D1%82%D0%B8%D0%B9%2C%20%D0%BA%D0%BE%D0%BB"
+        "%D0%B8%D1%87%D0%B5%D1%81%D1%82%D0%B2%D0%B5%20%D0%B6%D0%B8%D0%BB%D1%8B%D1%85%20%D0"
+        "%BF%D0%BE%D0%BC%D0%B5%D1%89%D0%B5%D0%BD%D0%B8%D0%B9%20%D0%B2%20%D0%BE%D0%B1%D1%89"
+        "%D0%B5%D0%B6%D0%B8%D1%82%D0%B8%D1%8F%D1%85%20%D0%B4%D0%BB%D1%8F%20%D0%B8%D0%BD%D0"
+        "%BE%D0%B3%D0%BE%D1%80%D0%BE%D0%B4%D0%BD%D0%B8%D1%85%20%D0%BE%D0%B1%D1%83%D1%87%D0"
+        "%B0%D1%8E%D1%89%D0%B8%D1%85%D1%81%D1%8F%2C%20%D1%84%D0%BE%D1%80%D0%BC%D0%B8%D1%80"
+        "%D0%BE%D0%B2%D0%B0%D0%BD%D0%B8%D0%B8%20%D0%BF%D0%BB%D0%B0%D1%82%D1%8B%20%D0%B7%D0"
+        "%B0%20%D0%BF%D1%80%D0%BE%D0%B6%D0%B8%D0%B2%D0%B0%D0%BD%D0%B8%D0%B5%20%D0%B2%20%D0"
+        "%BE%D0%B1%D1%89%D0%B5%D0%B6%D0%B8%D1%82%D0%B8%D1%8F%D1%85/2026%20-%202027/%D0%9F"
+        "%D1%80%D0%B8%D0%BA%D0%B0%D0%B7%20%D0%BE%D0%B1%20%D1%83%D1%82%D0%B2%D0%B5%D1%80%D0"
+        "%B6%D0%B4%D0%B5%D0%BD%D0%B8%D0%B8%20%D1%80%D0%B0%D0%B7%D0%BC%D0%B5%D1%80%D0%B0%20"
+        "%D0%BF%D0%BB%D0%B0%D1%82%D1%8B%20%D0%B7%D0%B0%20%D0%BF%D1%80%D0%BE%D0%B6%D0%B8%D0"
+        "%B2%D0%B0%D0%BD%D0%B8%D0%B5%20%D0%B2%20%D0%BE%D0%B1%D1%89%D0%B5%D0%B6%D0%B8%D1%82"
+        "%D0%B8%D1%8F%D1%85%20%D0%A1%D0%B8%D0%B1%D0%93%D0%A3%D0%A2%D0%98%20%D0%B4%D0%BB%D1"
+        "%8F%20%D0%BE%D0%B1%D1%83%D1%87%D0%B0%D1%8E%D1%89%D0%B8%D1%85%D1%81%D1%8F.pdf",
+        "Общежития",
+        "Размер платы за проживание 2026/2027",
+    ),
 ]
 
 PDF_KEYWORDS = (
@@ -1405,6 +1448,26 @@ PDF_KEYWORDS = (
 )
 
 
+def _previous_sources(section: str) -> list[dict[str, str]]:
+    """Ранее собранные источники раздела — запасной вариант, если сайт недоступен."""
+    if not config.SITE_SOURCES_PATH.exists():
+        return []
+    try:
+        payload = json.loads(config.SITE_SOURCES_PATH.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return []
+    if not isinstance(payload, list):
+        return []
+    return [
+        item
+        for item in payload
+        if isinstance(item, dict)
+        and item.get("section") == section
+        and item.get("url")
+        and item.get("title")
+    ]
+
+
 def discover_site_sources() -> list[dict[str, str]]:
     """Собирает ссылки для автоматического обновления базы."""
     sources: dict[str, dict[str, str]] = {}
@@ -1416,7 +1479,14 @@ def discover_site_sources() -> list[dict[str, str]]:
     for url, section, title in SITE_PAGES:
         add(url, section, title)
 
-    for link in discover_program_links():
+    try:
+        program_links = discover_program_links()
+    except Exception as exc:
+        # Портал может не ответить: не теряем уже собранные ссылки на профили.
+        print(f"program discovery warning: {exc}", file=sys.stderr)
+        program_links = _previous_sources("Программы")
+
+    for link in program_links:
         add(link["url"], "Программы", link["title"])
 
     try:
@@ -1429,7 +1499,11 @@ def discover_site_sources() -> list[dict[str, str]]:
             if href.lower().endswith(".pdf") and any(key in low for key in PDF_KEYWORDS):
                 add(href, "Поступление", title or Path(href).name)
     except Exception as exc:
+        # Если страница приложений недоступна, сохраняем ранее найденные PDF.
         print(f"PDF discovery warning: {exc}", file=sys.stderr)
+        for item in _previous_sources("Поступление"):
+            if item["url"].lower().endswith(".pdf"):
+                add(item["url"], "Поступление", item["title"])
 
     payload = sorted(sources.values(), key=lambda item: (item["section"], item["title"]))
     config.SITE_SOURCES_PATH.write_text(
@@ -1715,9 +1789,12 @@ def _run_job(kind: str, target: Callable[[Callable[..., None]], Any]) -> None:
 def run_site_rebuild(progress: Callable[..., None] | None = None) -> dict[str, Any]:
     """Находит ссылки и полностью пересобирает базу из сайта.
 
-    Перед пересборкой делает резервную копию: если сайт не отдал ни одного
-    документа, база возвращается к рабочему состоянию.
+    Перед пересборкой делает резервную копию. Если сайт не отдал документов
+    или собрал меньше половины прежнего объёма, база возвращается к рабочему
+    состоянию: частично собранная база хуже прежней.
     """
+    before_docs = int(_read_stats().get("unique_docs") or 0)
+
     backup: dict[str, Any] | None = None
     if config.KB_PATH.exists() and config.EMBEDDINGS_PATH.exists():
         if progress is not None:
@@ -1729,10 +1806,15 @@ def run_site_rebuild(progress: Callable[..., None] | None = None) -> dict[str, A
     sources = discover_site_sources()
     stats = run_urls(config.SITE_SOURCES_PATH, use_wayback=False, progress=progress)
 
-    if int(stats.get("unique_docs") or 0) == 0:
+    after_docs = int(stats.get("unique_docs") or 0)
+    degraded = before_docs > 0 and after_docs < before_docs * 0.5
+    if after_docs == 0 or degraded:
         if backup is not None:
             restore_backup(str(backup["id"]))
-        raise RuntimeError("сайт не отдал ни одного документа — база восстановлена из копии")
+        raise RuntimeError(
+            f"сайт отдал {after_docs} документов вместо {before_docs} — "
+            "база восстановлена из копии"
+        )
 
     return {
         "sources": len(sources),
