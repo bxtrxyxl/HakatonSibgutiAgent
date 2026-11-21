@@ -233,20 +233,7 @@
       filter: blur(88px);
     }
 
-    /* Pure-CSS radial halftone fields with soft edge masks */
-    .halftone-corner-tr {
-      position: absolute;
-      top: 0;
-      right: 0;
-      width: 580px;
-      height: 440px;
-      background-image: radial-gradient(circle, var(--halftone-dot) 1.15px, transparent 1.3px);
-      background-size: 11px 11px;
-      -webkit-mask-image: radial-gradient(ellipse 80% 75% at 88% 10%, #000 0%, rgba(0, 0, 0, 0.42) 45%, transparent 78%);
-      mask-image: radial-gradient(ellipse 80% 75% at 88% 10%, #000 0%, rgba(0, 0, 0, 0.42) 45%, transparent 78%);
-      contain: paint;
-    }
-
+    /* Pure-CSS radial halftone field with soft edge mask */
     .halftone-corner-bl {
       position: absolute;
       bottom: 0;
@@ -1438,27 +1425,12 @@
       z-index: 0;
     }
 
-    .overview-halftone::after {
-      content: "";
-      position: absolute;
-      inset: -30px;
-      background-image: radial-gradient(circle, var(--halftone-dot) 1.25px, transparent 1.4px);
-      background-size: 13px 13px;
-      opacity: 0.55;
-      -webkit-mask-image: radial-gradient(ellipse 75% 80% at 78% 18%, #000 0%, transparent 70%);
-      mask-image: radial-gradient(ellipse 75% 80% at 78% 18%, #000 0%, transparent 70%);
-      animation: halftoneDrift 26s linear infinite;
-      will-change: transform;
-      pointer-events: none;
-    }
-
     @keyframes halftoneDrift {
       from { transform: translate3d(0, 0, 0); }
       to { transform: translate3d(-13px, -13px, 0); }
     }
 
     @media (prefers-reduced-motion: reduce) {
-      .overview-halftone::after,
       .score-modal::before {
         animation: none;
       }
@@ -2981,7 +2953,6 @@
 <body>
   <!-- Static 60 FPS Ambient Glow + Halftone Background -->
   <div class="ambient-stage" aria-hidden="true">
-    <div class="halftone-corner-tr"></div>
     <div class="halftone-corner-bl"></div>
   </div>
 
