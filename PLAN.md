@@ -73,13 +73,31 @@
   - `ADMIN_TOKEN` — если пусто, действует локальный режим без токена; если задано, требуется в заголовке `X-Admin-Token` или `Authorization: Bearer <token>`.
   - `ADMIN_RATE_LIMIT_MAX` (по умолчанию `10`) — максимум запросов к защищённым эндпоинтам с одного IP за окно.
   - `ADMIN_RATE_LIMIT_WINDOW_SEC` (по умолчанию `60`) — длительность окна rate limit в секундах.
-- Защищённые эндпоинты: `POST /api/site/refresh`, `POST /api/site/sources`, `POST /api/ingest/file`, `POST /api/ingest/directory`, `POST /api/programs/refresh`, `POST /api/achievements/refresh`, `POST /api/min-scores/refresh`, `POST /api/autoupdate`, `POST /api/autoupdate/run`, `POST /api/databases/backup`, `POST /api/databases/{id}/restore`, `DELETE /api/databases/{id}`, `PUT /api/databases/folder`, `POST /api/embeddings/test`, `POST /api/admin/verify`.
+- Защищённые эндпоинты: `POST /api/site/refresh`, `POST /api/site/sources`, `POST /api/ingest/file`, `POST /api/ingest/directory`, `POST /api/programs/refresh`, `POST /api/achievements/refresh`, `POST /api/min-scores/refresh`, `POST /api/overview/refresh`, `POST /api/autoupdate`, `POST /api/autoupdate/run`, `POST /api/databases/backup`, `POST /api/databases/{id}/restore`, `DELETE /api/databases/{id}`, `PUT /api/databases/folder`, `POST /api/embeddings/test`, `POST /api/admin/verify`.
 - При отсутствии или неверном токене сервер возвращает `401`, при превышении лимита — `429` с заголовком `Retry-After`. События отказа пишутся в `logs/events.jsonl` без секретов.
 - В настройках → «База данных» отображается карточка «Админ-доступ» (`adminAuthBadge`, `adminTokenInput`, `applyAdminTokenBtn`, `clearAdminTokenBtn`, `adminAuthNote`). Токен хранится только в памяти и `sessionStorage` (`sibsutis_admin_token`) и никогда не попадает в `localStorage` или код.
 
-### Следующие шаги
+### Правая панель из БД и сравнение направлений
 
-1. Ограничить частоту полной пересборки, чтобы её нельзя было запускать чаще раза в сутки.
+Правая панель «Актуальное о СибГУТИ» и полноэкранное меню «Сравнение направлений» работают поверх реальной БД и сохраняют пересчитанный снимок между перезапусками.
+
+| Элемент UI | Что делает сейчас | Осталось |
+| --- | --- | --- |
+| Кнопка `refreshOverviewBtn` в шапке «Актуальное о СибГУТИ» | Вызывает `POST /api/overview/refresh` (`require_admin`): пересчитывает цифры панели из SQLite/каталогов детерминированно (без LLM) и сохраняет в `data/overview_cache.json` | — |
+| Вкладка «Платное» в баллах | Для платных программ без бюджета показывает реальный балл (напр. `145` для 42.03.01), для программ с бюджетом — честный порог по сумме 3 минимальных ЕГЭ (`от 99`, `paidIsMinThreshold=true`) вместо `0` | — |
+| Кнопка «Спросить в чате» в оверлее сравнения | Вторичная кнопка `score-ask-btn` (`data-action="ask"`) под «Рассчитать шанс в чате» закрывает оверлей и отправляет подробный вопрос по выбранному направлению в чат | — |
+
+- Снимок панели кэшируется в `data/overview_cache.json` с `kb_fingerprint` (версия схемы + время/размер `kb.sqlite`, `programs.json`, `min_scores.json`, `achievements.json`), поэтому пересчитанная панель сохраняется после перезапуска сервера и автоматически обновляется при изменении базы.
+- LLM в пересчёте панели не используется: reasoning-модель на объёмном контексте обрывала ответ по лимиту токенов, а цифры из каталога и БД воспроизводимы и совпадают с ответами чата. `POST /api/overview/refresh` не принимает тело запроса.
+- Обрезка длинных описаний направлений в карточке сравнения идёт по границе предложения или слова без обрыва на полуслове.
+
+### Следующие шаги (переконструированный план из 5 этапов)
+
+1. **Этап 1 из 5 (готово):** Динамическая правая панель из БД с сохранением (`data/overview_cache.json`, кнопка `refreshOverviewBtn`, `POST /api/overview/refresh` без LLM), кнопка «Спросить в чате» в оверлее «Сравнение направлений», честные баллы для «Платного» без нулей и аккуратная обрезка описаний.
+2. **Этап 2 из 5 (в работе):** Ограничение частоты полной пересборки с сайта (не чаще раза в сутки, `last_site_rebuild_at` в `data/app_settings.json`, `429` и время следующего запуска в UI).
+3. **Этап 3 из 5:** Устойчивость скрейпинга (`fetch_url` retry/backoff на временных ошибках, структурированные причины ошибок в `stats.json`) и персистентность статуса фоновой задачи (`last_job` в `data/app_settings.json`, корректный статус `interrupted` после рестарта).
+4. **Этап 4 из 5:** Легковесная оптимизация и закрытие рисков памяти/конкурентности (`SessionStore` с `Lock` и лимитом сессий, очистка просроченных бакетов в `RateLimiter`, кэш чтения каталогов по `mtime`, `Lock` и кэш `_id_to_pos` в `HybridRetriever`).
+5. **Этап 5 из 5:** Актуализация `ARCHITECTURY.md` простым языком для презентации и защиты проекта + финальная сквозная проверка.
 
 ---
 

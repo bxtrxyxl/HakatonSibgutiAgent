@@ -40,7 +40,7 @@ from src.ingest import (
     start_job,
     write_app_settings,
 )
-from src.retrieval import build_overview, recommend_programs
+from src.retrieval import build_overview, recommend_programs, refresh_overview
 
 
 @asynccontextmanager
@@ -344,6 +344,16 @@ def programs() -> dict[str, Any]:
 @app.get("/api/overview")
 def overview() -> dict[str, Any]:
     return build_overview()
+
+
+@app.post("/api/overview/refresh", dependencies=[Depends(require_admin)])
+def refresh_overview_api() -> dict[str, Any]:
+    try:
+        with _DB_LOCK:
+            data = refresh_overview()
+    except Exception as exc:
+        raise HTTPException(status_code=502, detail=_safe_error(exc)) from exc
+    return {"status": "ok", "overview": data}
 
 
 @app.get("/api/achievements")

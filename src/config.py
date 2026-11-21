@@ -31,6 +31,7 @@ ACHIEVEMENTS_PATH = DATA_DIR / "achievements.json"
 MIN_SCORES_PATH = DATA_DIR / "min_scores.json"
 BACKUPS_DIR = DATA_DIR / "backups"
 APP_SETTINGS_PATH = DATA_DIR / "app_settings.json"
+OVERVIEW_CACHE_PATH = DATA_DIR / "overview_cache.json"
 DOCS_DIR = DATA_DIR / "docs"
 EVENTS_LOG = LOGS_DIR / "events.jsonl"
 

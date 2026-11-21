@@ -2,10 +2,14 @@
 
 from __future__ import annotations
 
+import hashlib
 import json
+import os
 import re
 import sqlite3
+import tempfile
 from dataclasses import dataclass
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
@@ -419,7 +423,7 @@ SHORT_NAMES = {
     "10.03.01": ("ИБ", "SEC"),
     "11.03.01": ("Радио", "RADIO"),
     "11.03.02": ("Связь", "TEL"),
-    "11.03.03": ("Электроника", "ELEC"),
+    "11.03.03": ("КТЭС", "KTES"),
     "11.03.04": ("Электроника", "ELEC"),
     "42.03.01": ("Реклама", "MEDIA"),
     "10.05.02": ("ИБТС", "SEC"),
@@ -461,13 +465,189 @@ MIN_SCORE_EN = {
 }
 
 
+OVERVIEW_SCHEMA_VERSION = 2
+DEFAULT_MIN_SCORES: dict[str, int] = {
+    "Математика": 27,
+    "Русский язык": 36,
+    "Информатика": 40,
+    "Физика": 36,
+    "Обществознание": 44,
+    "История": 34,
+    "Иностранный язык (английский)": 34,
+}
+
+
 def _money_value(text: str) -> int:
     digits = re.sub(r"\D", "", text or "")
     return int(digits) if digits else 0
 
 
-def build_overview() -> dict[str, Any]:
-    """Собирает данные для правой панели из каталога и официальных констант 2026."""
+def _trim_text(text: str, limit: int = 420) -> str:
+    """Обрезает описание по границе предложения или слова без обрыва на полуслове."""
+    cleaned = re.sub(r"\s+", " ", str(text or "")).strip()
+    if len(cleaned) <= limit:
+        return cleaned
+    window = cleaned[:limit].rstrip()
+    sentence_end = max(window.rfind(". "), window.rfind("! "), window.rfind("? "))
+    if sentence_end >= int(limit * 0.55):
+        return window[: sentence_end + 1].strip()
+    word_end = window.rfind(" ")
+    cut = window[:word_end] if word_end >= int(limit * 0.4) else window
+    return cut.rstrip(" ,;:-—–") + "…"
+
+
+def _subject_min_points(name: str, min_map: dict[str, int]) -> int | None:
+    candidate = name.strip()
+    if not candidate:
+        return None
+    if candidate in min_map:
+        return min_map[candidate]
+    base = re.sub(r"\s*\([^)]*\)", "", candidate).strip()
+    if base in min_map:
+        return min_map[base]
+    lowered = base.lower()
+    for key, points in min_map.items():
+        key_base = re.sub(r"\s*\([^)]*\)", "", key).strip().lower()
+        if key_base == lowered or key_base.startswith(lowered) or lowered.startswith(key_base):
+            return points
+    return None
+
+
+def _min_exam_sum(code: str, min_map: dict[str, int]) -> int:
+    """Минимальный суммарный порог 3 ЕГЭ для направления (используется для платного)."""
+    slots = SUBJECTS_BY_CODE.get(code, [])
+    if not slots:
+        return 99
+    total = 0
+    for slot in slots:
+        options = [part.strip() for part in slot.split("/") if part.strip()]
+        scores = [pts for opt in options if (pts := _subject_min_points(opt, min_map)) is not None]
+        total += min(scores) if scores else 30
+    return total
+
+
+def _overview_fingerprint() -> str:
+    """Хэш состояния файлов базы и каталогов для автоматической инвалидации кэша панели."""
+    hasher = hashlib.sha256()
+    hasher.update(f"v{OVERVIEW_SCHEMA_VERSION}".encode())
+    for path in (
+        config.KB_PATH,
+        config.PROGRAMS_PATH,
+        config.MIN_SCORES_PATH,
+        config.ACHIEVEMENTS_PATH,
+    ):
+        if path.exists():
+            stat = path.stat()
+            hasher.update(f"{path.name}:{stat.st_mtime_ns}:{stat.st_size};".encode())
+        else:
+            hasher.update(f"{path.name}:missing;".encode())
+    return hasher.hexdigest()[:16]
+
+
+def _read_overview_cache() -> dict[str, Any] | None:
+    if not config.OVERVIEW_CACHE_PATH.exists():
+        return None
+    try:
+        payload = json.loads(config.OVERVIEW_CACHE_PATH.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return None
+    if not isinstance(payload, dict) or not isinstance(payload.get("scoreDirections"), list):
+        return None
+    return payload
+
+
+def _write_overview_cache(payload: dict[str, Any]) -> None:
+    config.DATA_DIR.mkdir(parents=True, exist_ok=True)
+    raw = json.dumps(payload, ensure_ascii=False, indent=2)
+    fd, tmp_name = tempfile.mkstemp(prefix="overview_", suffix=".tmp", dir=config.DATA_DIR)
+    tmp_path = Path(tmp_name)
+    try:
+        with os.fdopen(fd, "w", encoding="utf-8") as handle:
+            handle.write(raw)
+        os.replace(tmp_path, config.OVERVIEW_CACHE_PATH)
+    finally:
+        tmp_path.unlink(missing_ok=True)
+
+
+def _extract_kb_facts() -> dict[str, Any]:
+    """Детерминированно извлекает актуальные цифры приёма из SQLite БД и каталогов."""
+    facts: dict[str, Any] = {
+        "kb_docs": 0,
+        "kb_chunks": 0,
+        "seats": {"budget_general": 711, "quotas": 229, "paid": 557},
+        "bonus_max": 10,
+        "submission_period_ru": "20 июня — 25 июля",
+        "submission_period_en": "Jun 20 — Jul 25",
+    }
+
+    if config.ACHIEVEMENTS_PATH.exists():
+        try:
+            ach = json.loads(config.ACHIEVEMENTS_PATH.read_text(encoding="utf-8"))
+            max_b = int(ach.get("max_bachelor") or 0)
+            if max_b > 0:
+                facts["bonus_max"] = max_b
+        except (OSError, ValueError, TypeError, json.JSONDecodeError):
+            pass
+
+    if not config.KB_PATH.exists():
+        return facts
+
+    try:
+        connection = sqlite3.connect(f"file:{config.KB_PATH}?mode=ro", uri=True)
+        try:
+            facts["kb_docs"] = int(connection.execute("SELECT COUNT(*) FROM documents").fetchone()[0])
+            facts["kb_chunks"] = int(connection.execute("SELECT COUNT(*) FROM chunks").fetchone()[0])
+            texts = [row[0] for row in connection.execute("SELECT text FROM chunks ORDER BY id").fetchall()]
+        finally:
+            connection.close()
+    except sqlite3.Error:
+        return facts
+
+    full_text = "\n".join(texts)
+
+    total_budget_m = re.search(r"общий объём\s*[—–-]\s*(\d+)\s*бюджетн", full_text, re.I)
+    quotas_m = re.search(
+        r"(\d+)\s*мест особой квоты,\s*(\d+)\s*мест отдельной квоты\s*и\s*(\d+)\s*мест целевой квоты",
+        full_text,
+        re.I,
+    )
+    if total_budget_m and quotas_m:
+        total_budget = int(total_budget_m.group(1))
+        quotas_sum = int(quotas_m.group(1)) + int(quotas_m.group(2)) + int(quotas_m.group(3))
+        if total_budget > quotas_sum > 0:
+            facts["seats"]["budget_general"] = total_budget - quotas_sum
+            facts["seats"]["quotas"] = quotas_sum
+
+    paid_m = re.search(r"Всего по очной форме\s*[—–-]\s*(\d+)\s*платных мест", full_text, re.I)
+    if paid_m:
+        paid_val = int(paid_m.group(1))
+        if paid_val > 0:
+            facts["seats"]["paid"] = paid_val
+
+    sub_start_m = re.search(
+        r"Начало при[её]ма заявлений и документов\s*\|\s*(\d{1,2}\s+[а-яё]+)",
+        full_text,
+        re.I,
+    )
+    sub_end_m = re.search(
+        r"Завершение при[её]ма документов от поступающих по ЕГЭ[^|\n]*\|\s*(\d{1,2}\s+[а-яё]+)",
+        full_text,
+        re.I,
+    )
+    if sub_start_m and sub_end_m:
+        facts["submission_period_ru"] = f"{sub_start_m.group(1).strip()} — {sub_end_m.group(1).strip()}"
+
+    return facts
+
+
+def build_overview(*, force_refresh: bool = False) -> dict[str, Any]:
+    """Собирает данные для правой панели из каталога, SQLite БД и кэша `overview_cache.json`."""
+    fingerprint = _overview_fingerprint()
+    if not force_refresh:
+        cached = _read_overview_cache()
+        if cached is not None and cached.get("kb_fingerprint") == fingerprint:
+            return cached
+
     try:
         payload = json.loads(config.PROGRAMS_PATH.read_text(encoding="utf-8"))
     except (OSError, json.JSONDecodeError):
@@ -480,6 +660,26 @@ def build_overview() -> dict[str, Any]:
         and "Очная" in str(item.get("form", ""))
         and "Заочная" not in str(item.get("form", ""))
     ]
+
+    try:
+        min_payload = json.loads(config.MIN_SCORES_PATH.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        min_payload = {}
+    min_map = dict(DEFAULT_MIN_SCORES)
+    min_subjects = []
+    for item in min_payload.get("soo", []) if isinstance(min_payload, dict) else []:
+        subject = str(item.get("subject", ""))
+        points = int(item.get("points", 0))
+        if subject and points:
+            min_map[subject] = points
+            min_subjects.append(
+                {
+                    "nameRu": subject,
+                    "nameEn": MIN_SCORE_EN.get(subject, subject),
+                    "budget": points,
+                    "paid": points,
+                }
+            )
 
     levels = [("Бакалавриат", "Bachelor"), ("Специалитет", "Specialist"), ("Магистратура", "Master")]
     tuition = []
@@ -510,56 +710,71 @@ def build_overview() -> dict[str, Any]:
         level = str(item.get("level", ""))
         if not code or level not in {"Бакалавриат", "Специалитет"}:
             continue
+        raw_score = int(item.get("pass_score") or 0)
+        budget_seats = int(item.get("budget") or 0)
+        paid_seats = int(item.get("paid") or 0)
         current = grouped.get(code)
-        candidate = {
-            "code": code,
-            "profile": item.get("profile", ""),
-            "direction": item.get("direction", ""),
-            "institute": item.get("institute", ""),
-            "budget": item.get("pass_score") or 0,
-            "paid": 0,
-            "budgetSeats": item.get("budget") or 0,
-            "paidSeats": item.get("paid") or 0,
-            "description": item.get("description", ""),
-        }
         if current is None:
-            grouped[code] = candidate
+            grouped[code] = {
+                "code": code,
+                "profile": str(item.get("profile", "")),
+                "direction": str(item.get("direction", "")),
+                "institute": str(item.get("institute", "")),
+                "_rawScore": raw_score,
+                "budgetSeats": budget_seats,
+                "paidSeats": paid_seats,
+                "description": str(item.get("description", "")),
+            }
         else:
-            current["budgetSeats"] = max(current["budgetSeats"], candidate["budgetSeats"])
-            current["paidSeats"] = max(current["paidSeats"], candidate["paidSeats"])
-            if candidate["budget"] > current["budget"]:
+            current["budgetSeats"] = max(current["budgetSeats"], budget_seats)
+            current["paidSeats"] = max(current["paidSeats"], paid_seats)
+            if raw_score > current["_rawScore"]:
                 current.update(
                     {
-                        "budget": candidate["budget"],
-                        "profile": candidate["profile"],
-                        "description": candidate["description"],
+                        "_rawScore": raw_score,
+                        "profile": str(item.get("profile", "")),
+                        "description": str(item.get("description", "")),
                     }
                 )
 
-    directions = sorted(grouped.values(), key=lambda item: -item["budget"])[:6]
     score_directions = []
-    for item in directions:
-        short_ru, short_en = SHORT_NAMES.get(item["code"], (item["code"], item["code"]))
+    for item in grouped.values():
+        code = item["code"]
+        raw_score = item["_rawScore"]
+        has_budget = item["budgetSeats"] > 0
+        min_sum = _min_exam_sum(code, min_map)
+        if has_budget:
+            budget_score = raw_score
+            paid_score = min_sum
+            paid_is_min = True
+        else:
+            budget_score = 0
+            paid_score = raw_score if raw_score > 0 else min_sum
+            paid_is_min = raw_score <= 0
+        short_ru, short_en = SHORT_NAMES.get(code, (code, code))
+        desc = _trim_text(item["description"], 420)
         score_directions.append(
             {
-                "id": item["code"].replace(".", "-"),
-                "code": item["code"],
+                "id": code.replace(".", "-"),
+                "code": code,
                 "shortRu": short_ru,
                 "shortEn": short_en,
                 "nameRu": item["direction"],
                 "nameEn": item["direction"],
                 "facultyRu": item["institute"],
                 "facultyEn": item["institute"],
-                "budget": item["budget"],
-                "paid": item["paid"],
+                "budget": budget_score,
+                "paid": paid_score,
+                "paidIsMinThreshold": paid_is_min,
                 "budgetSeats": item["budgetSeats"],
                 "paidSeats": item["paidSeats"],
-                "subjectsRu": SUBJECTS_BY_CODE.get(item["code"], []),
-                "subjectsEn": SUBJECTS_BY_CODE.get(item["code"], []),
-                "descriptionRu": item["description"][:500],
-                "descriptionEn": item["description"][:500],
+                "subjectsRu": SUBJECTS_BY_CODE.get(code, []),
+                "subjectsEn": SUBJECTS_BY_CODE.get(code, []),
+                "descriptionRu": desc,
+                "descriptionEn": desc,
             }
         )
+    score_directions.sort(key=lambda d: (-d["budget"], -d["paid"], d["code"]))
 
     salaries_grouped: dict[str, dict[str, Any]] = {}
     for item in programs:
@@ -583,27 +798,17 @@ def build_overview() -> dict[str, Any]:
     for item in salaries:
         item["pct"] = round(_money_value(item["valueRu"]) / max_salary * 100)
 
-    try:
-        min_payload = json.loads(config.MIN_SCORES_PATH.read_text(encoding="utf-8"))
-    except (OSError, json.JSONDecodeError):
-        min_payload = {}
-    min_subjects = []
-    for item in min_payload.get("soo", []) if isinstance(min_payload, dict) else []:
-        subject = str(item.get("subject", ""))
-        points = int(item.get("points", 0))
-        if subject and points:
-            min_subjects.append(
-                {
-                    "nameRu": subject,
-                    "nameEn": MIN_SCORE_EN.get(subject, subject),
-                    "budget": points,
-                    "paid": points,
-                }
-            )
+    kb_facts = _extract_kb_facts()
+    seats_facts = kb_facts["seats"]
+    bonus_max = kb_facts["bonus_max"]
 
-    return {
-        "generated_at": payload.get("generated_at", ""),
-        "source": "catalog",
+    overview = {
+        "generated_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
+        "source": "kb+catalog",
+        "method": "kb+catalog",
+        "kb_fingerprint": fingerprint,
+        "kb_docs": kb_facts["kb_docs"],
+        "kb_chunks": kb_facts["kb_chunks"],
         "tuition": tuition,
         "scoreDirections": score_directions,
         "minSubjectScores": {
@@ -627,7 +832,7 @@ def build_overview() -> dict[str, Any]:
                 "colorVar": "var(--seg-1)",
                 "labelRu": "Бюджет (общий конкурс)",
                 "labelEn": "State-funded (general)",
-                "count": 711,
+                "count": seats_facts["budget_general"],
                 "prompt": "Сколько бюджетных мест по общему конкурсу выделено в СибГУТИ?",
             },
             {
@@ -636,7 +841,7 @@ def build_overview() -> dict[str, Any]:
                 "colorVar": "var(--seg-2)",
                 "labelRu": "Целевая и спецквоты",
                 "labelEn": "Target & special quotas",
-                "count": 229,
+                "count": seats_facts["quotas"],
                 "prompt": "Как устроены целевая, особая и отдельная квоты при поступлении в СибГУТИ?",
             },
             {
@@ -645,7 +850,7 @@ def build_overview() -> dict[str, Any]:
                 "colorVar": "var(--seg-3)",
                 "labelRu": "Платные места",
                 "labelEn": "Tuition-based seats",
-                "count": 557,
+                "count": seats_facts["paid"],
                 "prompt": "Сколько платных мест доступно в СибГУТИ и можно ли потом перевестись на бюджет?",
             },
         ],
@@ -674,8 +879,8 @@ def build_overview() -> dict[str, Any]:
             {
                 "labelRu": "Доп. баллы ИД",
                 "labelEn": "Bonus points",
-                "valRu": "до +10 баллов",
-                "valEn": "up to +10 pts",
+                "valRu": f"до +{bonus_max} баллов",
+                "valEn": f"up to +{bonus_max} pts",
                 "prompt": "За какие индивидуальные достижения СибГУТИ начисляет дополнительные баллы?",
             },
         ],
@@ -683,8 +888,8 @@ def build_overview() -> dict[str, Any]:
             {
                 "titleRu": "Подача документов",
                 "titleEn": "Application submission",
-                "periodRu": "20 июня — 25 июля",
-                "periodEn": "Jun 20 — Jul 25",
+                "periodRu": kb_facts["submission_period_ru"],
+                "periodEn": kb_facts["submission_period_en"],
                 "current": True,
                 "prompt": "Какие сроки и способы подачи документов в СибГУТИ?",
             },
@@ -714,4 +919,19 @@ def build_overview() -> dict[str, Any]:
             },
         ],
     }
+    _write_overview_cache(overview)
+    return overview
+
+
+def refresh_overview() -> dict[str, Any]:
+    """Пересчитывает снимок правой панели из SQLite и каталогов и сохраняет его в кэш.
+
+    Панель собирается детерминированно (без LLM): цифры должны совпадать с ответами
+    чата и не зависеть от доступности модели.
+    """
+    return build_overview(force_refresh=True)
+
+
+
+
 

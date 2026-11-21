@@ -24,6 +24,7 @@ data/registry.json
 data/stats.json
 data/backups/
 data/app_settings.json
+data/overview_cache.json
 
 # ОС / редакторы
 .DS_Store

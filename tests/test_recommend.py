@@ -2,12 +2,14 @@
 
 from __future__ import annotations
 
+import json
+
 import pytest
 from fastapi.testclient import TestClient
 
 from src import config
 from src.api import app
-from src.retrieval import recommend_programs
+from src.retrieval import build_overview, recommend_programs
 
 pytestmark = pytest.mark.skipif(
     not config.PROGRAMS_PATH.exists(),
@@ -50,13 +52,45 @@ def test_api_programs(client: TestClient) -> None:
 
 
 def test_api_overview(client: TestClient) -> None:
-    response = client.get("/api/overview")
-    assert response.status_code == 200
-    payload = response.json()
+    payload = build_overview(force_refresh=True)
     assert payload["tuition"]
     assert len(payload["scoreDirections"]) >= 4
     assert payload["minSubjectScores"]["subjects"]
     assert payload["seats"]
+
+    response = client.get("/api/overview")
+    assert response.status_code == 200
+    api_payload = response.json()
+    assert api_payload["kb_fingerprint"] == payload["kb_fingerprint"]
+
+
+def test_overview_paid_scores_and_cache_persistence(client: TestClient) -> None:
+    response = client.get("/api/overview")
+    assert response.status_code == 200
+    payload = response.json()
+
+    directions = payload["scoreDirections"]
+    by_code = {item["code"]: item for item in directions}
+    assert "42.03.01" in by_code
+    assert by_code["42.03.01"]["budget"] == 0
+    assert by_code["42.03.01"]["paid"] == 145
+    assert by_code["42.03.01"]["paidIsMinThreshold"] is False
+
+    assert "09.03.01" in by_code
+    assert by_code["09.03.01"]["budget"] == 214
+    assert by_code["09.03.01"]["paid"] >= 90
+    assert by_code["09.03.01"]["paidIsMinThreshold"] is True
+
+    for item in directions:
+        if item["paidSeats"] > 0:
+            assert item["paid"] > 0, f"{item['code']} has zero paid score"
+        desc = item["descriptionRu"]
+        if desc:
+            assert desc[-1] in ".!?…", f"{item['code']} truncated mid-word: {desc[-30:]}"
+
+    assert config.OVERVIEW_CACHE_PATH.exists()
+    cached = json.loads(config.OVERVIEW_CACHE_PATH.read_text(encoding="utf-8"))
+    assert cached["kb_fingerprint"] == payload["kb_fingerprint"]
 
 
 def test_api_achievements(client: TestClient) -> None:

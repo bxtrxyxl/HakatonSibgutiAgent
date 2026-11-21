@@ -9,6 +9,7 @@ from fastapi.testclient import TestClient
 
 from src import config, security
 from src.api import app
+from src.retrieval import build_overview, refresh_overview
 
 pytestmark = pytest.mark.skipif(
     not config.KB_PATH.exists(),
@@ -103,6 +104,7 @@ def test_admin_auth_blocks_heavy_endpoints_without_token(
         ("POST", "/api/programs/refresh", {}),
         ("POST", "/api/achievements/refresh", {}),
         ("POST", "/api/min-scores/refresh", {}),
+        ("POST", "/api/overview/refresh", {}),
         ("POST", "/api/autoupdate", {"json": {"enabled": False, "interval_hours": 24}}),
         ("POST", "/api/autoupdate/run", {}),
         ("POST", "/api/databases/backup", {"json": {"name": "test"}}),
@@ -172,3 +174,31 @@ def test_admin_token_redacted_from_logs(monkeypatch: pytest.MonkeyPatch) -> None
     cleaned = security.redact("failed with super-secret-xyz-999 and X-Admin-Token: another-secret")
     assert "super-secret-xyz-999" not in cleaned
     assert "another-secret" not in cleaned
+
+
+def test_overview_refresh_persists_snapshot(client: TestClient) -> None:
+    try:
+        refreshed = client.post("/api/overview/refresh", headers=_admin_headers())
+        assert refreshed.status_code == 200
+        payload = refreshed.json()["overview"]
+        assert payload["method"] == "kb+catalog"
+        assert payload["kb_docs"] > 0
+        assert payload["kb_fingerprint"]
+
+        # Снимок сохраняется в data/overview_cache.json и отдаётся в GET /api/overview
+        persisted = client.get("/api/overview")
+        assert persisted.status_code == 200
+        cached = persisted.json()
+        assert cached["kb_fingerprint"] == payload["kb_fingerprint"]
+        assert [item["count"] for item in cached["seats"]] == [
+            item["count"] for item in payload["seats"]
+        ]
+
+        # Повторный пересчёт из БД даёт те же цифры без обращения к LLM
+        again = refresh_overview()
+        assert again["method"] == "kb+catalog"
+        assert [item["count"] for item in again["seats"]] == [
+            item["count"] for item in payload["seats"]
+        ]
+    finally:
+        build_overview(force_refresh=True)

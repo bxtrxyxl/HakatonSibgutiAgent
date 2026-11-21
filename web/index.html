@@ -1431,9 +1431,15 @@
     }
 
     @media (prefers-reduced-motion: reduce) {
-      .score-modal::before {
+      .score-modal::before,
+      .overview-refresh-btn.is-loading svg {
         animation: none;
       }
+    }
+
+    @keyframes spinIcon {
+      from { transform: rotate(0deg); }
+      to { transform: rotate(360deg); }
     }
 
     .overview-header {
@@ -1442,8 +1448,26 @@
       padding: 15px 18px 12px;
       border-bottom: 1px solid var(--border);
       display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 10px;
+    }
+
+    .overview-header-text {
+      display: flex;
       flex-direction: column;
       gap: 2px;
+      min-width: 0;
+    }
+
+    .overview-refresh-btn {
+      width: 30px;
+      height: 30px;
+      flex-shrink: 0;
+    }
+
+    .overview-refresh-btn.is-loading svg {
+      animation: spinIcon 0.9s linear infinite;
     }
 
     .overview-title {
@@ -2258,7 +2282,14 @@
       flex-shrink: 0;
     }
 
-    .score-chance-btn {
+    .score-detail-actions {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .score-chance-btn,
+    .score-ask-btn {
       display: inline-flex;
       align-items: center;
       justify-content: space-between;
@@ -2266,19 +2297,30 @@
       width: 100%;
       padding: 10px 12px;
       border-radius: 12px;
-      background: var(--accent);
-      color: var(--accent-ink);
       font-size: 12px;
       font-weight: 500;
       transition: transform 200ms, opacity 200ms;
     }
 
-    .score-chance-btn:hover {
+    .score-chance-btn {
+      background: var(--accent);
+      color: var(--accent-ink);
+    }
+
+    .score-ask-btn {
+      background: var(--glass-2);
+      border: 1px solid var(--tile-border);
+      color: var(--text);
+    }
+
+    .score-chance-btn:hover,
+    .score-ask-btn:hover {
       transform: translateY(-1px);
       opacity: 0.92;
     }
 
-    .score-chance-btn:active {
+    .score-chance-btn:active,
+    .score-ask-btn:active {
       transform: scale(0.98);
     }
 
@@ -3385,8 +3427,25 @@
         <div class="overview-halftone" aria-hidden="true"></div>
 
         <div class="overview-header">
-          <span class="overview-title" data-i18n="overviewTitle">Актуальное о СибГУТИ</span>
-          <span class="overview-subtitle" data-i18n="overviewSub">Краткая справка по официальным документам</span>
+          <div class="overview-header-text">
+            <span class="overview-title" data-i18n="overviewTitle">Актуальное о СибГУТИ</span>
+            <span class="overview-subtitle" data-i18n="overviewSub">Краткая справка по официальным документам</span>
+          </div>
+          <button
+            id="refreshOverviewBtn"
+            class="icon-btn overview-refresh-btn"
+            type="button"
+            data-i18n-title="overviewRefreshTip"
+            title="Пересчитать панель из базы знаний"
+            aria-label="Пересчитать панель из базы знаний"
+          >
+            <svg viewBox="0 0 24 24">
+              <polyline points="23 4 23 10 17 10"></polyline>
+              <polyline points="1 20 1 14 7 14"></polyline>
+              <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10"></path>
+              <path d="M20.49 15a9 9 0 0 1-14.85 3.36L1 14"></path>
+            </svg>
+          </button>
         </div>
 
         <div class="overview-scroll">
@@ -3923,6 +3982,11 @@
           scoreBudgetShort: 'Бюджет',
           scorePaidShort: 'Платное',
           scoreChanceCta: 'Рассчитать шанс в чате',
+          scoreAskCta: 'Спросить в чате',
+          scoreMinThreshold: 'Мин. порог (3 ЕГЭ)',
+          scorePaidMinNote: 'Отдельный проходной балл на платное вуз не публикует — показан официальный минимум по сумме 3 ЕГЭ.',
+          overviewRefreshTip: 'Пересчитать панель из базы знаний',
+          overviewRefreshed: 'Панель обновлена из базы знаний',
           scoreDetailClose: 'Закрыть описание',
           scoreDetailHint: 'Выберите направление, чтобы увидеть описание',
           scoreDemoNote: 'Данные из каталога направлений',
@@ -4142,6 +4206,11 @@
           scoreBudgetShort: 'Budget',
           scorePaidShort: 'Paid',
           scoreChanceCta: 'Estimate chance in chat',
+          scoreAskCta: 'Ask in chat',
+          scoreMinThreshold: 'Min threshold (3 exams)',
+          scorePaidMinNote: 'SibSUTIS does not publish a separate paid passing score — showing the official 3-exam minimum sum.',
+          overviewRefreshTip: 'Recalculate panel from knowledge base',
+          overviewRefreshed: 'Overview refreshed from knowledge base',
           scoreDetailClose: 'Close details',
           scoreDetailHint: 'Select a program to see details',
           scoreDemoNote: 'Data from the program catalog',
@@ -4484,6 +4553,7 @@
         seatsLegend: document.getElementById('seatsLegend'),
         campusGrid: document.getElementById('campusGrid'),
         timelineList: document.getElementById('timelineList'),
+        refreshOverviewBtn: document.getElementById('refreshOverviewBtn'),
 
         scoreOverlay: document.getElementById('scoreOverlay'),
         scoreOverlayBody: document.getElementById('scoreOverlayBody'),
@@ -5152,6 +5222,27 @@
         }
       }
 
+      async function refreshOverviewFromDb() {
+        const btn = el.refreshOverviewBtn;
+        if (!btn || btn.disabled) return;
+        btn.disabled = true;
+        btn.classList.add('is-loading');
+        try {
+          const data = await dbFetch('/api/overview/refresh', { method: 'POST' });
+          if (data && data.overview && Array.isArray(data.overview.scoreDirections)) {
+            overviewData = data.overview;
+            renderOverviewPanel();
+            if (el.scoreOverlay.classList.contains('open')) renderScoreOverlay();
+            showToast(t('overviewRefreshed'), 'ok');
+          }
+        } catch (err) {
+          showToast(err.message, 'err');
+        } finally {
+          btn.disabled = false;
+          btn.classList.remove('is-loading');
+        }
+      }
+
       function renderOverviewPanel() {
         const isEn = state.settings.lang === 'en';
 
@@ -5234,11 +5325,30 @@
       }
 
       function getScoreValue(direction, mode) {
-        return mode === 'paid' ? direction.paid : direction.budget;
+        return Number(mode === 'paid' ? direction.paid : direction.budget) || 0;
       }
 
       function getScoreSeats(direction, mode) {
-        return mode === 'paid' ? direction.paidSeats : direction.budgetSeats;
+        return Number(mode === 'paid' ? direction.paidSeats : direction.budgetSeats) || 0;
+      }
+
+      function getDirectionsForMode(mode) {
+        const all = getScoreDirections();
+        const filtered =
+          mode === 'paid'
+            ? all.filter((d) => Number(d.paid || 0) > 0 && Number(d.paidSeats || 0) > 0)
+            : all.filter((d) => Number(d.budget || 0) > 0);
+        const list = (filtered.length ? filtered : all).slice();
+        list.sort((a, b) => getScoreValue(b, mode) - getScoreValue(a, mode));
+        return list;
+      }
+
+      function formatScoreDisplay(direction, mode) {
+        const val = getScoreValue(direction, mode);
+        if (mode === 'paid' && direction.paidIsMinThreshold) {
+          return state.settings.lang === 'en' ? `${val}+` : `от ${val}`;
+        }
+        return String(val);
       }
 
       function setScoreMode(mode) {
@@ -5265,7 +5375,7 @@
       }
 
       function renderScoreSummary() {
-        const directions = getScoreDirections();
+        const directions = getDirectionsForMode(activeScoreMode).slice(0, 6);
         if (!directions.length) {
           el.scoreSummary.innerHTML = '';
           return;
@@ -5279,18 +5389,18 @@
         el.scoreSummary.innerHTML =
           `<div class="score-summary-item">` +
           `  <span class="score-summary-label">${t('scoreMin')}</span>` +
-          `  <span class="score-summary-value tabular">${min}</span>` +
+          `  <span class="score-summary-value tabular">${escapeHtml(formatScoreDisplay(minDir, activeScoreMode))}</span>` +
           `  <span class="score-summary-meta">${escapeHtml(isEn ? minDir.shortEn : minDir.shortRu)}</span>` +
           `</div>` +
           `<div class="score-summary-item">` +
           `  <span class="score-summary-label">${t('scoreMax')}</span>` +
-          `  <span class="score-summary-value is-max tabular">${max}</span>` +
+          `  <span class="score-summary-value is-max tabular">${escapeHtml(formatScoreDisplay(maxDir, activeScoreMode))}</span>` +
           `  <span class="score-summary-meta">${escapeHtml(isEn ? maxDir.shortEn : maxDir.shortRu)}</span>` +
           `</div>`;
       }
 
       function renderScoreChart() {
-        const directions = getScoreDirections();
+        const directions = getDirectionsForMode(activeScoreMode).slice(0, 6);
         const svg = el.scoreChartSvg;
         if (!directions.length) {
           svg.innerHTML = '';
@@ -5322,6 +5432,7 @@
 
         directions.forEach((direction, index) => {
           const value = values[index];
+          const displayVal = formatScoreDisplay(direction, activeScoreMode);
           const x = padX + slot * index + slot / 2;
           const height = Math.max(2, ((value - baseline) / range) * (botY - topY));
           const y = botY - height;
@@ -5332,12 +5443,12 @@
           const fullName = isEn ? direction.nameEn : direction.nameRu;
 
           markup +=
-            `<g data-direction="${direction.id}" role="button" tabindex="0" aria-label="${escapeHtml(`${fullName}: ${value}`)}">` +
-            `<title>${escapeHtml(`${fullName}: ${value}`)}</title>` +
+            `<g data-direction="${direction.id}" role="button" tabindex="0" aria-label="${escapeHtml(`${fullName}: ${displayVal}`)}">` +
+            `<title>${escapeHtml(`${fullName}: ${displayVal}`)}</title>` +
             `<rect class="${barClass}" x="${(x - barWidth / 2).toFixed(1)}" y="${y.toFixed(1)}" width="${barWidth.toFixed(1)}" height="${height.toFixed(1)}" rx="4" />` +
             `<text class="score-bar-label" x="${x.toFixed(1)}" y="${H - 6}">${escapeHtml(label)}</text>`;
           if (isMin || isMax) {
-            markup += `<text class="score-bar-value${isMax ? ' is-max' : ''}" x="${x.toFixed(1)}" y="${(y - 7).toFixed(1)}">${value}</text>`;
+            markup += `<text class="score-bar-value${isMax ? ' is-max' : ''}" x="${x.toFixed(1)}" y="${(y - 7).toFixed(1)}">${escapeHtml(displayVal)}</text>`;
           }
           markup += `</g>`;
         });
@@ -5400,7 +5511,7 @@
       }
 
       function renderScoreOverlay() {
-        const directions = getScoreDirections();
+        const directions = getDirectionsForMode(activeScoreMode);
         const isEn = state.settings.lang === 'en';
         renderScoreModeToggles(el.scoreOverlayToggle);
 
@@ -5426,6 +5537,7 @@
 
         directions.forEach((direction) => {
           const value = getScoreValue(direction, activeScoreMode);
+          const displayVal = formatScoreDisplay(direction, activeScoreMode);
           const isSelected = direction.id === selectedScoreDirection;
           const height = Math.max(12, ((value - baseline) / range) * 100);
           const fullName = isEn ? direction.nameEn : direction.nameRu;
@@ -5435,12 +5547,12 @@
           column.className = 'score-bar-column' + (isSelected ? ' is-selected' : '');
           column.setAttribute('data-direction', direction.id);
           column.setAttribute('aria-pressed', String(isSelected));
-          column.setAttribute('aria-label', `${fullName}: ${value}`);
+          column.setAttribute('aria-label', `${fullName}: ${displayVal}`);
           column.setAttribute('title', fullName);
           column.style.setProperty('--bar-height', `${height.toFixed(1)}%`);
           column.innerHTML =
             `<span class="score-bar-plot">` +
-            `  <span class="score-pill-value">${value}</span>` +
+            `  <span class="score-pill-value">${escapeHtml(displayVal)}</span>` +
             `  <span class="score-bar-pill"></span>` +
             `</span>` +
             `<span class="score-pill-label">${escapeHtml(fullName)}</span>`;
@@ -5460,17 +5572,20 @@
       }
 
       function renderScoreDetail(directionId) {
-        const directions = getScoreDirections();
+        const directions = getDirectionsForMode(activeScoreMode);
         const direction = directions.find((d) => d.id === directionId) || directions[0];
         if (!direction) {
           el.scoreDetail.innerHTML = `<div class="score-detail-empty">${t('scoreDetailHint')}</div>`;
           return;
         }
         const isEn = state.settings.lang === 'en';
-        const value = getScoreValue(direction, activeScoreMode);
+        const displayVal = formatScoreDisplay(direction, activeScoreMode);
+        const isMinThreshold = activeScoreMode === 'paid' && Boolean(direction.paidIsMinThreshold);
         const seats = getScoreSeats(direction, activeScoreMode);
         const subjects = isEn ? direction.subjectsEn : direction.subjectsRu;
         const closeLabel = t('scoreDetailClose');
+        const scoreKindLabel = isMinThreshold ? t('scoreMinThreshold') : t('scorePassing');
+        const noteText = isMinThreshold ? t('scorePaidMinNote') : t('scoreDemoNote');
 
         el.scoreDetail.innerHTML =
           `<div class="score-detail-head">` +
@@ -5481,17 +5596,22 @@
           `</div>` +
           `<div class="score-detail-title">${escapeHtml(isEn ? direction.nameEn : direction.nameRu)}</div>` +
           `<div class="score-detail-score">` +
-          `  <strong>${value}</strong>` +
-          `  <span>${t('scorePassing')} · ${t(activeScoreMode === 'paid' ? 'scorePaid' : 'scoreBudget')}</span>` +
+          `  <strong>${escapeHtml(displayVal)}</strong>` +
+          `  <span>${escapeHtml(scoreKindLabel)} · ${t(activeScoreMode === 'paid' ? 'scorePaid' : 'scoreBudget')}</span>` +
           `</div>` +
           `<div class="score-card-meta"><span>${seats} ${t(activeScoreMode === 'paid' ? 'scorePaidSeats' : 'scoreBudgetSeats')}</span></div>` +
           `<p class="score-detail-text">${escapeHtml(isEn ? direction.descriptionEn : direction.descriptionRu)}</p>` +
           `<div class="score-detail-section-title">${t('scoreSubjects')}</div>` +
           `<ul class="score-detail-subject-list">${subjects.map((subject) => `<li>${escapeHtml(subject)}</li>`).join('')}</ul>` +
-          `<button class="score-chance-btn" data-action="chance" data-direction="${direction.id}">` +
-          `  <span>${t('scoreChanceCta')}</span><span>→</span>` +
-          `</button>` +
-          `<div class="score-detail-note">${t('scoreDemoNote')}</div>`;
+          `<div class="score-detail-actions">` +
+          `  <button class="score-chance-btn" data-action="chance" data-direction="${direction.id}">` +
+          `    <span>${t('scoreChanceCta')}</span><span>→</span>` +
+          `  </button>` +
+          `  <button class="score-ask-btn" data-action="ask" data-direction="${direction.id}">` +
+          `    <span>${t('scoreAskCta')}</span><span>→</span>` +
+          `  </button>` +
+          `</div>` +
+          `<div class="score-detail-note">${escapeHtml(noteText)}</div>`;
       }
 
       function selectScoreDirection(directionId, shouldScroll) {
@@ -5536,7 +5656,10 @@
         const explicit = Boolean(directionId);
         el.scoreOverlay.classList.add('open');
         renderScoreOverlay();
-        const id = directionId || selectedScoreDirection || (getScoreDirections()[0] || {}).id;
+        const directions = getDirectionsForMode(activeScoreMode);
+        const id =
+          directionId ||
+          (directions.some((d) => d.id === selectedScoreDirection) ? selectedScoreDirection : (directions[0] || {}).id);
         if (!id) return;
         if (explicit) {
           openScoreDetail(id);
@@ -6490,6 +6613,9 @@
         el.sendBtn.addEventListener('click', () => sendMessage(el.composerInput.value));
 
         // Right panel CTA & score comparison
+        if (el.refreshOverviewBtn) {
+          el.refreshOverviewBtn.addEventListener('click', refreshOverviewFromDb);
+        }
         el.expandScoresBtn.addEventListener('click', () => openScoreOverlay(null));
         el.scoreChartWrap.addEventListener('click', () => openScoreOverlay(null));
         el.scoreChartWrap.addEventListener('keydown', (event) => {
@@ -6508,15 +6634,20 @@
             closeScoreDetail();
             return;
           }
-          const chanceBtn = event.target.closest('[data-action="chance"]');
-          if (chanceBtn) {
-            const directionId = chanceBtn.getAttribute('data-direction');
-            const direction = getScoreDirections().find((item) => item.id === directionId);
-            if (direction) {
-              const mode = activeScoreMode === 'paid' ? 'платное' : 'бюджет';
-              closeScoreOverlay();
-              sendMessage(`Рассчитай шанс поступления на ${direction.code} ${direction.nameRu} (${mode})`);
-            }
+          const actionBtn = event.target.closest('[data-action="chance"], [data-action="ask"]');
+          if (!actionBtn) return;
+          const action = actionBtn.getAttribute('data-action');
+          const directionId = actionBtn.getAttribute('data-direction');
+          const direction = getScoreDirections().find((item) => item.id === directionId);
+          if (!direction) return;
+          const mode = activeScoreMode === 'paid' ? 'платное' : 'бюджет';
+          closeScoreOverlay();
+          if (action === 'chance') {
+            sendMessage(`Рассчитай шанс поступления на ${direction.code} ${direction.nameRu} (${mode})`);
+          } else {
+            sendMessage(
+              `Расскажи подробно про направление ${direction.code} ${direction.nameRu}: проходные баллы, места, стоимость (${mode}), предметы ЕГЭ и кем работают выпускники.`
+            );
           }
         });
         el.scorePrevBtn.addEventListener('click', () => scrollScoreCarouselBy(-1));
