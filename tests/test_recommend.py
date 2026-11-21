@@ -64,6 +64,29 @@ def test_api_overview(client: TestClient) -> None:
     assert api_payload["kb_fingerprint"] == payload["kb_fingerprint"]
 
 
+def test_overview_covers_all_catalog_directions() -> None:
+    payload = build_overview(force_refresh=True)
+    directions = payload["scoreDirections"]
+    catalog = json.loads(config.PROGRAMS_PATH.read_text(encoding="utf-8"))["programs"]
+    expected = {
+        item["code"]
+        for item in catalog
+        if item.get("level") in {"Бакалавриат", "Специалитет", "Магистратура"}
+    }
+    codes = {item["code"] for item in directions}
+    assert codes == expected
+    assert len(codes) == 20
+
+    by_code = {item["code"]: item for item in directions}
+    assert by_code["09.04.01"]["levelRu"] == "Магистратура"
+    assert by_code["09.04.01"]["budget"] > 0
+    assert by_code["10.04.01"]["paid"] == 35
+    assert by_code["10.04.01"]["paidIsMinThreshold"] is True
+    assert "заочная (ДОТ)" in by_code["20.03.01"]["formsRu"]
+    assert by_code["09.03.02"]["levelRu"] == "Бакалавриат"
+    assert by_code["09.03.02"]["formsRu"]
+
+
 def test_overview_paid_scores_and_cache_persistence(client: TestClient) -> None:
     response = client.get("/api/overview")
     assert response.status_code == 200

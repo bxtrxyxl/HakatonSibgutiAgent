@@ -3886,6 +3886,7 @@
         <div>
           <h2 id="scoreOverlayTitle" class="modal-title" data-i18n="scoreOverlayTitle">Сравнение направлений</h2>
           <span class="card-caption" data-i18n="scoreOverlaySub">Проходные баллы и предметы</span>
+          <span id="scoreOverlayCount" class="card-caption tabular"></span>
         </div>
         <div class="score-modal-actions">
           <div id="scoreOverlayToggle" class="score-tabs score-tabs-compact"></div>
@@ -3984,7 +3985,10 @@
           scoreChanceCta: 'Рассчитать шанс в чате',
           scoreAskCta: 'Спросить в чате',
           scoreMinThreshold: 'Мин. порог (3 ЕГЭ)',
+          scoreMasterThreshold: 'Мин. балл (магистратура)',
+          scoreNoBudget: 'Нет бюджетных мест',
           scorePaidMinNote: 'Отдельный проходной балл на платное вуз не публикует — показан официальный минимум по сумме 3 ЕГЭ.',
+          scoreMasterMinNote: 'Проходной балл не опубликован — показан минимальный балл профильного экзамена (35).',
           overviewRefreshTip: 'Пересчитать панель из базы знаний',
           overviewRefreshed: 'Панель обновлена из базы знаний',
           scoreDetailClose: 'Закрыть описание',
@@ -4212,7 +4216,10 @@
           scoreChanceCta: 'Estimate chance in chat',
           scoreAskCta: 'Ask in chat',
           scoreMinThreshold: 'Min threshold (3 exams)',
+          scoreMasterThreshold: 'Min score (master)',
+          scoreNoBudget: 'No budget seats',
           scorePaidMinNote: 'SibSUTIS does not publish a separate paid passing score — showing the official 3-exam minimum sum.',
+          scoreMasterMinNote: 'Passing score is not published — showing the minimum profile exam score (35).',
           overviewRefreshTip: 'Recalculate panel from knowledge base',
           overviewRefreshed: 'Overview refreshed from knowledge base',
           scoreDetailClose: 'Close details',
@@ -4566,6 +4573,7 @@
         scoreOverlay: document.getElementById('scoreOverlay'),
         scoreOverlayBody: document.getElementById('scoreOverlayBody'),
         scoreOverlayToggle: document.getElementById('scoreOverlayToggle'),
+        scoreOverlayCount: document.getElementById('scoreOverlayCount'),
         closeScoreOverlayBtn: document.getElementById('closeScoreOverlayBtn'),
         scoreCarousel: document.getElementById('scoreCarousel'),
         scorePrevBtn: document.getElementById('scorePrevBtn'),
@@ -5332,6 +5340,16 @@
         return Array.isArray(overviewData.scoreDirections) ? overviewData.scoreDirections : [];
       }
 
+      function formatDirectionsCount(count, isEn) {
+        if (isEn) return `${count} ${count === 1 ? 'program' : 'programs'}`;
+        const mod10 = count % 10;
+        const mod100 = count % 100;
+        let word = 'направлений';
+        if (mod10 === 1 && mod100 !== 11) word = 'направление';
+        else if (mod10 >= 2 && mod10 <= 4 && (mod100 < 12 || mod100 > 14)) word = 'направления';
+        return `${count} ${word}`;
+      }
+
       function getScoreValue(direction, mode) {
         return Number(mode === 'paid' ? direction.paid : direction.budget) || 0;
       }
@@ -5341,19 +5359,16 @@
       }
 
       function getDirectionsForMode(mode) {
-        const all = getScoreDirections();
-        const filtered =
-          mode === 'paid'
-            ? all.filter((d) => Number(d.paid || 0) > 0 && Number(d.paidSeats || 0) > 0)
-            : all.filter((d) => Number(d.budget || 0) > 0);
-        const list = (filtered.length ? filtered : all).slice();
-        list.sort((a, b) => getScoreValue(b, mode) - getScoreValue(a, mode));
+        const list = getScoreDirections().slice();
+        list.sort((a, b) => getScoreValue(b, mode) - getScoreValue(a, mode) || a.code.localeCompare(b.code));
         return list;
       }
 
       function formatScoreDisplay(direction, mode) {
         const val = getScoreValue(direction, mode);
+        if (val <= 0) return '—';
         if (mode === 'paid' && direction.paidIsMinThreshold) {
+          if (direction.levelRu === 'Магистратура') return `${val}+`;
           return state.settings.lang === 'en' ? `${val}+` : `от ${val}`;
         }
         return String(val);
@@ -5522,6 +5537,9 @@
         const directions = getDirectionsForMode(activeScoreMode);
         const isEn = state.settings.lang === 'en';
         renderScoreModeToggles(el.scoreOverlayToggle);
+        if (el.scoreOverlayCount) {
+          el.scoreOverlayCount.textContent = formatDirectionsCount(directions.length, isEn);
+        }
 
         if (!directions.length) {
           el.scoreCarousel.innerHTML = '';
@@ -5587,13 +5605,31 @@
           return;
         }
         const isEn = state.settings.lang === 'en';
+        const scoreValue = getScoreValue(direction, activeScoreMode);
         const displayVal = formatScoreDisplay(direction, activeScoreMode);
         const isMinThreshold = activeScoreMode === 'paid' && Boolean(direction.paidIsMinThreshold);
         const seats = getScoreSeats(direction, activeScoreMode);
-        const subjects = isEn ? direction.subjectsEn : direction.subjectsRu;
+        const subjects = (isEn ? direction.subjectsEn : direction.subjectsRu) || [];
+        const levelLabel = isEn ? direction.levelEn : direction.levelRu;
+        const forms = (isEn ? direction.formsEn : direction.formsRu) || [];
+        const levelMeta = [levelLabel, forms.join(', ')].filter(Boolean).join(' · ');
         const closeLabel = t('scoreDetailClose');
-        const scoreKindLabel = isMinThreshold ? t('scoreMinThreshold') : t('scorePassing');
-        const noteText = isMinThreshold ? t('scorePaidMinNote') : t('scoreDemoNote');
+        const isMaster = direction.levelRu === 'Магистратура';
+        const scoreKindLabel = isMinThreshold
+          ? t(isMaster ? 'scoreMasterThreshold' : 'scoreMinThreshold')
+          : t('scorePassing');
+        const noteText = isMinThreshold
+          ? t(isMaster ? 'scoreMasterMinNote' : 'scorePaidMinNote')
+          : t('scoreDemoNote');
+        const scoreBlock =
+          scoreValue > 0
+            ? `  <strong>${escapeHtml(displayVal)}</strong>` +
+              `  <span>${escapeHtml(scoreKindLabel)} · ${t(activeScoreMode === 'paid' ? 'scorePaid' : 'scoreBudget')}</span>`
+            : `  <span>${t('scoreNoBudget')}</span>`;
+        const seatsBlock =
+          scoreValue > 0
+            ? `<div class="score-card-meta"><span>${seats} ${t(activeScoreMode === 'paid' ? 'scorePaidSeats' : 'scoreBudgetSeats')}</span></div>`
+            : '';
 
         el.scoreDetail.innerHTML =
           `<div class="score-detail-head">` +
@@ -5603,14 +5639,20 @@
           `  </button>` +
           `</div>` +
           `<div class="score-detail-title">${escapeHtml(isEn ? direction.nameEn : direction.nameRu)}</div>` +
-          `<div class="score-detail-score">` +
-          `  <strong>${escapeHtml(displayVal)}</strong>` +
-          `  <span>${escapeHtml(scoreKindLabel)} · ${t(activeScoreMode === 'paid' ? 'scorePaid' : 'scoreBudget')}</span>` +
-          `</div>` +
-          `<div class="score-card-meta"><span>${seats} ${t(activeScoreMode === 'paid' ? 'scorePaidSeats' : 'scoreBudgetSeats')}</span></div>` +
+          `${
+            levelMeta
+              ? `<div class="score-card-meta score-detail-level"><span>${escapeHtml(levelMeta)}</span></div>`
+              : ''
+          }` +
+          `<div class="score-detail-score">${scoreBlock}</div>` +
+          seatsBlock +
           `<p class="score-detail-text">${escapeHtml(isEn ? direction.descriptionEn : direction.descriptionRu)}</p>` +
-          `<div class="score-detail-section-title">${t('scoreSubjects')}</div>` +
-          `<ul class="score-detail-subject-list">${subjects.map((subject) => `<li>${escapeHtml(subject)}</li>`).join('')}</ul>` +
+          `${
+            subjects.length
+              ? `<div class="score-detail-section-title">${t('scoreSubjects')}</div>` +
+                `<ul class="score-detail-subject-list">${subjects.map((subject) => `<li>${escapeHtml(subject)}</li>`).join('')}</ul>`
+              : ''
+          }` +
           `<div class="score-detail-actions">` +
           `  <button class="score-chance-btn" data-action="chance" data-direction="${direction.id}">` +
           `    <span>${t('scoreChanceCta')}</span><span>→</span>` +

@@ -472,6 +472,28 @@ SUBJECTS_BY_CODE = {
     "10.05.02": ["Математика (профиль)", "Информатика / Физика", "Русский язык"],
     "11.05.01": ["Физика", "Информатика / Математика", "Русский язык"],
     "11.05.04": ["Математика (профиль)", "Информатика / Физика", "Русский язык"],
+    "20.03.01": ["Математика (профиль)", "Информатика / Физика", "Русский язык"],
+    "09.04.01": ["Профильный экзамен (магистратура)"],
+    "09.04.02": ["Профильный экзамен (магистратура)"],
+    "09.04.03": ["Профильный экзамен (магистратура)"],
+    "10.04.01": ["Профильный экзамен (магистратура)"],
+    "11.04.02": ["Профильный экзамен (магистратура)"],
+    "42.04.01": ["Профильный экзамен (магистратура)"],
+}
+
+LEVEL_EN = {
+    "Бакалавриат": "Bachelor",
+    "Специалитет": "Specialist",
+    "Магистратура": "Master",
+}
+MASTER_MIN_SCORE = 35
+FORM_LABELS = {
+    "Очная": ("очная", "full-time"),
+    "Заочная": ("заочная", "part-time"),
+    "Заочная с применением дистанционных образовательных технологий": (
+        "заочная (ДОТ)",
+        "part-time (distance)",
+    ),
 }
 
 MIN_SCORE_EN = {
@@ -485,7 +507,7 @@ MIN_SCORE_EN = {
 }
 
 
-OVERVIEW_SCHEMA_VERSION = 2
+OVERVIEW_SCHEMA_VERSION = 3
 DEFAULT_MIN_SCORES: dict[str, int] = {
     "Математика": 27,
     "Русский язык": 36,
@@ -672,12 +694,14 @@ def build_overview(*, force_refresh: bool = False) -> dict[str, Any]:
         payload = json.loads(config.PROGRAMS_PATH.read_text(encoding="utf-8"))
     except (OSError, json.JSONDecodeError):
         payload = {}
-    programs = payload.get("programs") if isinstance(payload, dict) else []
+    catalog_programs = payload.get("programs") if isinstance(payload, dict) else []
+    if not isinstance(catalog_programs, list):
+        catalog_programs = []
+    catalog_programs = [item for item in catalog_programs if isinstance(item, dict)]
     programs = [
         item
-        for item in programs
-        if isinstance(item, dict)
-        and "Очная" in str(item.get("form", ""))
+        for item in catalog_programs
+        if "Очная" in str(item.get("form", ""))
         and "Заочная" not in str(item.get("form", ""))
     ]
 
@@ -725,45 +749,59 @@ def build_overview(*, force_refresh: bool = False) -> dict[str, Any]:
         )
 
     grouped: dict[str, dict[str, Any]] = {}
-    for item in programs:
+    for item in catalog_programs:
         code = str(item.get("code", ""))
         level = str(item.get("level", ""))
-        if not code or level not in {"Бакалавриат", "Специалитет"}:
+        if not code or level not in LEVEL_EN:
             continue
+        form = str(item.get("form", ""))
+        is_full_time = "Очная" in form and "Заочная" not in form
         raw_score = int(item.get("pass_score") or 0)
         budget_seats = int(item.get("budget") or 0)
         paid_seats = int(item.get("paid") or 0)
+        profile = str(item.get("profile", ""))
         current = grouped.get(code)
         if current is None:
             grouped[code] = {
                 "code": code,
-                "profile": str(item.get("profile", "")),
+                "level": level,
+                "profile": profile,
                 "direction": str(item.get("direction", "")),
                 "institute": str(item.get("institute", "")),
-                "_rawScore": raw_score,
+                "forms": {form} if form else set(),
+                "profiles": {profile} if profile else set(),
+                "_rawScore": raw_score if is_full_time else 0,
+                "_rawScoreAny": raw_score,
                 "budgetSeats": budget_seats,
                 "paidSeats": paid_seats,
                 "description": str(item.get("description", "")),
             }
-        else:
-            current["budgetSeats"] = max(current["budgetSeats"], budget_seats)
-            current["paidSeats"] = max(current["paidSeats"], paid_seats)
-            if raw_score > current["_rawScore"]:
-                current.update(
-                    {
-                        "_rawScore": raw_score,
-                        "profile": str(item.get("profile", "")),
-                        "description": str(item.get("description", "")),
-                    }
-                )
+            continue
+        current["budgetSeats"] = max(current["budgetSeats"], budget_seats)
+        current["paidSeats"] = max(current["paidSeats"], paid_seats)
+        if form:
+            current["forms"].add(form)
+        if profile:
+            current["profiles"].add(profile)
+        if raw_score > current["_rawScoreAny"]:
+            current["_rawScoreAny"] = raw_score
+        if is_full_time and raw_score >= current["_rawScore"]:
+            current["_rawScore"] = raw_score
+            current["profile"] = profile
+            current["description"] = str(item.get("description", ""))
 
     score_directions = []
     for item in grouped.values():
         code = item["code"]
-        raw_score = item["_rawScore"]
+        raw_score = item["_rawScore"] or item["_rawScoreAny"]
         has_budget = item["budgetSeats"] > 0
-        min_sum = _min_exam_sum(code, min_map)
-        if has_budget:
+        is_master = item["level"] == "Магистратура"
+        min_sum = MASTER_MIN_SCORE if is_master else _min_exam_sum(code, min_map)
+        if is_master:
+            budget_score = raw_score if has_budget else 0
+            paid_score = raw_score if raw_score > 0 else min_sum
+            paid_is_min = raw_score <= 0
+        elif has_budget:
             budget_score = raw_score
             paid_score = min_sum
             paid_is_min = True
@@ -773,10 +811,24 @@ def build_overview(*, force_refresh: bool = False) -> dict[str, Any]:
             paid_is_min = raw_score <= 0
         short_ru, short_en = SHORT_NAMES.get(code, (code, code))
         desc = _trim_text(item["description"], 420)
+        forms_ru: list[str] = []
+        forms_en: list[str] = []
+        for form in item["forms"]:
+            for part in form.split(","):
+                label = FORM_LABELS.get(part.strip())
+                if label and label[0] not in forms_ru:
+                    forms_ru.append(label[0])
+                    forms_en.append(label[1])
         score_directions.append(
             {
                 "id": code.replace(".", "-"),
                 "code": code,
+                "levelRu": item["level"],
+                "levelEn": LEVEL_EN[item["level"]],
+                "formsRu": forms_ru,
+                "formsEn": forms_en,
+                "profilesRu": sorted(item["profiles"]),
+                "profilesEn": sorted(item["profiles"]),
                 "shortRu": short_ru,
                 "shortEn": short_en,
                 "nameRu": item["direction"],
