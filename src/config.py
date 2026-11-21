@@ -25,10 +25,15 @@ EMBEDDINGS_PATH = DATA_DIR / "embeddings.npy"
 REGISTRY_PATH = DATA_DIR / "registry.json"
 STATS_PATH = DATA_DIR / "stats.json"
 SEED_URLS_PATH = DATA_DIR / "seed_urls.json"
+SITE_SOURCES_PATH = DATA_DIR / "site_sources.json"
+PROGRAMS_PATH = DATA_DIR / "programs.json"
 BACKUPS_DIR = DATA_DIR / "backups"
 APP_SETTINGS_PATH = DATA_DIR / "app_settings.json"
 DOCS_DIR = DATA_DIR / "docs"
 EVENTS_LOG = LOGS_DIR / "events.jsonl"
+
+PROFILE_INDEX_URL = "https://portal.sibsutis.ru/abitur/profile/"
+BACHELOR_RULES_URL = "https://sibsutis.ru/abitur/bachelor/"
 
 for _directory in (DATA_DIR, RAW_DIR, LOGS_DIR, WEB_DIR, BACKUPS_DIR, DOCS_DIR):
     _directory.mkdir(parents=True, exist_ok=True)

@@ -20,6 +20,7 @@ from collections.abc import Iterable
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
+from urllib.parse import parse_qs, urljoin, urlparse
 
 import httpx
 import numpy as np
@@ -966,6 +967,279 @@ def run_single_file(
     return stats
 
 
+# --- Каталог направлений и обход сайта --------------------------------
+
+def _clean_text(node: Any) -> str:
+    return " ".join(node.get_text(" ", strip=True).split())
+
+
+def _items_after_heading(soup: BeautifulSoup, heading_text: str) -> list[str]:
+    heading = None
+    for tag in soup.find_all(["h2", "h3"]):
+        if heading_text.lower() in _clean_text(tag).lower():
+            heading = tag
+            break
+    if heading is None:
+        return []
+    items: list[str] = []
+    for node in heading.find_all_next():
+        if node.name in {"h2", "h3"} and node is not heading:
+            break
+        if node.name == "li":
+            text = _clean_text(node)
+            if text and text not in items:
+                items.append(text)
+    return items
+
+
+def _first_number(pattern: str, text: str) -> int | None:
+    match = re.search(pattern, text, re.I)
+    return int(match.group(1)) if match else None
+
+
+def parse_program_page(url: str, html: str) -> dict[str, Any]:
+    """Достаёт из страницы профиля поля для каталога и рекомендаций."""
+    soup = BeautifulSoup(html, "html.parser")
+    full_text = _clean_text(soup)
+    institute = _clean_text(soup.find("h1")) if soup.find("h1") else ""
+
+    code = ""
+    direction = ""
+    code_tag = None
+    for tag in soup.find_all("h2"):
+        text = _clean_text(tag)
+        match = re.match(r"^(\d{2}\.\d{2}\.\d{2})\s+(.+)$", text)
+        if match:
+            code, direction = match.group(1), match.group(2)
+            code_tag = tag
+            break
+
+    profile = ""
+    if code_tag is not None:
+        next_p = code_tag.find_next("p")
+        if next_p is not None:
+            profile = _clean_text(next_p)
+
+    stats_text = _clean_text(soup.select_one(".padding-content")) if soup.select_one(".padding-content") else ""
+    years = _first_number(r"(\d+)\s*(?:год|года|лет)\s*Срок обучения", stats_text)
+    paid = _first_number(r"(\d+)\*?\s*Платные места", stats_text)
+    budget = _first_number(r"(\d+)\*?\s*Бюджетные места", stats_text)
+    pass_score = _first_number(r"(\d+)\s*Проходной балл", stats_text)
+    tuition_match = re.search(r"(?<!\d)(\d{1,3}(?:\s\d{3})+|\d+)\s*руб\.\s*Стоимость обучения", stats_text, re.I)
+    salary_match = re.search(r"(?<!\d)(\d{1,3}(?:\s\d{3})+|\d+)\s*руб\.\s*Средняя зарплата", full_text, re.I)
+
+    level = ""
+    form = ""
+    for tag in soup.find_all("h3"):
+        text = _clean_text(tag)
+        if "Уровень подготовки" in text:
+            level = text.split(":", 1)[-1].strip()
+        elif "Формы обучения" in text:
+            form = text.split(":", 1)[-1].strip()
+
+    disciplines = _items_after_heading(soup, "Профилирующие дисциплины")
+    professions = _items_after_heading(soup, "Кем работают выпускники")
+    exams = ""
+    if "Вступительные испытания:" in full_text:
+        exams = full_text.split("Вступительные испытания:", 1)[1].split("К списку направлений", 1)[0].strip()[:1200]
+
+    plan_pdf = ""
+    plan_link = soup.select_one("a.plan__link")
+    if plan_link and plan_link.get("href"):
+        plan_pdf = urljoin(url, plan_link["href"])
+
+    description = ""
+    for paragraph in soup.find_all("p"):
+        text = _clean_text(paragraph)
+        if len(text) < 150:
+            continue
+        if text.startswith("Подготовка студентов") or text.startswith("Выпускники данной образовательной программы"):
+            description = text[:1200]
+            break
+    if not description and profile:
+        for paragraph in soup.find_all("p"):
+            text = _clean_text(paragraph)
+            if len(text) > 200 and "СибГУТИ" not in text[:80] and "Приёмная комиссия" not in text:
+                description = text[:1200]
+                break
+
+    program_id = parse_qs(urlparse(url).query).get("ID", [""])[0] or hashlib.sha1(url.encode()).hexdigest()[:10]
+
+    return {
+        "id": program_id,
+        "url": url,
+        "institute": institute,
+        "code": code,
+        "direction": direction,
+        "profile": profile,
+        "level": level,
+        "form": form,
+        "years": years,
+        "budget": budget,
+        "paid": paid,
+        "pass_score": pass_score,
+        "tuition": " ".join(tuition_match.group(1).split()) if tuition_match else "",
+        "salary": " ".join(salary_match.group(1).split()) if salary_match else "",
+        "disciplines": disciplines,
+        "professions": professions,
+        "exams": exams,
+        "plan_pdf": plan_pdf,
+        "description": description,
+    }
+
+
+def discover_program_links(index_url: str = config.PROFILE_INDEX_URL) -> list[dict[str, str]]:
+    content, _content_type, final_url, _via = fetch_url(index_url, use_wayback=False)
+    soup = BeautifulSoup(decode_text(content), "html.parser")
+    found: dict[str, dict[str, str]] = {}
+    for anchor in soup.find_all("a", href=True):
+        href = urljoin(final_url, anchor["href"])
+        if "profile/detail.php" not in href:
+            continue
+        title = _clean_text(anchor)
+        if title and href not in found:
+            found[href] = {"url": href, "title": title}
+    return list(found.values())
+
+
+def build_program_catalog() -> dict[str, Any]:
+    """Скачивает профили направлений и сохраняет структурированный каталог."""
+    links = discover_program_links()
+    programs: list[dict[str, Any]] = []
+    errors: list[dict[str, str]] = []
+    for index, link in enumerate(links, start=1):
+        try:
+            content, _content_type, final_url, _via = fetch_url(link["url"], use_wayback=False)
+            program = parse_program_page(final_url, decode_text(content))
+            if program.get("code"):
+                programs.append(program)
+                print(f"[{index}/{len(links)}] program {program['code']} {program.get('profile', '')[:50]}")
+            else:
+                errors.append({"url": link["url"], "error": "no_program_code"})
+        except Exception as exc:
+            errors.append({"url": link["url"], "error": f"{type(exc).__name__}: {exc}"})
+            print(f"[{index}/{len(links)}] ERROR {link['url']}: {exc}", file=sys.stderr)
+
+    programs.sort(key=lambda item: (item.get("code", ""), item.get("profile", "")))
+    payload = {
+        "generated_at": utc_now(),
+        "source": config.PROFILE_INDEX_URL,
+        "count": len(programs),
+        "programs": programs,
+        "errors": errors,
+    }
+    config.PROGRAMS_PATH.write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
+    return payload
+
+
+def load_program_catalog() -> dict[str, Any]:
+    if not config.PROGRAMS_PATH.exists():
+        return {"generated_at": "", "count": 0, "programs": [], "errors": []}
+    try:
+        payload = json.loads(config.PROGRAMS_PATH.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return {"generated_at": "", "count": 0, "programs": [], "errors": []}
+    return payload if isinstance(payload, dict) else {"programs": []}
+
+
+SITE_PAGES: list[tuple[str, str, str]] = [
+    ("https://sibsutis.ru/abitur/priem.php", "Поступление", "Приёмная комиссия 2026"),
+    (
+        "https://sibsutis.ru/abitur/kak-postupit/vstupitelnye-ispytaniya-v-sibguti.php",
+        "Поступление",
+        "Вступительные испытания",
+    ),
+    ("https://sibsutis.ru/abitur/pravila-priema/", "Поступление", "Правила приёма"),
+    ("https://sibsutis.ru/abitur/bachelor/", "Поступление", "Правила приёма: приложения"),
+    ("https://sibsutis.ru/abitur/faq.php", "Поступление", "FAQ абитуриента"),
+    ("https://sibsutis.ru/abitur/kak-postupit/podayte-dokumenty.php", "Поступление", "Подача документов"),
+    ("https://sibsutis.ru/abitur/kak-postupit/tselevaya-kvota/", "Поступление", "Целевая квота"),
+    (
+        "https://sibsutis.ru/abitur/kak-postupit/inostrannye-grazhdane/",
+        "Поступление",
+        "Иностранные граждане",
+    ),
+    ("https://sibsutis.ru/abitur/platnoe-obuchenie/", "Поступление", "Платное обучение"),
+    ("https://sibsutis.ru/abitur/instituty/", "Институты", "Институты СибГУТИ"),
+    (
+        "https://sibsutis.ru/abitur/instituty/institut-bazovykh-distsiplin/",
+        "Институты",
+        "Институт базовых дисциплин",
+    ),
+    (
+        "https://sibsutis.ru/abitur/instituty/institut-informatiki-i-vychislitelnoy-tekhniki/",
+        "Институты",
+        "Институт информатики и ВТ",
+    ),
+    (
+        "https://sibsutis.ru/abitur/instituty/institut-telekommunikatsiy/",
+        "Институты",
+        "Институт телекоммуникаций",
+    ),
+    (
+        "https://sibsutis.ru/abitur/instituty/institut--bezopasnosti/",
+        "Институты",
+        "Институт безопасности",
+    ),
+    ("https://sibsutis.ru/sveden/grants/", "Стипендии", "Стипендии и поддержка"),
+    ("https://sibsutis.ru/sveden/education/", "Программы", "Образовательные программы"),
+    ("https://sibsutis.ru/abitur/konkursnye-spiski/", "Поступление", "Конкурсные списки"),
+]
+
+PDF_KEYWORDS = (
+    "приложение 1",
+    "приложение 2",
+    "приложение 3",
+    "приложение 4",
+    "приложение 5",
+    "приложение 6",
+    "приложение 7",
+    "приложение 8",
+    "приложение 9",
+    "приложение 10",
+    "минимальные баллы",
+    "количество бюджетных",
+    "количество платных",
+    "расписание вступительных",
+    "памятка",
+    "медосмотр",
+    "соответствие направленности",
+)
+
+
+def discover_site_sources() -> list[dict[str, str]]:
+    """Собирает ссылки для автоматического обновления базы."""
+    sources: dict[str, dict[str, str]] = {}
+
+    def add(url: str, section: str, title: str) -> None:
+        if url not in sources:
+            sources[url] = {"url": url, "section": section, "title": title, "year": "2026"}
+
+    for url, section, title in SITE_PAGES:
+        add(url, section, title)
+
+    for link in discover_program_links():
+        add(link["url"], "Программы", link["title"])
+
+    try:
+        content, _content_type, final_url, _via = fetch_url(config.BACHELOR_RULES_URL, use_wayback=False)
+        soup = BeautifulSoup(decode_text(content), "html.parser")
+        for anchor in soup.find_all("a", href=True):
+            href = urljoin(final_url, anchor["href"])
+            title = _clean_text(anchor)
+            low = (href + " " + title).lower()
+            if href.lower().endswith(".pdf") and any(key in low for key in PDF_KEYWORDS):
+                add(href, "Поступление", title or Path(href).name)
+    except Exception as exc:
+        print(f"PDF discovery warning: {exc}", file=sys.stderr)
+
+    payload = sorted(sources.values(), key=lambda item: (item["section"], item["title"]))
+    config.SITE_SOURCES_PATH.write_text(
+        json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8"
+    )
+    return payload
+
+
 # --- Снапшоты базы знаний ------------------------------------------------
 
 BACKUP_ID_RE = re.compile(r"^db_[0-9]{8}_[0-9]{6}_[a-f0-9]{6}$")
@@ -1184,10 +1458,32 @@ def main(argv: Iterable[str] | None = None) -> int:
         action="store_true",
         help="Продолжить сбор: не очищать базу и пропустить уже проиндексированные URL",
     )
+    parser.add_argument(
+        "--programs",
+        action="store_true",
+        help="Обновить каталог направлений с portal.sibsutis.ru",
+    )
+    parser.add_argument(
+        "--site-sources",
+        action="store_true",
+        help="Собрать список ссылок сайта для автоматического обновления",
+    )
     args = parser.parse_args(list(argv) if argv is not None else None)
 
+    if args.programs:
+        payload = build_program_catalog()
+        print(f"Каталог направлений: {payload['count']} программ, ошибок={len(payload['errors'])}")
+        for error in payload["errors"]:
+            print(f"  ! {error['url']}: {error['error']}", file=sys.stderr)
+        return 0
+
+    if args.site_sources:
+        sources = discover_site_sources()
+        print(f"Источников найдено: {len(sources)} → {config.SITE_SOURCES_PATH}")
+        return 0
+
     if not args.urls and not args.file and not args.dir:
-        parser.error("укажите --dir, --urls или --file")
+        parser.error("укажите --dir, --urls, --file, --programs или --site-sources")
 
     started = time.perf_counter()
     if args.dir:

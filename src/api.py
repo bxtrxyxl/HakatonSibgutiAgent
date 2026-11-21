@@ -17,14 +17,19 @@ from pydantic import BaseModel, Field
 from src import config
 from src.agent import get_agent
 from src.ingest import (
+    build_program_catalog,
     create_backup,
     database_status,
     delete_backup,
+    discover_site_sources,
+    load_program_catalog,
     restore_backup,
     run_directory,
     run_single_file,
+    run_urls,
     write_app_settings,
 )
+from src.retrieval import recommend_programs
 
 app = FastAPI(title="Ассистент СибГУТИ", version="1.0.0")
 
@@ -48,6 +53,15 @@ class FolderRequest(BaseModel):
 
 class DirectoryIngestRequest(BaseModel):
     path: str = Field(default="", max_length=500)
+
+
+class RecommendRequest(BaseModel):
+    query: str = Field(min_length=2, max_length=500)
+    limit: int = Field(default=5, ge=1, le=10)
+
+
+class SiteRefreshRequest(BaseModel):
+    ingest: bool = Field(default=False, description="Сразу собрать базу из найденных ссылок")
 
 
 def _reset_retriever() -> None:
@@ -239,6 +253,60 @@ def test_embeddings() -> dict[str, Any]:
         "dimensions": len(vector),
         "latency_ms": int((time.perf_counter() - started) * 1000),
     }
+
+
+@app.post("/api/recommend")
+def recommend(request: RecommendRequest) -> dict[str, Any]:
+    items = recommend_programs(request.query, limit=request.limit)
+    return {"query": request.query, "count": len(items), "items": items}
+
+
+@app.get("/api/programs")
+def programs() -> dict[str, Any]:
+    return load_program_catalog()
+
+
+@app.post("/api/programs/refresh")
+def refresh_programs() -> dict[str, Any]:
+    try:
+        with _DB_LOCK:
+            payload = build_program_catalog()
+    except Exception as exc:
+        raise HTTPException(status_code=502, detail=_safe_error(exc)) from exc
+    return {
+        "status": "ok",
+        "count": payload.get("count", 0),
+        "errors": payload.get("errors", []),
+        "generated_at": payload.get("generated_at", ""),
+    }
+
+
+@app.post("/api/site/sources")
+def site_sources() -> dict[str, Any]:
+    try:
+        sources = discover_site_sources()
+    except Exception as exc:
+        raise HTTPException(status_code=502, detail=_safe_error(exc)) from exc
+    return {"status": "ok", "count": len(sources), "sources": sources}
+
+
+@app.post("/api/site/refresh")
+def site_refresh(request: SiteRefreshRequest) -> dict[str, Any]:
+    try:
+        sources = discover_site_sources()
+    except Exception as exc:
+        raise HTTPException(status_code=502, detail=_safe_error(exc)) from exc
+
+    if not request.ingest:
+        return {"status": "discovered", "count": len(sources), "sources": sources}
+
+    try:
+        with _DB_LOCK:
+            stats = run_urls(config.SITE_SOURCES_PATH, use_wayback=False)
+        _reset_retriever()
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=_safe_error(exc)) from exc
+    return {"status": "ok", "sources": len(sources), "stats": stats}
 
 
 @app.get("/api/stats")

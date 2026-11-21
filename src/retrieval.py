@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 import re
 import sqlite3
 from dataclasses import dataclass
@@ -256,3 +257,156 @@ def format_context(chunks: list[dict[str, Any]]) -> str:
             f"[{index}] {chunk['title']} | раздел: {chunk['section']} | год: {year}\n{chunk['text']}"
         )
     return "\n\n".join(blocks)
+
+
+# --- Подбор направлений по стеку и профессии ------------------------------
+
+STOPWORDS = {
+    "хочу", "хотел", "хотела", "работать", "работаю", "стать", "учиться", "поступить",
+    "какие", "какой", "какое", "какую", "где", "что", "там", "это", "для", "или", "мне",
+    "можно", "нужно", "лучше", "подбери", "подобрать", "направление", "направления",
+    "профессия", "профессию", "стек", "технологии", "технология", "выпускники",
+    "обучение", "обучения", "обучением", "обучении", "учат", "учит", "обучают", "изучают",
+    "под", "на", "в", "с", "и", "по",
+    "and", "the", "for", "with", "want", "work", "developer", "engineer",
+}
+
+SYNONYMS: dict[str, tuple[str, ...]] = {
+    "python": ("python", "pandas", "numpy", "django", "flask", "fastapi"),
+    "ml": ("машинное обучение", "ml", "нейронн", "data science", "искусственн", "deep learning", "машинн"),
+    "ai": ("ai", "искусственный интеллект", "нейросет", "nlp", "компьютерное зрение"),
+    "backend": ("backend", "бэкенд", "java", "go", "sql", "api", "микросервис", "серверн"),
+    "frontend": ("frontend", "фронтенд", "typescript", "javascript", "react", "верстк", "web"),
+    "devops": ("devops", "docker", "kubernetes", "k8s", "ci/cd", "linux", "облачн"),
+    "security": ("безопасность", "криптограф", "защита информации", "информационная безопасность"),
+    "robot": ("робот", "robot", "робототехник"),
+    "media": ("медиа", "телерадиовещание", "видео", "мультимедиа", "телевидени"),
+    "economy": ("экономик", "бизнес", "финанс", "менеджмент"),
+    "advertising": ("реклам", "связи с общественностью", "маркетинг", "pr", "медиакоммуникац"),
+    "radio": ("радиотехн", "радиоэлектрон", "радиоволн", "радиосистем"),
+    "electronics": ("электроник", "наноэлектроник", "микроэлектроник", "схемотехник"),
+    "data": ("данн", "sql", "аналитик", "big data", "хранилищ"),
+    "network": ("сети", "сетев", "телекоммуникац", "tcp/ip", "маршрутизац", "инфокоммуникац", "ethernet"),
+}
+
+
+def _normalize(text: str) -> str:
+    return str(text or "").lower().replace("ё", "е")
+
+
+def _query_concepts(query: str) -> list[str]:
+    normalized = _normalize(query)
+    concepts: list[str] = []
+    for name, terms in SYNONYMS.items():
+        if any(term in normalized for term in terms):
+            concepts.append(name)
+    tokens = re.findall(r"[a-zа-я0-9+#./-]{3,}", normalized)
+    for token in tokens:
+        if token in STOPWORDS or token in concepts:
+            continue
+        if any(_concept_matches(name, token) for name in SYNONYMS):
+            continue
+        concepts.append(token)
+    return concepts[:12]
+
+
+def _concept_matches(concept: str, text: str) -> bool:
+    haystack = _normalize(text)
+    terms = SYNONYMS.get(concept, (concept,))
+    for term in terms:
+        normalized = _normalize(term)
+        if normalized and normalized in haystack:
+            return True
+        stem = normalized[:5]
+        if " " not in normalized and len(stem) >= 4 and stem in haystack:
+            return True
+    return False
+
+
+def recommend_programs(query: str, limit: int = 5) -> list[dict[str, Any]]:
+    """Подбирает направления по стеку/профессии и объясняет совпадение."""
+    if not config.PROGRAMS_PATH.exists():
+        return []
+    try:
+        payload = json.loads(config.PROGRAMS_PATH.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return []
+    programs = payload.get("programs") if isinstance(payload, dict) else None
+    if not isinstance(programs, list) or not programs:
+        return []
+
+    concepts = _query_concepts(query)
+    if not concepts:
+        return []
+
+    ranked: list[dict[str, Any]] = []
+    for program in programs:
+        if not isinstance(program, dict):
+            continue
+        disciplines = " ".join(program.get("disciplines") or [])
+        professions = " ".join(program.get("professions") or [])
+        title_text = " ".join(
+            [str(program.get("profile", "")), str(program.get("direction", "")), str(program.get("institute", ""))]
+        )
+        description = str(program.get("description", ""))
+        matched: list[str] = []
+        discipline_hits = 0
+        profession_hits = 0
+        title_hits = 0
+        for concept in concepts:
+            strong = False
+            if _concept_matches(concept, title_text):
+                title_hits += 1
+                strong = True
+            if _concept_matches(concept, disciplines):
+                discipline_hits += 1
+                strong = True
+            if _concept_matches(concept, professions):
+                profession_hits += 1
+                strong = True
+            if strong:
+                matched.append(concept)
+            elif _concept_matches(concept, description):
+                # Совпадение только в общем описании считаем слабым и не выносим в топ.
+                continue
+
+        if not matched:
+            continue
+        coverage = len(matched) / len(concepts)
+        depth = min(1.0, (discipline_hits + profession_hits) / max(1, len(concepts) * 2))
+        fit = round(35 + 45 * coverage + 15 * depth + min(3, title_hits))
+        fit = max(35, min(97, fit))
+        ranked.append(
+            {
+                "id": program.get("id", ""),
+                "code": program.get("code", ""),
+                "direction": program.get("direction", ""),
+                "profile": program.get("profile", ""),
+                "level": program.get("level", ""),
+                "form": program.get("form", ""),
+                "url": program.get("url", ""),
+                "fit": fit,
+                "matched": matched,
+                "disciplines": (program.get("disciplines") or [])[:6],
+                "professions": (program.get("professions") or [])[:4],
+                "pass_score": program.get("pass_score"),
+                "budget": program.get("budget"),
+                "paid": program.get("paid"),
+                "tuition": program.get("tuition", ""),
+                "salary": program.get("salary", ""),
+            }
+        )
+
+    ranked.sort(key=lambda item: (-item["fit"], -(item.get("pass_score") or 0)))
+    unique: list[dict[str, Any]] = []
+    seen: set[tuple[str, str]] = set()
+    for item in ranked:
+        key = (str(item.get("code", "")), str(item.get("profile", "")))
+        if key in seen:
+            continue
+        seen.add(key)
+        unique.append(item)
+        if len(unique) >= limit:
+            break
+    return unique
+

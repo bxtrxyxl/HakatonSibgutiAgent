@@ -8,11 +8,17 @@ import uuid
 from typing import Any
 
 from src import config, prompts, security
-from src.retrieval import HybridRetriever
+from src.retrieval import HybridRetriever, recommend_programs
 
 HISTORY_LIMIT = 8
 LLM_MAX_TOKENS = 2000
 CITATION_RE = re.compile(r"\[(\d{1,2})\]")
+RECOMMEND_RE = re.compile(
+    r"(подбер\w*|подходящ\w*|какие\s+направлен\w*|куда\s+поступ\w*|"
+    r"хочу\s+(работать|стать|учиться)|кем\s+работ\w*|стек|професси\w*|"
+    r"что\s+изуча\w*|какие\s+технологи\w*)",
+    re.I,
+)
 
 
 class SessionStore:
@@ -148,6 +154,66 @@ class SibSUTISAgent:
             )
         return sources
 
+    def _recommend_answer(self, message: str) -> dict[str, Any] | None:
+        items = recommend_programs(message, limit=5)
+        if not items:
+            return None
+
+        def cell(value: Any) -> str:
+            return str(value or "").replace("|", "\\|").replace("\n", " ").strip()
+
+        lines = [
+            "По вашему запросу подходят эти направления. Совпадение считается по пересечению стека "
+            "с профилирующими дисциплинами и профессиями выпускников — это ориентир, а не гарантия поступления.",
+            "",
+            "| Направление | Профиль | Совпадение |",
+            "| --- | --- | --- |",
+        ]
+        for item in items:
+            lines.append(
+                f"| {cell(item['code'])} {cell(item['direction'])} | {cell(item['profile'])} | {item['fit']}% |"
+            )
+
+        lines.append("")
+        for item in items[:3]:
+            lines.append(f"**{item['code']} {item['direction']} — {item['profile']}**")
+            lines.append(f"Совпадение: **{item['fit']}%**.")
+            if item["disciplines"]:
+                lines.append("Что изучают: " + ", ".join(item["disciplines"][:5]) + ".")
+            if item["professions"]:
+                lines.append("Кем работают: " + "; ".join(item["professions"][:3]) + ".")
+            details = []
+            if item.get("pass_score"):
+                details.append(f"проходной балл 2026 — {item['pass_score']}")
+            if item.get("budget") is not None:
+                details.append(f"бюджетных мест — {item['budget']}")
+            if item.get("paid") is not None:
+                details.append(f"платных мест — {item['paid']}")
+            if details:
+                lines.append("Поступление: " + ", ".join(details) + ".")
+            lines.append("")
+
+        lines.append(
+            "Уточните стек или профессию — подберу точнее. "
+            "Например: Python и машинное обучение, backend, сети, безопасность."
+        )
+        sources = []
+        seen: set[str] = set()
+        for item in items:
+            url = str(item.get("url", ""))
+            if not url or url in seen:
+                continue
+            seen.add(url)
+            sources.append(
+                {
+                    "title": f"{item['code']} {item['profile']}",
+                    "url": url,
+                    "section": "Программы",
+                    "year_version": "2026",
+                }
+            )
+        return {"answer_markdown": "\n".join(lines), "sources": sources}
+
     # --- основной цикл ---------------------------------------------------
 
     def answer(self, session_id: str, user_message: str) -> dict[str, Any]:
@@ -180,6 +246,14 @@ class SibSUTISAgent:
                  "sources": []},
                 "empty_query",
             )
+
+        if not flags and RECOMMEND_RE.search(message):
+            recommendation = self._recommend_answer(message)
+            if recommendation is not None:
+                self.sessions.append(session_id, "user", message)
+                self.sessions.append(session_id, "assistant", recommendation["answer_markdown"])
+                retrieved = recommendation.get("sources", [])
+                return finish(recommendation, "recommendation")
 
         try:
             query = self._rewrite_query(session_id, message)

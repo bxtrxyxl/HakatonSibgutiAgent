@@ -3450,7 +3450,6 @@
               <span data-i18n="connModeLabel">Режим работы</span>
             </div>
             <div id="modeSegmented" class="segmented-control">
-              <button class="seg-btn" data-mode="demo" data-i18n="modeDemo">Демо (офлайн)</button>
               <button class="seg-btn" data-mode="fastapi" data-i18n="modeFastApi">Сервер FastAPI</button>
               <button class="seg-btn" data-mode="openai" data-i18n="modeOpenAi">Прямой API</button>
             </div>
@@ -3651,11 +3650,29 @@
             <p class="db-note" data-i18n="dbFolderNote">Пересборка полностью обновляет FTS-индекс и эмбеддинги. Папка должна находиться внутри data/.</p>
           </div>
 
+          <div class="db-section">
+            <div class="db-section-head">
+              <div>
+                <span class="db-section-title" data-i18n="dbProgramsTitle">Каталог направлений</span>
+                <span class="db-section-desc" data-i18n="dbProgramsDesc">38 профилей с дисциплинами, профессиями и проходными баллами. Используется для подбора по стеку.</span>
+              </div>
+              <span id="programCatalogCount" class="db-badge">—</span>
+            </div>
+            <div style="display:flex;gap:8px;flex-wrap:wrap;">
+              <button id="refreshProgramsBtn" class="btn-pill-ghost" style="height:34px;">
+                <svg class="svg-icon" style="width:14px;height:14px;" viewBox="0 0 24 24"><polyline points="23 4 23 10 17 10"></polyline><polyline points="1 20 1 14 7 14"></polyline><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10"></path><path d="M20.49 15a9 9 0 0 1-14.85 3.36L1 14"></path></svg>
+                <span data-i18n="dbRefreshPrograms">Обновить с сайта</span>
+              </button>
+              <button id="discoverSourcesBtn" class="btn-pill-ghost" style="height:34px;" data-i18n="dbDiscoverSources">Показать ссылки парсинга</button>
+            </div>
+            <p id="programCatalogStatus" class="db-note" data-i18n="dbProgramsNote">Каталог обновляется с portal.sibsutis.ru и не меняет основную базу, пока вы не запустите пересборку.</p>
+          </div>
+
           <div class="db-section db-plan">
             <div class="toggle-row" style="padding:0;">
               <div class="toggle-info">
-                <span class="toggle-title" data-i18n="dbAutoTitle">Автообновление с сайта</span>
-                <span class="toggle-desc" data-i18n="dbAutoDesc">Планируемый парсинг официальных страниц по расписанию. Пока выключено.</span>
+                <span class="toggle-title" data-i18n="dbAutoTitle">Автообновление по расписанию</span>
+                <span class="toggle-desc" data-i18n="dbAutoDesc">Планировщик будет сам обновлять каталог и базу. Пока обновление запускается вручную.</span>
               </div>
               <span class="db-badge" data-i18n="dbSoonBadge">план</span>
             </div>
@@ -3867,9 +3884,17 @@
           dbFolderDesc: 'Сборка идёт только по вашим файлам внутри data/. Укажите путь к папке с Markdown.',
           dbConnectFolder: 'Сохранить и пересобрать',
           dbFolderNote: 'Пересборка полностью обновляет FTS-индекс и эмбеддинги. Папка должна находиться внутри data/.',
+          dbProgramsTitle: 'Каталог направлений',
+          dbProgramsDesc: '38 профилей с дисциплинами, профессиями и проходными баллами. Используется для подбора по стеку.',
+          dbRefreshPrograms: 'Обновить с сайта',
+          dbDiscoverSources: 'Показать ссылки парсинга',
+          dbProgramsNote: 'Каталог обновляется с portal.sibsutis.ru и не меняет основную базу, пока вы не запустите пересборку.',
+          dbProgramsUpdated: 'Каталог обновлён',
+          dbProgramsLoading: 'Обновление каталога...',
+          dbSourcesFound: 'Ссылок найдено',
           dbLocalBadge: 'локально',
-          dbAutoTitle: 'Автообновление с сайта',
-          dbAutoDesc: 'Планируемый парсинг официальных страниц по расписанию. Пока выключено.',
+          dbAutoTitle: 'Автообновление по расписанию',
+          dbAutoDesc: 'Планировщик будет сам обновлять каталог и базу. Пока обновление запускается вручную.',
           dbSoonBadge: 'план',
           dbImportSummary: 'Импорт отдельного документа',
           toastDbBackup: 'Резервная копия создана',
@@ -3919,6 +3944,7 @@
             { q: 'Сколько стоит обучение на бакалавриате и магистратуре?', sub: 'Стоимость за семестр' },
             { q: 'Как получить место в общежитии и сколько стоит проживание?', sub: 'Общежития · Кампус' },
             { q: 'Какие виды стипендий и доп. баллы ИД есть в СибГУТИ?', sub: 'Стипендии · Достижения' },
+            { q: 'Подбери направление, где учат Python и машинному обучению', sub: 'Подбор · стек' },
             { q: 'Какой у меня шанс поступить на ИВТ?', sub: 'Шанс поступления' }
           ]
         },
@@ -4036,9 +4062,17 @@
           dbFolderDesc: 'Builds use only your files inside data/. Point to the Markdown folder.',
           dbConnectFolder: 'Save and rebuild',
           dbFolderNote: 'A rebuild replaces the FTS index and embeddings. The folder must be inside data/.',
+          dbProgramsTitle: 'Program catalog',
+          dbProgramsDesc: '38 profiles with disciplines, professions, and passing scores. Used for stack-based matching.',
+          dbRefreshPrograms: 'Refresh from site',
+          dbDiscoverSources: 'Show parsing links',
+          dbProgramsNote: 'The catalog is refreshed from portal.sibsutis.ru and does not change the main database until you rebuild.',
+          dbProgramsUpdated: 'Catalog updated',
+          dbProgramsLoading: 'Refreshing catalog...',
+          dbSourcesFound: 'Links found',
           dbLocalBadge: 'local',
-          dbAutoTitle: 'Automatic site updates',
-          dbAutoDesc: 'Planned scheduled parsing of official pages. Off for now.',
+          dbAutoTitle: 'Scheduled updates',
+          dbAutoDesc: 'A scheduler will refresh the catalog and database automatically. For now updates are manual.',
           dbSoonBadge: 'planned',
           dbImportSummary: 'Import a single document',
           toastDbBackup: 'Backup created',
@@ -4088,6 +4122,7 @@
             { q: 'Сколько стоит обучение на бакалавриате и магистратуре?', sub: 'Tuition per semester' },
             { q: 'Как получить место в общежитии и сколько стоит проживание?', sub: 'Dormitories · Campus' },
             { q: 'Какие виды стипендий и доп. баллы ИД есть в СибГУТИ?', sub: 'Scholarships · Bonus points' },
+            { q: 'Подбери направление, где учат Python и машинному обучению', sub: 'Matching · stack' },
             { q: 'What are my chances of getting into CS?', sub: 'Admission chance' }
           ]
         }
@@ -4489,6 +4524,7 @@
           if (raw) {
             const parsed = JSON.parse(raw);
             const settings = Object.assign({}, DEFAULT_SETTINGS, parsed.settings || {});
+            if (settings.mode === 'demo') settings.mode = 'fastapi';
             const chats = Array.isArray(parsed.chats) && parsed.chats.length ? parsed.chats : createInitialChats();
             const activeChatId = chats.some((c) => c.id === parsed.activeChatId) ? parsed.activeChatId : chats[0].id;
             return {
@@ -4615,6 +4651,10 @@
         embedTestBadge: document.getElementById('embedTestBadge'),
         kbFolderInput: document.getElementById('kbFolderInput'),
         rebuildFolderBtn: document.getElementById('rebuildFolderBtn'),
+        programCatalogCount: document.getElementById('programCatalogCount'),
+        refreshProgramsBtn: document.getElementById('refreshProgramsBtn'),
+        discoverSourcesBtn: document.getElementById('discoverSourcesBtn'),
+        programCatalogStatus: document.getElementById('programCatalogStatus'),
         exportJsonBtn: document.getElementById('exportJsonBtn'),
         clearHistoryBtn: document.getElementById('clearHistoryBtn'),
         ingestFileInput: document.getElementById('ingestFileInput'),
@@ -5607,367 +5647,12 @@
       /* ------------------------------------------------------------------------
          10. FASTAPI / OPENAI API CONNECTOR
          ------------------------------------------------------------------------ */
-      function isPromptInjection(text) {
-        const s = text.toLowerCase();
-        return [
-          /игнорируй\s+(все\s+)?(предыдущие\s+)?инструкц/,
-          /забудь\s+(все\s+)?правила/,
-          /выведи\s+(свой\s+)?(системный\s+промпт|system\s+prompt|api[_\s-]?key|ключ)/,
-          /ignore\s+(all\s+)?previous\s+instructions/,
-          /reveal\s+(your\s+)?system\s+prompt/,
-          /я\s+администратор.*(истори|сесси|чуж)/,
-          /покажи\s+(историю|переписку)\s+(другого|прошлого)/
-        ].some((rx) => rx.test(s));
-      }
-
-      function inferSessionTopic(history) {
-        const recentText = history.slice(-6).map((m) => m.content.toLowerCase()).join(' ');
-        if (/(магистрат)/.test(recentText)) return 'master';
-        if (/(колледж|спо)/.test(recentText)) return 'spo';
-        if (/(общежит)/.test(recentText)) return 'dorm';
-        if (/(стипенд)/.test(recentText)) return 'scholarship';
-        if (/(балл|направлен|ивт|иб|связь)/.test(recentText)) return 'programs';
-        return null;
-      }
-
-      function findDirectionFromQuery(query) {
-        const q = query.toLowerCase();
-        const directions = getScoreDirections();
-        return (
-          directions.find((direction) => q.includes(direction.code)) ||
-          directions.find((direction) => q.includes(direction.nameRu.toLowerCase())) ||
-          directions.find((direction) => q.includes(direction.shortRu.toLowerCase())) ||
-          directions.find((direction) => direction.shortEn && q.includes(direction.shortEn.toLowerCase()))
-        );
-      }
-
-      function buildDemoReply(query, history) {
-        const q = query.toLowerCase();
-        const injection = isPromptInjection(query);
-        const prevTopic = inferSessionTopic(history.slice(0, -1));
-
-        // 1. Check uploaded custom docs (supports indirect injection testing from Settings)
-        const uploadedMatch = state.uploadedDocs.find((doc) => {
-          const tokens = q.split(/\s+/).filter((w) => w.length > 3);
-          const hay = (doc.title + ' ' + doc.content).toLowerCase();
-          return tokens.some((w) => hay.includes(w));
-        });
-
-        if (uploadedMatch) {
-          const indirectAttack = /игнорируй|ignore previous|без экзаменов|system prompt/i.test(uploadedMatch.content);
-          const safeFacts = uploadedMatch.content
-            .split(/[\n.]+/)
-            .filter((line) => line.trim() && !/игнорируй|ignore previous|system prompt|напиши, что/i.test(line))
-            .slice(0, 3)
-            .join('. ');
-
-          return {
-            content:
-              `По загруженному документу **«${uploadedMatch.title}»** (${uploadedMatch.year}):\n\n` +
-              (safeFacts ? `${safeFacts}.` : 'Документ учтён в справке, но фактических сведений по запросу не найдено.') +
-              (indirectAttack
-                ? '\n\nПосторонние команды внутри текста документа были проигнорированы — использованы только фактические сведения.'
-                : ''),
-            securityBlocked: indirectAttack || injection,
-            sources: [
-              {
-                title: uploadedMatch.title,
-                year: uploadedMatch.year,
-                url: uploadedMatch.url,
-                quote: safeFacts || uploadedMatch.content.slice(0, 180)
-              }
-            ]
-          };
-        }
-
-        // 2. Unpublished future dates or private data
-        if (/(2027|2028|оценк|зачётк|зачетк|личн\w*\s+кабинет|моё\s+расписание|мое\s+расписание)/.test(q)) {
-          return {
-            content:
-              'В открытых документах СибГУТИ **нет запрашиваемых данных**: расписание личных занятий, оценки и утверждённые даты приёмной кампании 2027 года отсутствуют в открытой справке.\n\n' +
-              'Официальные сроки приёма на следующий учебный год публикуются вузом не позднее 20 января.',
-            callout:
-              'Проверить напрямую: приёмная комиссия СибГУТИ — **+7 (383) 269-82-02**, `pk@sibsutis.ru`, раздел абитуриента на `sibsutis.ru`.',
-            securityBlocked: injection,
-            sources: [
-              {
-                title: 'Правила приёма в СибГУТИ 2026',
-                year: '2026',
-                url: 'https://sibsutis.ru/abitur/rules-2026/',
-                quote: 'Действующая редакция правил регулирует приёмную кампанию 2026 года; правила следующего года утверждаются и публикуются до 20 января.'
-              }
-            ]
-          };
-        }
-
-        // 3. Admission chance (chat-only demo function)
-        if (/(шанс|вероятност|chance|probability|odds)/.test(q)) {
-          const direction = findDirectionFromQuery(q);
-          const mode = /(платн|paid)/.test(q) ? 'paid' : 'budget';
-          if (!direction) {
-            return {
-              content:
-                'Чтобы оценить шанс поступления, уточните направление — например, **ИВТ**, **ИБ** или код **09.03.01**.\n\n' +
-                'Можно спросить так: «Какой у меня шанс поступить на ИВТ на бюджет?»',
-              callout: 'Оценка демонстрационная: учитывает только балл и количество мест, без индивидуальных достижений и реального конкурса.',
-              securityBlocked: injection,
-              sources: [
-                {
-                  title: 'Проходные баллы по направлениям (демо)',
-                  year: '2026',
-                  url: 'https://sibsutis.ru/abitur/scores/',
-                  quote: 'Демонстрационная сводка проходных баллов и количества мест по направлениям СибГУТИ.'
-                }
-              ]
-            };
-          }
-          const chance = mode === 'paid' ? direction.chancePaid : direction.chanceBudget;
-          const score = mode === 'paid' ? direction.paid : direction.budget;
-          const seats = mode === 'paid' ? direction.paidSeats : direction.budgetSeats;
-          const modeLabel = mode === 'paid' ? 'Платное' : 'Бюджет';
-          return {
-            content:
-              `### Шанс поступления: ${direction.nameRu}\n\n` +
-              `**${chance}%** — демонстрационная оценка при балле **${score}** и **${seats}** ${mode === 'paid' ? 'платных' : 'бюджетных'} местах.\n\n` +
-              `| Параметр | Значение |\n` +
-              `| :--- | :--- |\n` +
-              `| Направление | \`${direction.code}\` ${direction.nameRu} |\n` +
-              `| Форма | ${modeLabel} |\n` +
-              `| Проходной балл (демо) | ${score} |\n` +
-              `| Мест | ${seats} |\n\n` +
-              `Оценка учитывает только балл и количество мест. Индивидуальные достижения, квоты и реальный конкурс могут изменить результат.`,
-            callout: 'Это демонстрационная функция чата, а не официальный прогноз приёмной комиссии.',
-            securityBlocked: injection,
-            sources: [
-              {
-                title: 'Проходные баллы по направлениям (демо)',
-                year: '2026',
-                url: 'https://sibsutis.ru/abitur/scores/',
-                quote: `Демо-оценка для ${direction.code}: ${chance}% при балле ${score} и ${seats} местах (${modeLabel.toLowerCase()}).`
-              }
-            ]
-          };
-        }
-
-        // 4. Tuition / Prices (including context-aware follow-up "а сколько стоит?")
-        if (/(стоимост|сколько\s+стоит|цен[аы]|оплат|платн|семестр)/.test(q) && !/(общежит|проходн|балл|направлен)/.test(q)) {
-          const isMaster = /магистрат/.test(q) || prevTopic === 'master';
-          const isSpo = /(колледж|спо)/.test(q) || prevTopic === 'spo';
-          const lead = injection ? 'Запрос на изменение правил отклонён. Данные по стоимости обучения:\n\n' : '';
-          return {
-            content:
-              lead +
-              (isSpo
-                ? 'Обучение в **колледже (СПО)** при СибГУТИ стоит **от 48 000 ₽ за семестр** (от 96 000 ₽ за учебный год, очная форма).\n\n'
-                : isMaster
-                  ? 'Обучение в **магистратуре** СибГУТИ стоит **от 92 000 ₽ за семестр** (от 184 000 ₽ в год, очная форма).\n\n'
-                  : 'Актуальная стоимость очного обучения по договору в СибГУТИ (редакция **2026 года**):\n\n') +
-              '| Уровень | За семестр | За год |\n' +
-              '| :--- | :--- | :--- |\n' +
-              '| Бакалавриат | от `84 000 ₽` | от `168 000 ₽` |\n' +
-              '| Специалитет | от `89 000 ₽` | от `178 000 ₽` |\n' +
-              '| Магистратура | от `92 000 ₽` | от `184 000 ₽` |\n' +
-              '| Колледж (СПО) | от `48 000 ₽` | от `96 000 ₽` |\n\n' +
-              'При успешной сдаче двух сессий подряд без троек и наличии свободных бюджетных мест студент может подать заявление на перевод с платного обучения на бюджет.',
-            securityBlocked: injection,
-            sources: [
-              {
-                title: 'Приказ о стоимости обучения 2026',
-                year: '2026',
-                url: 'https://sibsutis.ru/abitur/tuition-2026/',
-                quote: 'Минимальная стоимость за семестр (очная форма): бакалавриат — от 84 000 ₽, специалитет — от 89 000 ₽, магистратура — от 92 000 ₽, СПО — от 48 000 ₽.'
-              },
-              {
-                title: 'Положение о переводе на бюджет',
-                year: '2025',
-                url: 'https://sibsutis.ru/students/transfer/',
-                quote: 'Перевод на вакантные бюджетные места осуществляется на конкурсной основе при отсутствии академических задолженностей и оценок «удовлетворительно» за два последних семестра.'
-              }
-            ]
-          };
-        }
-
-        // 4. Passing scores by program (budget / paid)
-        if (/(проходн|сравни|платн|направлен|2023|2024|2025|динамик)/.test(q)) {
-          const lead = injection ? 'Служебная команда отклонена. Отвечаю по проходным баллам:\n\n' : '';
-          return {
-            content:
-              lead +
-              'Проходные баллы по направлениям СибГУТИ (очная форма, бакалавриат, **демо-данные**):\n\n' +
-              '| Код | Направление | Бюджет | Платное |\n' +
-              '| :--- | :--- | :--- | :--- |\n' +
-              '| `09.03.01` | Информатика и ВТ (ИВТ) | 221 | 168 |\n' +
-              '| `10.03.01` | Информационная безопасность (ИБ) | 213 | 172 |\n' +
-              '| `11.03.02` | Инфокоммуникации и связь | 191 | 160 |\n' +
-              '| `11.03.01` | Радиотехника | 178 | 151 |\n' +
-              '| `11.03.03` | Электроника и робототехника | 171 | 149 |\n' +
-              '| `42.03.01` | Реклама и связи с общественностью | 145 | 138 |\n\n' +
-              'Цифры демонстрационные: они показывают логику сравнения, а не заменяют официальные итоги конкурса.',
-            securityBlocked: injection,
-            sources: [
-              {
-                title: 'Проходные баллы по направлениям (демо)',
-                year: '2026',
-                url: 'https://sibsutis.ru/abitur/scores/',
-                quote: 'Демонстрационная сводка: ИВТ — 221/168, ИБ — 213/172, Связь — 191/160, Радиотехника — 178/151, Электроника — 171/149, Реклама — 145/138 (бюджет/платное).'
-              }
-            ]
-          };
-        }
-
-        // 5. Admission seats & quotas
-        if (/(мест|квот|целев|бюджетн)/.test(q) && !/(общежит)/.test(q)) {
-          return {
-            content:
-              'Распределение мест приёма в СибГУТИ (основная кампания **2026 года**, суммарно `1 420` мест):\n\n' +
-              '- **Бюджет (общий конкурс):** `685` мест на программы бакалавриата, специалитета и магистратуры.\n' +
-              '- **Целевая, особая и отдельная квоты:** `245` мест (выделяются внутри контрольных цифр приёма; неиспользованные места переходят в общий конкурс).\n' +
-              '- **Платные места (договор):** `490` мест с возможностью оплаты по семестрам.',
-            securityBlocked: injection,
-            sources: [
-              {
-                title: 'Контрольные цифры приёма 2026',
-                year: '2026',
-                url: 'https://sibsutis.ru/abitur/places-2026/',
-                quote: 'Общий объём приёма: 685 мест по общему бюджетному конкурсу, 245 мест в рамках целевой, особой и отдельной квот и 490 мест по договорам об оказании платных услуг.'
-              }
-            ]
-          };
-        }
-
-        // 6. Dormitories
-        if (/(общежит|общаг|засел|проживан)/.test(q)) {
-          return {
-            content:
-              (injection ? 'Попытка подмены инструкций отклонена. Информация об общежитиях СибГУТИ:\n\n' : '') +
-              'Студенческий городок СибГУТИ включает **4 общежития** рядом с учебными корпусами (ул. Кирова и ул. Б. Богаткова).\n\n' +
-              '- **Стоимость проживания:** от `1 100 ₽/мес.` для студентов бюджетной формы (от `2 200 ₽/мес.` для договорной основы).\n' +
-              '- **Кому предоставляется:** иногородним студентам очной формы (приоритет у льготных категорий и абитуриентов с высокими баллами).\n' +
-              '- **Заселение (конец августа):** нужны паспорт, справка `086/у`, свежая флюорография и 4 фото 3×4.',
-            securityBlocked: injection,
-            sources: [
-              {
-                title: 'Общежития и тарифы проживания',
-                year: '2026',
-                url: 'https://sibsutis.ru/students/dormitories/',
-                quote: 'Плата за проживание в общежитиях СибГУТИ для обучающихся очной бюджетной формы составляет от 1 100 рублей в месяц; заселение первокурсников проходит в последнюю неделю августа.'
-              }
-            ]
-          };
-        }
-
-        // 7. Scholarships & Individual Achievements (ИД)
-        if (/(стипенд|доп\.?\s*балл|индивидуальн\w*\s+достижен|гто|медал)/.test(q)) {
-          return {
-            content:
-              '### Стипендии (очная бюджетная форма, 2026)\n' +
-              '- **Государственная академическая:** от `2 900 ₽/мес.` (всем бюджетникам в 1-м семестре, далее — по итогам сессии без троек).\n' +
-              '- **Повышенная академическая (ПГАС):** до `12 000 ₽/мес.` за успехи в науке, проектах, спорте и общественной работе.\n' +
-              '- **Социальная стипендия:** от `4 350 ₽/мес.` для льготных категорий.\n\n' +
-              '### Индивидуальные достижения (до `+10 баллов` к ЕГЭ)\n' +
-              '- Аттестат или диплом СПО с отличием — `+5` баллов.\n' +
-              '- Знак ГТО (золотой/серебряный/бронзовый) — `+2` балла.\n' +
-              '- Призёрство в профильных олимпиадах и ИТ-хакатонах из перечня вуза — до `+5` баллов (суммарно не более `10`).',
-            securityBlocked: injection,
-            sources: [
-              {
-                title: 'Стипендиальное обеспечение СибГУТИ',
-                year: '2026',
-                url: 'https://sibsutis.ru/students/scholarships/',
-                quote: 'Базовый размер государственной академической стипендии — от 2 900 руб./мес., повышенной академической стипендии — до 12 000 руб./мес.'
-              },
-              {
-                title: 'Учёт индивидуальных достижений 2026',
-                year: '2026',
-                url: 'https://sibsutis.ru/abitur/achievements-2026/',
-                quote: 'Суммарно за индивидуальные достижения поступающему может быть начислено не более 10 дополнительных конкурсных баллов.'
-              }
-            ]
-          };
-        }
-
-        // 8. Programs, Exams, Cybersecurity (no false positives on "безопасность" / "атака")
-        if (/(направлен|ит|бакалавр|егэ|предмет|специалитет|магистрат|безопасност|атак)/.test(q) && !injection) {
-          return {
-            content:
-              'Основные ИТ- и телеком-направления **бакалавриата** СибГУТИ (очная форма, 4 года, редакция **2026**):\n\n' +
-              '| Код | Направление | Предметы ЕГЭ (мин. балл) |\n' +
-              '| :--- | :--- | :--- |\n' +
-              '| `09.03.01` | Информатика и вычислительная техника | Математика (39), Инф. (44) / Физ. (39), Русский (40) |\n' +
-              '| `09.03.02` | Информационные системы и технологии | Математика (39), Инф. (44) / Физ. (39), Русский (40) |\n' +
-              '| `09.03.04` | Программная инженерия | Математика (39), Инф. (44) / Физ. (39), Русский (40) |\n' +
-              '| `10.03.01` | Информационная безопасность | Математика (39), Инф. (44) / Физ. (39), Русский (40) |\n' +
-              '| `11.03.02` | Инфокоммуникации и системы связи | Математика (39), Инф. (44) / Физ. (39), Русский (40) |\n\n' +
-              'На направлении `10.03.01` изучают защиту сетей, криптографию и противодействие кибератакам.',
-            callout: 'Уточните, пожалуйста: вы поступаете после 11 класса (по ЕГЭ) или после колледжа (внутренние испытания)?',
-            securityBlocked: false,
-            sources: [
-              {
-                title: 'Перечень направлений и ЕГЭ 2026',
-                year: '2026',
-                url: 'https://sibsutis.ru/abitur/bachelor/',
-                quote: 'Для поступления на направления 09.03.01, 09.03.02, 09.03.04, 10.03.01 и 11.03.02 требуется профильная математика (от 39), информатика (от 44) или физика (от 39), русский язык (от 40).'
-              }
-            ]
-          };
-        }
-
-        // 9. Admission stages / deadlines / contacts
-        if (/(срок|подач|этап|приказ|зачислен|контакт|приёмн|приемн|дат)/.test(q)) {
-          return {
-            content:
-              '### Этапы приёмной кампании 2026 (бакалавриат, бюджет)\n' +
-              '1. **Подача документов:** 20 июня — 25 июля (лично, через Госуслуги или кабинет абитуриента).\n' +
-              '2. **Приоритетное зачисление (БВИ и квоты):** конец июля.\n' +
-              '3. **Основной этап зачисления:** начало августа.\n' +
-              '4. **Заселение в общежития:** последняя неделя августа.\n\n' +
-              '**Приёмная комиссия:** г. Новосибирск, ул. Кирова, 86 · `+7 (383) 269-82-02` · `pk@sibsutis.ru`.',
-            securityBlocked: injection,
-            sources: [
-              {
-                title: 'Календарь приёмной кампании 2026',
-                year: '2026',
-                url: 'https://sibsutis.ru/abitur/calendar-2026/',
-                quote: 'Приём документов на бюджетную очную форму бакалавриата открывается 20 июня 2026 года и завершается 25 июля 2026 года.'
-              }
-            ]
-          };
-        }
-
-        // 10. Pure prompt injection attempt
-        if (injection) {
-          return {
-            content:
-              'Я не могу менять системные правила, показывать служебные инструкции, ключи или чужие диалоги.\n\n' +
-              'Задайте вопрос о поступлении, направлениях, стоимости обучения, общежитии или стипендиях СибГУТИ — и я подготовлю ответ со ссылками на официальные документы.',
-            securityBlocked: true,
-            sources: []
-          };
-        }
-
-        // 11. General clarifying fallback
-        return {
-          content:
-            'Я помогаю по открытым материалам СибГУТИ: направления и предметы ЕГЭ, проходные баллы на бюджет и платное по направлениям, стоимость обучения, бюджетные и платные места, общежития и стипендии.' +
-            (prevTopic ? '\n\nЕсли вы продолжаете предыдущую тему, уточните уровень обучения или интересующее направление — я подберу конкретные цифры.' : ''),
-          callout: 'Уточните, пожалуйста: вы **абитуриент** или **студент**, какой уровень обучения интересует (бакалавриат, специалитет, магистратура, СПО)?',
-          securityBlocked: false,
-          sources: [
-            {
-              title: 'Справочник абитуриента СибГУТИ',
-              year: '2026',
-              url: 'https://sibsutis.ru/abitur/',
-              quote: 'Официальный портал для абитуриентов СибГУТИ содержит перечень направлений, правила приёма, квоты и контакты приёмной комиссии.'
-            }
-          ]
-        };
-      }
 
       async function fetchAssistantReply(chat, messageText) {
         const started = performance.now();
         const { mode, endpoint, apiKey, model } = state.settings;
 
-        if (mode === 'fastapi') {
+        if (mode !== 'openai') {
           const base = endpoint.replace(/\/+$/, '');
           const res = await fetch(`${base}/api/chat`, {
             method: 'POST',
@@ -6023,17 +5708,7 @@
           };
         }
 
-        // Demo mode: smooth realistic delay (~0.65–1.05 s)
-        const waitMs = 650 + Math.floor(Math.random() * 400);
-        await new Promise((r) => setTimeout(r, waitMs));
-        const demo = buildDemoReply(messageText, chat.messages);
-        return {
-          content: demo.content,
-          callout: demo.callout || null,
-          sources: demo.sources || [],
-          durationSec: Math.max(0.1, (performance.now() - started) / 1000),
-          securityBlocked: Boolean(demo.securityBlocked)
-        };
+        throw new Error(state.settings.lang === 'en' ? 'Unknown connection mode' : 'Неизвестный режим подключения');
       }
 
       async function sendMessage(rawText, isRetry = false) {
@@ -6241,6 +5916,55 @@
         }
       }
 
+      async function fetchProgramCatalog() {
+        try {
+          const data = await dbFetch('/api/programs');
+          const count = Number(data.count || 0);
+          el.programCatalogCount.textContent = String(count);
+          if (count) {
+            el.programCatalogStatus.textContent = `${t('dbProgramsNote')} ${t('dbProgramsUpdated')}: ${data.generated_at || '—'}.`;
+          }
+        } catch (err) {
+          el.programCatalogCount.textContent = '—';
+        }
+      }
+
+      async function refreshPrograms() {
+        const button = el.refreshProgramsBtn;
+        const label = button.querySelector('span');
+        const original = label.textContent;
+        button.disabled = true;
+        label.textContent = t('dbProgramsLoading');
+        try {
+          const data = await dbFetch('/api/programs/refresh', { method: 'POST' });
+          el.programCatalogCount.textContent = String(data.count || 0);
+          el.programCatalogStatus.textContent = `${t('dbProgramsUpdated')}: ${data.count || 0}.`;
+          showToast(`${t('dbProgramsUpdated')}: ${data.count || 0}`, 'ok');
+          await fetchProgramCatalog();
+        } catch (err) {
+          showToast(err.message, 'err');
+          setDbError(err.message);
+        } finally {
+          button.disabled = false;
+          label.textContent = original;
+        }
+      }
+
+      async function discoverSources() {
+        const button = el.discoverSourcesBtn;
+        button.disabled = true;
+        try {
+          const data = await dbFetch('/api/site/sources', { method: 'POST' });
+          el.programCatalogStatus.textContent = `${t('dbSourcesFound')}: ${data.count || 0}.`;
+          showToast(`${t('dbSourcesFound')}: ${data.count || 0}`, 'ok');
+        } catch (err) {
+          showToast(err.message, 'err');
+          setDbError(err.message);
+        } finally {
+          button.disabled = false;
+        }
+      }
+
       async function createDatabaseBackup() {
         el.createDbBackupBtn.disabled = true;
         try {
@@ -6352,6 +6076,7 @@
         el.embedTestBadge.classList.remove('is-ok', 'is-err');
         renderDatabaseTab();
         fetchDatabaseView();
+        fetchProgramCatalog();
       }
 
       async function testConnection() {
@@ -6572,6 +6297,8 @@
         el.testEmbedBtn.addEventListener('click', testEmbeddingModel);
         el.createDbBackupBtn.addEventListener('click', createDatabaseBackup);
         el.rebuildFolderBtn.addEventListener('click', rebuildFolder);
+        el.refreshProgramsBtn.addEventListener('click', refreshPrograms);
+        el.discoverSourcesBtn.addEventListener('click', discoverSources);
         el.dbRetryBtn.addEventListener('click', fetchDatabaseView);
         el.dbBackupList.addEventListener('click', (event) => {
           const btn = event.target.closest('[data-action]');
