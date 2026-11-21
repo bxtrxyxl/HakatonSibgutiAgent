@@ -2872,6 +2872,273 @@
       background: var(--tile-hover);
     }
 
+    /* Settings: Database tab */
+    .db-intro {
+      margin: 0;
+      font-size: 12px;
+      line-height: 1.5;
+      color: var(--text-2);
+    }
+
+    .db-summary {
+      padding: 14px;
+      border-radius: 16px;
+      background: var(--tile-bg);
+      border: 1px solid var(--tile-border);
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .db-summary-head {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 10px;
+    }
+
+    .db-kicker {
+      display: block;
+      margin-bottom: 3px;
+      font-size: 10.5px;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--text-3);
+    }
+
+    .db-active-name {
+      font-size: 14px;
+      font-weight: 600;
+      letter-spacing: -0.01em;
+    }
+
+    .db-meta {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 6px;
+    }
+
+    .db-meta-item {
+      min-width: 0;
+      padding: 7px 8px;
+      border-radius: 10px;
+      background: var(--glass-2);
+      border: 1px solid var(--tile-border);
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+
+    .db-meta-item span {
+      font-size: 10px;
+      color: var(--text-3);
+    }
+
+    .db-meta-item b {
+      font-size: 12.5px;
+      font-weight: 600;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .db-path {
+      padding: 7px 9px;
+      border-radius: 9px;
+      background: var(--glass-2);
+      border: 1px dashed var(--tile-border);
+      font-size: 11px;
+      color: var(--text-2);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .db-section {
+      padding: 14px;
+      border-radius: 16px;
+      background: var(--tile-bg);
+      border: 1px solid var(--tile-border);
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .db-section-head {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 10px;
+    }
+
+    .db-section-title {
+      display: block;
+      font-size: 13px;
+      font-weight: 600;
+    }
+
+    .db-section-desc {
+      display: block;
+      margin-top: 3px;
+      max-width: 360px;
+      font-size: 11.5px;
+      line-height: 1.45;
+      color: var(--text-2);
+    }
+
+    .db-badge {
+      display: inline-flex;
+      align-items: center;
+      padding: 3px 8px;
+      border-radius: 999px;
+      font-size: 10px;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      color: var(--text-2);
+      background: var(--glass-2);
+      border: 1px solid var(--tile-border);
+      white-space: nowrap;
+    }
+
+    .db-backup-list {
+      display: flex;
+      flex-direction: column;
+      gap: 7px;
+      max-height: 196px;
+      overflow-y: auto;
+    }
+
+    .db-backup-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 9px 10px;
+      border-radius: 12px;
+      background: var(--glass-2);
+      border: 1px solid var(--tile-border);
+    }
+
+    .db-backup-item.is-active {
+      border-color: var(--border-hover);
+      background: var(--tile-hover);
+    }
+
+    .db-backup-main {
+      flex: 1;
+      min-width: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+
+    .db-backup-name {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 12.5px;
+      font-weight: 500;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .db-backup-meta {
+      font-size: 11px;
+      color: var(--text-3);
+      font-variant-numeric: tabular-nums;
+    }
+
+    .db-backup-actions {
+      display: flex;
+      gap: 5px;
+      flex-shrink: 0;
+    }
+
+    .db-mini-btn {
+      height: 26px;
+      padding: 0 9px;
+      border-radius: 8px;
+      font-size: 11px;
+      color: var(--text-2);
+      background: transparent;
+      border: 1px solid var(--tile-border);
+    }
+
+    .db-mini-btn:hover {
+      color: var(--text);
+      border-color: var(--border-hover);
+      background: var(--tile-hover);
+    }
+
+    .db-mini-btn.is-danger:hover {
+      color: var(--error);
+      border-color: var(--error-border);
+      background: var(--error-bg);
+    }
+
+    .db-folder-row {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 8px;
+    }
+
+    .db-note {
+      margin: 0;
+      font-size: 11px;
+      line-height: 1.45;
+      color: var(--text-3);
+    }
+
+    .db-plan {
+      gap: 0;
+    }
+
+    .db-import {
+      border-radius: 14px;
+      border: 1px solid var(--tile-border);
+      background: var(--tile-bg);
+    }
+
+    .db-import summary {
+      padding: 11px 14px;
+      cursor: pointer;
+      font-size: 12.5px;
+      color: var(--text-2);
+      list-style: none;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .db-import summary::-webkit-details-marker {
+      display: none;
+    }
+
+    .db-import summary::after {
+      content: '+';
+      font-size: 14px;
+      color: var(--text-3);
+    }
+
+    .db-import[open] summary::after {
+      content: '−';
+    }
+
+    .db-import .upload-section {
+      border: 0;
+      border-top: 1px solid var(--tile-border);
+      border-radius: 0 0 14px 14px;
+      background: transparent;
+    }
+
+    .db-field-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+    }
+
+    .db-field-grid .field-group {
+      gap: 5px;
+    }
+
     .modal-footer {
       padding: 14px 22px;
       border-top: 1px solid var(--border);
@@ -3147,7 +3414,7 @@
       <div class="modal-tabs">
         <button class="pill-tab is-active" data-tab="connection" data-i18n="tabConnection">Подключение</button>
         <button class="pill-tab" data-tab="interface" data-i18n="tabInterface">Интерфейс</button>
-        <button class="pill-tab" data-tab="utilities" data-i18n="tabUtilities">Данные и утилиты</button>
+        <button class="pill-tab" data-tab="database" data-i18n="tabDatabase">База данных</button>
       </div>
 
       <div class="modal-body">
@@ -3246,10 +3513,7 @@
             </div>
             <button id="toggleCompact" class="switch" role="switch" aria-checked="false"></button>
           </div>
-        </div>
 
-        <!-- Tab 3: Данные и утилиты -->
-        <div class="tab-pane" data-pane="utilities">
           <div class="field-group">
             <div class="field-label-row">
               <span data-i18n="historyMgmt">История диалогов</span>
@@ -3262,31 +3526,161 @@
               <button id="clearHistoryBtn" class="btn-pill-danger" data-i18n="clearHistory">Очистить историю</button>
             </div>
           </div>
+        </div>
 
-          <!-- Neatly tucked document upload utility for jury/admin verification -->
-          <div class="upload-section">
-            <div class="field-label-row">
-              <span style="font-weight:500;" data-i18n="uploadDocTitle">Загрузка документа в справку</span>
-              <span class="field-hint code-font">/api/ingest/file</span>
+        <!-- Tab 3: База данных -->
+        <div class="tab-pane" data-pane="database">
+          <p class="db-intro" data-i18n="dbIntro">Демо-режим: базы, копии и подключения хранятся только в этом браузере. Реальная сборка индекса появится позже.</p>
+
+          <div class="db-summary">
+            <div class="db-summary-head">
+              <div>
+                <span class="db-kicker" data-i18n="dbActiveKicker">Активная база</span>
+                <strong id="dbActiveName" class="db-active-name">Основная база · 2026</strong>
+              </div>
+              <span class="status-badge is-ok" data-i18n="dbActiveBadge">активна</span>
+            </div>
+            <div class="db-meta">
+              <div class="db-meta-item">
+                <span data-i18n="dbDocs">Документы</span>
+                <b id="dbActiveDocs">9</b>
+              </div>
+              <div class="db-meta-item">
+                <span data-i18n="dbChunks">Чанки</span>
+                <b id="dbActiveChunks">179</b>
+              </div>
+              <div class="db-meta-item">
+                <span data-i18n="dbSize">Символы</span>
+                <b id="dbActiveChars">114 299</b>
+              </div>
+              <div class="db-meta-item">
+                <span data-i18n="dbUpdated">Обновлена</span>
+                <b id="dbActiveUpdated">21.11.26</b>
+              </div>
+            </div>
+            <div id="dbActivePath" class="db-path code-font" title="data/docs">data/docs</div>
+          </div>
+
+          <div class="db-section">
+            <div class="db-section-head">
+              <div>
+                <span class="db-section-title" data-i18n="dbBackupsTitle">Резервные копии</span>
+                <span class="db-section-desc" data-i18n="dbBackupsDesc">Храните снимки базы, чтобы вернуться к ним, если новая загрузка повредит данные.</span>
+              </div>
+              <button id="createDbBackupBtn" class="btn-pill-ghost" style="height:30px;flex-shrink:0;">
+                <svg class="svg-icon" style="width:13px;height:13px;" viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+                <span data-i18n="dbCreateBackup">Создать копию</span>
+              </button>
+            </div>
+            <div id="dbBackupList" class="db-backup-list"></div>
+          </div>
+
+          <div class="db-section">
+            <div class="db-section-head">
+              <div>
+                <span class="db-section-title" data-i18n="dbEmbedTitle">Эмбеддинг-модель</span>
+                <span class="db-section-desc" data-i18n="dbEmbedDesc">API для построения векторов. Ключ хранится только в этом браузере.</span>
+              </div>
+              <span class="db-badge" data-i18n="dbDemoBadge">демо</span>
             </div>
 
-            <label class="dropzone" for="ingestFileInput">
-              <svg class="svg-icon" style="width:18px;height:18px;" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
-              <span id="ingestFileLabel" style="font-size:12.5px;" data-i18n="chooseFileHint">Выберите файл (.txt, .md, .html, .pdf)</span>
-              <input id="ingestFileInput" type="file" accept=".txt,.md,.html,.htm,.pdf" style="display:none;" />
-            </label>
-
-            <div style="display:grid;grid-template-columns:1fr 96px;gap:8px;">
-              <input id="ingestUrlInput" class="text-input code-font" type="text" placeholder="https://sibsutis.ru/abitur/doc/" />
-              <input id="ingestYearInput" class="text-input tabular" type="text" value="2026" maxlength="4" placeholder="Год" />
+            <div class="db-field-grid">
+              <div class="field-group">
+                <div class="field-label-row">
+                  <span data-i18n="dbEmbedEndpoint">URL API</span>
+                </div>
+                <input id="embedEndpointInput" class="text-input code-font" type="text" placeholder="https://api.openai.com/v1" />
+              </div>
+              <div class="field-group">
+                <div class="field-label-row">
+                  <span data-i18n="dbEmbedModel">Модель</span>
+                </div>
+                <input id="embedModelInput" class="text-input code-font" type="text" placeholder="text-embedding-3-small" />
+              </div>
             </div>
 
-            <textarea id="ingestTextInput" class="textarea-input" rows="2" data-i18n-placeholder="ingestTextPlaceholder" placeholder="Или вставьте текст документа для быстрой проверки..."></textarea>
+            <div class="db-field-grid">
+              <div class="field-group">
+                <div class="field-label-row">
+                  <span data-i18n="dbEmbedKey">API-ключ</span>
+                  <span class="field-hint" data-i18n="localOnlyHint">Хранится только в этом браузере</span>
+                </div>
+                <div class="input-with-eye">
+                  <input id="embedApiKeyInput" class="text-input code-font" type="password" placeholder="sk-..." autocomplete="off" />
+                  <button id="toggleEmbedKeyEyeBtn" class="eye-btn" type="button" title="Показать или скрыть">
+                    <svg class="svg-icon" style="width:15px;height:15px;" viewBox="0 0 24 24"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+                  </button>
+                </div>
+              </div>
+              <div class="field-group">
+                <div class="field-label-row">
+                  <span data-i18n="dbEmbedDims">Размерность</span>
+                </div>
+                <input id="embedDimsInput" class="text-input tabular" type="text" placeholder="1024" />
+              </div>
+            </div>
 
-            <div style="display:flex;justify-content:flex-end;">
-              <button id="uploadDocBtn" class="btn-pill-ghost" style="height:34px;" data-i18n="uploadDocBtn">Загрузить документ</button>
+            <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;">
+              <button id="testEmbedBtn" class="btn-pill-ghost">
+                <svg class="svg-icon" style="width:14px;height:14px;" viewBox="0 0 24 24"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline></svg>
+                <span data-i18n="dbTestEmbed">Проверить модель</span>
+              </button>
+              <div id="embedTestBadge" class="status-badge tabular" style="display:none;"></div>
             </div>
           </div>
+
+          <div class="db-section">
+            <div class="db-section-head">
+              <div>
+                <span class="db-section-title" data-i18n="dbFolderTitle">Папка с .md файлами</span>
+                <span class="db-section-desc" data-i18n="dbFolderDesc">Сборка идёт только по вашим файлам. Укажите путь к папке с Markdown.</span>
+              </div>
+              <span class="db-badge" data-i18n="dbLocalBadge">локально</span>
+            </div>
+            <div class="db-folder-row">
+              <input id="kbFolderInput" class="text-input code-font" type="text" placeholder="data/docs" />
+              <button id="connectFolderBtn" class="btn-pill-ghost" style="height:34px;" data-i18n="dbConnectFolder">Подключить папку</button>
+            </div>
+            <p class="db-note" data-i18n="dbFolderNote">Путь сохраняется в настройках базы. Сканирование и сборка индекса — в следующем этапе.</p>
+          </div>
+
+          <div class="db-section db-plan">
+            <div class="toggle-row" style="padding:0;">
+              <div class="toggle-info">
+                <span class="toggle-title" data-i18n="dbAutoTitle">Автообновление с сайта</span>
+                <span class="toggle-desc" data-i18n="dbAutoDesc">Планируемый парсинг официальных страниц по расписанию. Пока выключено.</span>
+              </div>
+              <span class="db-badge" data-i18n="dbSoonBadge">план</span>
+            </div>
+          </div>
+
+          <!-- Secondary manual import utility for jury/admin verification -->
+          <details class="db-import">
+            <summary data-i18n="dbImportSummary">Импорт отдельного документа</summary>
+            <div class="upload-section">
+              <div class="field-label-row">
+                <span style="font-weight:500;" data-i18n="uploadDocTitle">Загрузка документа в справку</span>
+                <span class="field-hint code-font">/api/ingest/file</span>
+              </div>
+
+              <label class="dropzone" for="ingestFileInput">
+                <svg class="svg-icon" style="width:18px;height:18px;" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
+                <span id="ingestFileLabel" style="font-size:12.5px;" data-i18n="chooseFileHint">Выберите файл (.txt, .md, .html, .pdf)</span>
+                <input id="ingestFileInput" type="file" accept=".txt,.md,.html,.htm,.pdf" style="display:none;" />
+              </label>
+
+              <div style="display:grid;grid-template-columns:1fr 96px;gap:8px;">
+                <input id="ingestUrlInput" class="text-input code-font" type="text" placeholder="https://sibsutis.ru/abitur/doc/" />
+                <input id="ingestYearInput" class="text-input tabular" type="text" value="2026" maxlength="4" placeholder="Год" />
+              </div>
+
+              <textarea id="ingestTextInput" class="textarea-input" rows="2" data-i18n-placeholder="ingestTextPlaceholder" placeholder="Или вставьте текст документа для быстрой проверки..."></textarea>
+
+              <div style="display:flex;justify-content:flex-end;">
+                <button id="uploadDocBtn" class="btn-pill-ghost" style="height:34px;" data-i18n="uploadDocBtn">Загрузить документ</button>
+              </div>
+            </div>
+          </details>
         </div>
       </div>
 
@@ -3420,7 +3814,47 @@
           msgsShort: 'сообщ.',
           tabConnection: 'Подключение',
           tabInterface: 'Интерфейс',
-          tabUtilities: 'Данные и утилиты',
+          tabDatabase: 'База данных',
+          dbIntro: 'Демо-режим: базы, копии и подключения хранятся только в этом браузере. Реальная сборка индекса появится позже.',
+          dbActiveKicker: 'Активная база',
+          dbActiveBadge: 'активна',
+          dbDocs: 'Документы',
+          dbChunks: 'Чанки',
+          dbSize: 'Символы',
+          dbUpdated: 'Обновлена',
+          dbBackupsTitle: 'Резервные копии',
+          dbBackupsDesc: 'Храните снимки базы, чтобы вернуться к ним, если новая загрузка повредит данные.',
+          dbCreateBackup: 'Создать копию',
+          dbBackupName: 'Копия',
+          dbBackupNote: 'Снимок активной базы',
+          dbRestore: 'Восстановить',
+          dbDelete: 'Удалить',
+          dbDocsShort: 'док.',
+          dbChunksShort: 'чанков',
+          dbEmbedTitle: 'Эмбеддинг-модель',
+          dbEmbedDesc: 'API для построения векторов. Ключ хранится только в этом браузере.',
+          dbEmbedEndpoint: 'URL API',
+          dbEmbedKey: 'API-ключ',
+          dbEmbedModel: 'Модель',
+          dbEmbedDims: 'Размерность',
+          dbTestEmbed: 'Проверить модель',
+          dbDemoBadge: 'демо',
+          dbFolderTitle: 'Папка с .md файлами',
+          dbFolderDesc: 'Сборка идёт только по вашим файлам. Укажите путь к папке с Markdown.',
+          dbConnectFolder: 'Подключить папку',
+          dbFolderNote: 'Путь сохраняется в настройках базы. Сканирование и сборка индекса — в следующем этапе.',
+          dbLocalBadge: 'локально',
+          dbAutoTitle: 'Автообновление с сайта',
+          dbAutoDesc: 'Планируемый парсинг официальных страниц по расписанию. Пока выключено.',
+          dbSoonBadge: 'план',
+          dbImportSummary: 'Импорт отдельного документа',
+          toastDbBackup: 'Резервная копия создана',
+          toastDbRestored: 'База восстановлена из копии',
+          toastDbDeleted: 'Резервная копия удалена',
+          toastDbLast: 'Нельзя удалить единственную базу',
+          toastFolderConnected: 'Папка подключена (демо)',
+          toastFolderEmpty: 'Укажите путь к папке',
+          toastEmbedOk: 'Модель доступна (демо)',
           connModeLabel: 'Режим работы',
           modeDemo: 'Демо-режим',
           modeFastApi: 'Сервер FastAPI',
@@ -3532,7 +3966,47 @@
           msgsShort: 'msgs',
           tabConnection: 'Connection',
           tabInterface: 'Interface',
-          tabUtilities: 'Data & utilities',
+          tabDatabase: 'Database',
+          dbIntro: 'Demo mode: databases, backups, and connections are stored in this browser only. Real index builds come later.',
+          dbActiveKicker: 'Active database',
+          dbActiveBadge: 'active',
+          dbDocs: 'Documents',
+          dbChunks: 'Chunks',
+          dbSize: 'Characters',
+          dbUpdated: 'Updated',
+          dbBackupsTitle: 'Backups',
+          dbBackupsDesc: 'Keep database snapshots so you can roll back if a new upload corrupts the data.',
+          dbCreateBackup: 'Create backup',
+          dbBackupName: 'Backup',
+          dbBackupNote: 'Snapshot of the active database',
+          dbRestore: 'Restore',
+          dbDelete: 'Delete',
+          dbDocsShort: 'docs',
+          dbChunksShort: 'chunks',
+          dbEmbedTitle: 'Embedding model',
+          dbEmbedDesc: 'API used to build vectors. The key stays in this browser.',
+          dbEmbedEndpoint: 'API URL',
+          dbEmbedKey: 'API key',
+          dbEmbedModel: 'Model',
+          dbEmbedDims: 'Dimensions',
+          dbTestEmbed: 'Test model',
+          dbDemoBadge: 'demo',
+          dbFolderTitle: '.md source folder',
+          dbFolderDesc: 'Builds use only your files. Point to the Markdown folder.',
+          dbConnectFolder: 'Connect folder',
+          dbFolderNote: 'The path is saved in database settings. Scanning and index builds come next.',
+          dbLocalBadge: 'local',
+          dbAutoTitle: 'Automatic site updates',
+          dbAutoDesc: 'Planned scheduled parsing of official pages. Off for now.',
+          dbSoonBadge: 'planned',
+          dbImportSummary: 'Import a single document',
+          toastDbBackup: 'Backup created',
+          toastDbRestored: 'Database restored from backup',
+          toastDbDeleted: 'Backup deleted',
+          toastDbLast: 'Cannot delete the only database',
+          toastFolderConnected: 'Folder connected (demo)',
+          toastFolderEmpty: 'Enter a folder path',
+          toastEmbedOk: 'Model available (demo)',
           connModeLabel: 'Connection mode',
           modeDemo: 'Demo mode',
           modeFastApi: 'FastAPI server',
@@ -3945,11 +4419,50 @@
         ];
       }
 
+      function createInitialDatabases() {
+        return [
+          {
+            id: 'db_main_2026',
+            name: 'Основная база · 2026',
+            nameEn: 'Main knowledge base · 2026',
+            createdAt: '2026-11-21T03:29:00+00:00',
+            docs: 9,
+            chunks: 179,
+            chars: 114299,
+            path: 'data/docs'
+          },
+          {
+            id: 'db_backup_admission',
+            name: 'Копия перед обновлением',
+            nameEn: 'Backup before update',
+            createdAt: '2026-11-21T02:15:00+00:00',
+            docs: 9,
+            chunks: 178,
+            chars: 113879,
+            path: 'data/docs'
+          },
+          {
+            id: 'db_initial_set',
+            name: 'Базовый набор',
+            nameEn: 'Initial set',
+            createdAt: '2026-11-18T10:00:00+00:00',
+            docs: 6,
+            chunks: 129,
+            chars: 89796,
+            path: 'data/docs'
+          }
+        ];
+      }
+
       const DEFAULT_SETTINGS = {
         mode: 'demo', // 'demo' | 'fastapi' | 'openai'
         endpoint: 'http://127.0.0.1:8000',
         apiKey: '',
         model: 'deepseek-chat',
+        embedEndpoint: 'https://api.openai.com/v1',
+        embedApiKey: '',
+        embedModel: 'text-embedding-3-small',
+        embedDims: '1024',
         lang: 'ru',
         theme: 'dark',
         showQuotes: true,
@@ -3974,11 +4487,17 @@
             const settings = Object.assign({}, DEFAULT_SETTINGS, parsed.settings || {});
             const chats = Array.isArray(parsed.chats) && parsed.chats.length ? parsed.chats : createInitialChats();
             const activeChatId = chats.some((c) => c.id === parsed.activeChatId) ? parsed.activeChatId : chats[0].id;
+            const databases = Array.isArray(parsed.databases) && parsed.databases.length ? parsed.databases : createInitialDatabases();
+            const activeDatabaseId = databases.some((db) => db.id === parsed.activeDatabaseId)
+              ? parsed.activeDatabaseId
+              : databases[0].id;
             return {
               settings,
               chats,
               activeChatId,
               uploadedDocs: Array.isArray(parsed.uploadedDocs) ? parsed.uploadedDocs : [],
+              databases,
+              activeDatabaseId,
               leftOpen: parsed.leftOpen !== false,
               rightOpen: parsed.rightOpen !== false
             };
@@ -3987,11 +4506,14 @@
           console.warn('Restore fallback:', err);
         }
         const chats = createInitialChats();
+        const databases = createInitialDatabases();
         return {
           settings: Object.assign({}, DEFAULT_SETTINGS),
           chats,
           activeChatId: chats[0].id,
           uploadedDocs: [],
+          databases,
+          activeDatabaseId: databases[0].id,
           leftOpen: true,
           rightOpen: true
         };
@@ -4079,6 +4601,23 @@
         toggleQuotes: document.getElementById('toggleQuotes'),
         toggleResponseTime: document.getElementById('toggleResponseTime'),
         toggleCompact: document.getElementById('toggleCompact'),
+        dbActiveName: document.getElementById('dbActiveName'),
+        dbActiveDocs: document.getElementById('dbActiveDocs'),
+        dbActiveChunks: document.getElementById('dbActiveChunks'),
+        dbActiveChars: document.getElementById('dbActiveChars'),
+        dbActiveUpdated: document.getElementById('dbActiveUpdated'),
+        dbActivePath: document.getElementById('dbActivePath'),
+        dbBackupList: document.getElementById('dbBackupList'),
+        createDbBackupBtn: document.getElementById('createDbBackupBtn'),
+        embedEndpointInput: document.getElementById('embedEndpointInput'),
+        embedApiKeyInput: document.getElementById('embedApiKeyInput'),
+        toggleEmbedKeyEyeBtn: document.getElementById('toggleEmbedKeyEyeBtn'),
+        embedModelInput: document.getElementById('embedModelInput'),
+        embedDimsInput: document.getElementById('embedDimsInput'),
+        testEmbedBtn: document.getElementById('testEmbedBtn'),
+        embedTestBadge: document.getElementById('embedTestBadge'),
+        kbFolderInput: document.getElementById('kbFolderInput'),
+        connectFolderBtn: document.getElementById('connectFolderBtn'),
         exportJsonBtn: document.getElementById('exportJsonBtn'),
         clearHistoryBtn: document.getElementById('clearHistoryBtn'),
         ingestFileInput: document.getElementById('ingestFileInput'),
@@ -5597,6 +6136,144 @@
         resetClearButton();
       }
 
+      function getActiveDatabase() {
+        if (!Array.isArray(state.databases) || !state.databases.length) {
+          state.databases = createInitialDatabases();
+          state.activeDatabaseId = state.databases[0].id;
+        }
+        return state.databases.find((db) => db.id === state.activeDatabaseId) || state.databases[0];
+      }
+
+      function dbDisplayName(db) {
+        if (!db) return '—';
+        return state.settings.lang === 'en' && db.nameEn ? db.nameEn : db.name;
+      }
+
+      function formatDbNumber(value) {
+        const locale = state.settings.lang === 'en' ? 'en-US' : 'ru-RU';
+        return Number(value || 0).toLocaleString(locale);
+      }
+
+      function formatDbDate(iso) {
+        const date = new Date(iso);
+        if (Number.isNaN(date.getTime())) return '—';
+        return date.toLocaleDateString(state.settings.lang === 'en' ? 'en-GB' : 'ru-RU', {
+          day: '2-digit',
+          month: '2-digit',
+          year: '2-digit'
+        });
+      }
+
+      function renderDatabaseTab() {
+        if (!el.dbActiveName) return;
+        const active = getActiveDatabase();
+        el.dbActiveName.textContent = dbDisplayName(active);
+        el.dbActiveDocs.textContent = formatDbNumber(active.docs);
+        el.dbActiveChunks.textContent = formatDbNumber(active.chunks);
+        el.dbActiveChars.textContent = formatDbNumber(active.chars);
+        el.dbActiveUpdated.textContent = formatDbDate(active.createdAt);
+        el.dbActivePath.textContent = active.path || '—';
+        el.dbActivePath.title = active.path || '';
+
+        if (el.kbFolderInput && document.activeElement !== el.kbFolderInput) {
+          el.kbFolderInput.value = active.path || '';
+        }
+
+        el.dbBackupList.innerHTML = state.databases
+          .map((db) => {
+            const isActive = db.id === state.activeDatabaseId;
+            const meta = `${formatDbNumber(db.docs)} ${t('dbDocsShort')} · ${formatDbNumber(db.chunks)} ${t('dbChunksShort')} · ${formatDbDate(db.createdAt)}`;
+            return (
+              `<div class="db-backup-item${isActive ? ' is-active' : ''}" data-db-id="${escapeHtml(db.id)}">` +
+                '<div class="db-backup-main">' +
+                  `<span class="db-backup-name">${escapeHtml(dbDisplayName(db))}` +
+                    (isActive ? ` <span class="db-badge">${escapeHtml(t('dbActiveBadge'))}</span>` : '') +
+                  '</span>' +
+                  `<span class="db-backup-meta">${escapeHtml(meta)}</span>` +
+                '</div>' +
+                '<div class="db-backup-actions">' +
+                  (isActive
+                    ? ''
+                    : `<button type="button" class="db-mini-btn" data-action="restore" data-db-id="${escapeHtml(db.id)}">${escapeHtml(t('dbRestore'))}</button>`) +
+                  `<button type="button" class="db-mini-btn is-danger" data-action="delete" data-db-id="${escapeHtml(db.id)}">${escapeHtml(t('dbDelete'))}</button>` +
+                '</div>' +
+              '</div>'
+            );
+          })
+          .join('');
+      }
+
+      function createDatabaseBackup() {
+        const active = getActiveDatabase();
+        if (!active) return;
+        const now = new Date();
+        const dateRu = now.toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit', year: '2-digit' });
+        const dateEn = now.toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: '2-digit' });
+        state.databases.unshift({
+          id: 'db_' + now.getTime(),
+          name: `Копия · ${dateRu}`,
+          nameEn: `Backup · ${dateEn}`,
+          createdAt: now.toISOString(),
+          docs: active.docs,
+          chunks: active.chunks,
+          chars: active.chars,
+          path: active.path
+        });
+        saveState();
+        renderDatabaseTab();
+        showToast(t('toastDbBackup'), 'ok');
+      }
+
+      function restoreDatabase(id) {
+        const target = state.databases.find((db) => db.id === id);
+        if (!target) return;
+        state.activeDatabaseId = target.id;
+        saveState();
+        renderDatabaseTab();
+        showToast(t('toastDbRestored'), 'ok');
+      }
+
+      function deleteDatabase(id) {
+        if (state.databases.length <= 1) {
+          showToast(t('toastDbLast'), 'err');
+          return;
+        }
+        const index = state.databases.findIndex((db) => db.id === id);
+        if (index < 0) return;
+        state.databases.splice(index, 1);
+        if (state.activeDatabaseId === id) {
+          state.activeDatabaseId = state.databases[0].id;
+        }
+        saveState();
+        renderDatabaseTab();
+        showToast(t('toastDbDeleted'), 'ok');
+      }
+
+      function testEmbeddingModel() {
+        const model = el.embedModelInput.value.trim() || DEFAULT_SETTINGS.embedModel;
+        el.embedTestBadge.style.display = 'inline-flex';
+        el.embedTestBadge.classList.remove('is-ok', 'is-err');
+        el.embedTestBadge.textContent = '...';
+        window.setTimeout(() => {
+          el.embedTestBadge.classList.add('is-ok');
+          el.embedTestBadge.textContent = `${model} · Demo OK`;
+          showToast(t('toastEmbedOk'), 'ok');
+        }, 420);
+      }
+
+      function connectKbFolder() {
+        const path = el.kbFolderInput.value.trim();
+        if (!path) {
+          showToast(t('toastFolderEmpty'), 'err');
+          return;
+        }
+        const active = getActiveDatabase();
+        active.path = path;
+        saveState();
+        renderDatabaseTab();
+        showToast(t('toastFolderConnected'), 'ok');
+      }
+
       function syncSettingsUI() {
         const s = state.settings;
         el.modeSegmented.querySelectorAll('.seg-btn').forEach((b) => b.classList.toggle('is-active', b.dataset.mode === s.mode));
@@ -5611,6 +6288,14 @@
         el.toggleResponseTime.setAttribute('aria-checked', String(s.showResponseTime));
         el.toggleCompact.setAttribute('aria-checked', String(s.compactMode));
         el.testConnBadge.style.display = 'none';
+
+        el.embedEndpointInput.value = s.embedEndpoint;
+        el.embedApiKeyInput.value = s.embedApiKey;
+        el.embedModelInput.value = s.embedModel;
+        el.embedDimsInput.value = s.embedDims;
+        el.embedTestBadge.style.display = 'none';
+        el.embedTestBadge.classList.remove('is-ok', 'is-err');
+        renderDatabaseTab();
       }
 
       async function testConnection() {
@@ -5814,6 +6499,7 @@
             el.langSegmented.querySelectorAll('.seg-btn').forEach((b) => b.classList.toggle('is-active', b === btn));
             saveState();
             applyI18n();
+            renderDatabaseTab();
           });
         });
 
@@ -5829,6 +6515,20 @@
         });
         el.testConnBtn.addEventListener('click', testConnection);
 
+        el.toggleEmbedKeyEyeBtn.addEventListener('click', () => {
+          el.embedApiKeyInput.type = el.embedApiKeyInput.type === 'password' ? 'text' : 'password';
+        });
+        el.testEmbedBtn.addEventListener('click', testEmbeddingModel);
+        el.createDbBackupBtn.addEventListener('click', createDatabaseBackup);
+        el.connectFolderBtn.addEventListener('click', connectKbFolder);
+        el.dbBackupList.addEventListener('click', (event) => {
+          const btn = event.target.closest('[data-action]');
+          if (!btn) return;
+          const id = btn.getAttribute('data-db-id');
+          if (btn.getAttribute('data-action') === 'restore') restoreDatabase(id);
+          if (btn.getAttribute('data-action') === 'delete') deleteDatabase(id);
+        });
+
         [el.toggleQuotes, el.toggleResponseTime, el.toggleCompact].forEach((sw) => {
           sw.addEventListener('click', () => {
             const next = sw.getAttribute('aria-checked') !== 'true';
@@ -5840,6 +6540,14 @@
           state.settings.endpoint = el.endpointInput.value.trim() || 'http://127.0.0.1:8000';
           state.settings.apiKey = el.apiKeyInput.value.trim();
           state.settings.model = el.modelNameInput.value.trim() || 'deepseek-chat';
+          state.settings.embedEndpoint = el.embedEndpointInput.value.trim() || DEFAULT_SETTINGS.embedEndpoint;
+          state.settings.embedApiKey = el.embedApiKeyInput.value.trim();
+          state.settings.embedModel = el.embedModelInput.value.trim() || DEFAULT_SETTINGS.embedModel;
+          state.settings.embedDims = el.embedDimsInput.value.trim() || DEFAULT_SETTINGS.embedDims;
+          const activeDb = getActiveDatabase();
+          if (activeDb && el.kbFolderInput.value.trim()) {
+            activeDb.path = el.kbFolderInput.value.trim();
+          }
           state.settings.showQuotes = el.toggleQuotes.getAttribute('aria-checked') === 'true';
           state.settings.showResponseTime = el.toggleResponseTime.getAttribute('aria-checked') === 'true';
           state.settings.compactMode = el.toggleCompact.getAttribute('aria-checked') === 'true';
