@@ -93,9 +93,10 @@ def _reset_retriever() -> None:
 
 
 def _site_rebuild_task(progress: Any) -> dict[str, Any]:
-    result = run_site_rebuild(progress)
-    _reset_retriever()
-    return result
+    try:
+        return run_site_rebuild(progress)
+    finally:
+        _reset_retriever()
 
 
 def _safe_error(exc: Exception) -> str:

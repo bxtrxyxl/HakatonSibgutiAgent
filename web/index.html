@@ -3710,6 +3710,21 @@
           <div class="db-section">
             <div class="db-section-head">
               <div>
+                <span class="db-section-title" data-i18n="dbSiteTitle">Полная пересборка с сайта</span>
+                <span class="db-section-desc" data-i18n="dbSiteDesc">Находит страницы СибГУТИ и заново собирает базу знаний. Перед запуском автоматически создаётся резервная копия.</span>
+              </div>
+              <span id="siteRebuildBadge" class="db-badge">—</span>
+            </div>
+            <button id="rebuildSiteBtn" class="btn-pill-ghost" style="height:34px;" data-i18n="dbSiteRun">Пересобрать с сайта</button>
+            <div id="siteRebuildProgressWrap" class="db-progress" style="display:none;margin-top:10px;">
+              <div id="siteRebuildProgressBar" class="db-progress-bar"></div>
+            </div>
+            <p id="siteRebuildNote" class="db-note" data-i18n="dbSiteNote">Задача идёт в фоне. Если сайт не отдал ни одного документа, база восстановится из копии.</p>
+          </div>
+
+          <div class="db-section">
+            <div class="db-section-head">
+              <div>
                 <span class="db-section-title" data-i18n="dbAutoTitle">Автообновление по расписанию</span>
                 <span class="db-section-desc" data-i18n="dbAutoDesc">Сервер сам обновляет каталог, достижения, минимальные баллы и ссылки для парсинга. База знаний пересобирается отдельно.</span>
               </div>
@@ -3955,6 +3970,14 @@
           dbProgramsNote: 'Каталог обновляется с portal.sibsutis.ru и не меняет основную базу, пока вы не запустите пересборку.',
           dbProgramsUpdated: 'Каталог обновлён',
           dbProgramsLoading: 'Обновление каталога...',
+          dbSiteTitle: 'Полная пересборка с сайта',
+          dbSiteDesc: 'Находит страницы СибГУТИ и заново собирает базу знаний. Перед запуском автоматически создаётся резервная копия.',
+          dbSiteRun: 'Пересобрать с сайта',
+          dbSiteRunning: 'Пересборка идёт',
+          dbSiteNote: 'Задача идёт в фоне. Если сайт не отдал ни одного документа, база восстановится из копии.',
+          dbSiteDone: 'База пересобрана',
+          dbSiteFailed: 'Пересборка не удалась',
+          dbSiteBackup: 'Копия',
           dbSourcesFound: 'Ссылок найдено',
           dbLocalBadge: 'локально',
           dbAutoTitle: 'Автообновление по расписанию',
@@ -4150,6 +4173,14 @@
           dbProgramsNote: 'The catalog is refreshed from portal.sibsutis.ru and does not change the main database until you rebuild.',
           dbProgramsUpdated: 'Catalog updated',
           dbProgramsLoading: 'Refreshing catalog...',
+          dbSiteTitle: 'Full rebuild from site',
+          dbSiteDesc: 'Finds SibSUTIS pages and rebuilds the knowledge base. A backup is created automatically before the run.',
+          dbSiteRun: 'Rebuild from site',
+          dbSiteRunning: 'Rebuilding',
+          dbSiteNote: 'The job runs in the background. If the site returns no documents, the database is restored from the backup.',
+          dbSiteDone: 'Database rebuilt',
+          dbSiteFailed: 'Rebuild failed',
+          dbSiteBackup: 'Backup',
           dbSourcesFound: 'Links found',
           dbLocalBadge: 'local',
           dbAutoTitle: 'Scheduled updates',
@@ -4415,6 +4446,11 @@
         programCatalogCount: document.getElementById('programCatalogCount'),
         refreshProgramsBtn: document.getElementById('refreshProgramsBtn'),
         discoverSourcesBtn: document.getElementById('discoverSourcesBtn'),
+        rebuildSiteBtn: document.getElementById('rebuildSiteBtn'),
+        siteRebuildBadge: document.getElementById('siteRebuildBadge'),
+        siteRebuildProgressWrap: document.getElementById('siteRebuildProgressWrap'),
+        siteRebuildProgressBar: document.getElementById('siteRebuildProgressBar'),
+        siteRebuildNote: document.getElementById('siteRebuildNote'),
         refreshAchievementsBtn: document.getElementById('refreshAchievementsBtn'),
         refreshMinScoresBtn: document.getElementById('refreshMinScoresBtn'),
         toggleAutoUpdate: document.getElementById('toggleAutoUpdate'),
@@ -5572,11 +5608,13 @@
         syncSettingsUI();
         el.settingsModal.classList.add('open');
         fetchAutoUpdate({ silent: true });
+        fetchSiteJob();
       }
 
       function closeSettings() {
         el.settingsModal.classList.remove('open');
         stopAutoUpdatePolling();
+        stopSiteRebuildPolling();
         resetClearButton();
       }
 
@@ -5796,6 +5834,97 @@
           setDbError(err.message);
         } finally {
           button.disabled = false;
+        }
+      }
+
+      /* --- Полная пересборка с сайта ------------------------------------ */
+
+      let siteRebuildTimer = null;
+      let siteRebuildActive = false;
+
+      function stopSiteRebuildPolling() {
+        if (siteRebuildTimer) {
+          clearTimeout(siteRebuildTimer);
+          siteRebuildTimer = null;
+        }
+      }
+
+      function renderSiteJob(job) {
+        const running = job.status === 'running';
+        const failed = job.status === 'error';
+        el.siteRebuildBadge.style.display = '';
+        el.siteRebuildBadge.classList.toggle('is-run', running);
+        el.siteRebuildBadge.classList.toggle('is-ok', !running && !failed);
+        el.siteRebuildBadge.textContent = running
+          ? t('dbSiteRunning')
+          : (failed ? t('dbSiteFailed') : t('dbSiteDone'));
+        el.siteRebuildProgressWrap.style.display = running ? 'block' : 'none';
+        el.siteRebuildProgressBar.style.width = `${running ? (job.progress || 0) : 100}%`;
+        el.rebuildSiteBtn.disabled = running;
+
+        if (running) {
+          el.siteRebuildNote.textContent =
+            `${t('dbSiteRunning')}: ${job.progress || 0}% · ${job.step || ''}`;
+          return;
+        }
+        if (failed) {
+          el.siteRebuildNote.textContent = `${t('dbSiteFailed')}: ${job.error || ''}`;
+          return;
+        }
+        const stats = (job.result && job.result.stats) || {};
+        const backup = (job.result && job.result.backup_id) || '';
+        el.siteRebuildNote.textContent =
+          `${t('dbSiteDone')}: ${stats.unique_docs || 0} / ${stats.chunks || 0}` +
+          (backup ? ` · ${t('dbSiteBackup')} ${backup}` : '');
+      }
+
+      async function fetchSiteJob() {
+        stopSiteRebuildPolling();
+        let job;
+        try {
+          job = await dbFetch('/api/jobs/current');
+        } catch (err) {
+          return;
+        }
+        if (!job || job.kind !== 'site_rebuild' || job.status === 'idle') {
+          siteRebuildActive = false;
+          el.rebuildSiteBtn.disabled = false;
+          el.siteRebuildBadge.style.display = 'none';
+          el.siteRebuildProgressWrap.style.display = 'none';
+          return;
+        }
+        const wasActive = siteRebuildActive;
+        siteRebuildActive = job.status === 'running';
+        renderSiteJob(job);
+        if (job.status === 'running') {
+          siteRebuildTimer = setTimeout(fetchSiteJob, 1500);
+          return;
+        }
+        if (!wasActive) return;
+        if (job.status === 'done') {
+          showToast(t('dbSiteDone'), 'ok');
+          fetchDatabaseView();
+          tryFetchBackendOverview();
+        } else {
+          showToast(`${t('dbSiteFailed')}: ${job.error || ''}`, 'err');
+          fetchDatabaseView();
+        }
+      }
+
+      async function runSiteRebuild() {
+        el.rebuildSiteBtn.disabled = true;
+        try {
+          const data = await dbFetch('/api/site/refresh', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ ingest: true })
+          });
+          siteRebuildActive = true;
+          renderSiteJob(data.job);
+          siteRebuildTimer = setTimeout(fetchSiteJob, 1200);
+        } catch (err) {
+          el.rebuildSiteBtn.disabled = false;
+          showToast(err.status === 409 ? t('dbJobBusy') : err.message, 'err');
         }
       }
 
@@ -6264,6 +6393,7 @@
         el.rebuildFolderBtn.addEventListener('click', rebuildFolder);
         el.refreshProgramsBtn.addEventListener('click', refreshPrograms);
         el.discoverSourcesBtn.addEventListener('click', discoverSources);
+        el.rebuildSiteBtn.addEventListener('click', runSiteRebuild);
         el.refreshAchievementsBtn.addEventListener('click', refreshAchievements);
         el.refreshMinScoresBtn.addEventListener('click', refreshMinScores);
         el.toggleAutoUpdate.addEventListener('click', toggleAutoUpdate);

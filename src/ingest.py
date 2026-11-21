@@ -1713,12 +1713,32 @@ def _run_job(kind: str, target: Callable[[Callable[..., None]], Any]) -> None:
 
 
 def run_site_rebuild(progress: Callable[..., None] | None = None) -> dict[str, Any]:
-    """Находит ссылки и полностью пересобирает базу из сайта."""
+    """Находит ссылки и полностью пересобирает базу из сайта.
+
+    Перед пересборкой делает резервную копию: если сайт не отдал ни одного
+    документа, база возвращается к рабочему состоянию.
+    """
+    backup: dict[str, Any] | None = None
+    if config.KB_PATH.exists() and config.EMBEDDINGS_PATH.exists():
+        if progress is not None:
+            progress(0, 1, "Резервная копия перед пересборкой")
+        backup = create_backup("Перед пересборкой с сайта")
+
     if progress is not None:
         progress(0, 1, "Поиск ссылок на сайте")
     sources = discover_site_sources()
     stats = run_urls(config.SITE_SOURCES_PATH, use_wayback=False, progress=progress)
-    return {"sources": len(sources), "stats": stats}
+
+    if int(stats.get("unique_docs") or 0) == 0:
+        if backup is not None:
+            restore_backup(str(backup["id"]))
+        raise RuntimeError("сайт не отдал ни одного документа — база восстановлена из копии")
+
+    return {
+        "sources": len(sources),
+        "stats": stats,
+        "backup_id": str(backup["id"]) if backup else "",
+    }
 
 
 def _catalog_body_hash(path: Path) -> str:
