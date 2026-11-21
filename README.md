@@ -142,6 +142,7 @@ web/index.html    одностраничный UI без сборки
 | Метод | Путь | Описание |
 | --- | --- | --- |
 | GET | `/` | интерфейс |
+| GET | `/presentation` | HTML-презентация для чекпоинта |
 | POST | `/api/session/new` | новая сессия `{session_id}` |
 | POST | `/api/chat` | `{session_id, message}` → `{answer_markdown, sources, latency_ms, security_notice?}` |
 | POST | `/api/ingest/file` | загрузка файла (multipart: `file`, `url`, `title`, `section`, `year`) |

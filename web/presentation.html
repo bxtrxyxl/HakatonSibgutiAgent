@@ -1,0 +1,1342 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Ассистент СибГУТИ — чекпоинт 1</title>
+<link rel="icon" href="data:,">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #05070a;
+    --panel: rgba(255, 255, 255, 0.045);
+    --panel-2: rgba(255, 255, 255, 0.075);
+    --line: rgba(255, 255, 255, 0.12);
+    --line-strong: rgba(255, 255, 255, 0.24);
+    --text: #f3f7fb;
+    --muted: #93a4b5;
+    --dim: #5f7082;
+    --accent: #8fc7ee;
+    --accent-2: #5da9d6;
+    --green: #6ee7a8;
+    --amber: #f5c46b;
+    --red: #f28b8b;
+    --mono: "JetBrains Mono", ui-monospace, monospace;
+    --sans: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  }
+
+  * { box-sizing: border-box; }
+
+  html, body {
+    margin: 0;
+    height: 100%;
+    overflow: hidden;
+    background: #000;
+    color: var(--text);
+    font-family: var(--sans);
+  }
+
+  body {
+    background:
+      radial-gradient(900px 600px at 18% 0%, rgba(143, 199, 238, 0.12), transparent 65%),
+      radial-gradient(800px 600px at 100% 100%, rgba(93, 169, 214, 0.08), transparent 65%),
+      var(--bg);
+  }
+
+  .viewport {
+    position: fixed;
+    inset: 0;
+  }
+
+  .deck {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    width: 1920px;
+    height: 1080px;
+    transform-origin: center center;
+    background: var(--bg);
+    overflow: hidden;
+    box-shadow: 0 40px 120px rgba(0, 0, 0, 0.65);
+  }
+
+  .slide {
+    position: absolute;
+    inset: 0;
+    display: none;
+    flex-direction: column;
+    padding: 70px 96px 56px;
+    background:
+      radial-gradient(1100px 650px at 82% -10%, rgba(143, 199, 238, 0.10), transparent 62%),
+      radial-gradient(800px 600px at -10% 110%, rgba(93, 169, 214, 0.07), transparent 60%),
+      var(--bg);
+  }
+
+  .slide::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    background-image: radial-gradient(circle, rgba(255, 255, 255, 0.055) 1px, transparent 1.2px);
+    background-size: 20px 20px;
+    -webkit-mask-image: radial-gradient(ellipse 80% 60% at 85% 8%, #000 0%, transparent 70%);
+    mask-image: radial-gradient(ellipse 80% 60% at 85% 8%, #000 0%, transparent 70%);
+  }
+
+  .slide.active {
+    display: flex;
+    animation: slideIn 360ms cubic-bezier(0.22, 1, 0.36, 1) both;
+  }
+
+  @keyframes slideIn {
+    from { opacity: 0; transform: translateY(14px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  .slide > * { position: relative; z-index: 1; }
+
+  .kicker {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 18px;
+    font-size: 15px;
+    font-weight: 600;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--accent);
+  }
+
+  .kicker::before {
+    content: "";
+    width: 34px;
+    height: 2px;
+    background: var(--accent);
+  }
+
+  h1 {
+    margin: 0;
+    font-size: 92px;
+    line-height: 0.98;
+    letter-spacing: -0.045em;
+    font-weight: 800;
+  }
+
+  h2 {
+    margin: 0;
+    font-size: 58px;
+    line-height: 1.05;
+    letter-spacing: -0.035em;
+    font-weight: 750;
+  }
+
+  h3 {
+    margin: 0 0 8px;
+    font-size: 26px;
+    line-height: 1.15;
+    letter-spacing: -0.02em;
+    font-weight: 650;
+  }
+
+  p {
+    margin: 0;
+    font-size: 22px;
+    line-height: 1.45;
+    color: var(--muted);
+  }
+
+  .lead {
+    max-width: 980px;
+    margin-top: 22px;
+    font-size: 26px;
+    line-height: 1.42;
+    color: var(--muted);
+  }
+
+  .content {
+    flex: 1;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    gap: 30px;
+    margin-top: 18px;
+  }
+
+  .footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-top: auto;
+    padding-top: 22px;
+    border-top: 1px solid var(--line);
+    font-size: 14px;
+    color: var(--dim);
+  }
+
+  .footer strong { color: var(--muted); font-weight: 500; }
+
+  .grid-2, .grid-3, .grid-4 {
+    display: grid;
+    gap: 22px;
+  }
+
+  .grid-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .grid-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .grid-4 { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+
+  .card {
+    padding: 28px;
+    border: 1px solid var(--line);
+    border-radius: 24px;
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.055), rgba(255, 255, 255, 0.022));
+  }
+
+  .card.soft {
+    background: rgba(255, 255, 255, 0.03);
+  }
+
+  .card.accent {
+    border-color: rgba(143, 199, 238, 0.42);
+    background: linear-gradient(180deg, rgba(143, 199, 238, 0.12), rgba(143, 199, 238, 0.03));
+  }
+
+  .card.danger {
+    border-color: rgba(242, 139, 139, 0.35);
+    background: linear-gradient(180deg, rgba(242, 139, 139, 0.08), rgba(242, 139, 139, 0.02));
+  }
+
+  .card.good {
+    border-color: rgba(110, 231, 168, 0.3);
+    background: linear-gradient(180deg, rgba(110, 231, 168, 0.075), rgba(110, 231, 168, 0.02));
+  }
+
+  .card p { font-size: 18px; line-height: 1.42; }
+
+  .tag, .pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    padding: 6px 11px;
+    border-radius: 999px;
+    border: 1px solid var(--line);
+    background: rgba(255, 255, 255, 0.05);
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--muted);
+    white-space: nowrap;
+  }
+
+  .tag.accent, .pill.accent {
+    color: var(--accent);
+    border-color: rgba(143, 199, 238, 0.34);
+    background: rgba(143, 199, 238, 0.10);
+  }
+
+  .tag.good, .pill.good {
+    color: var(--green);
+    border-color: rgba(110, 231, 168, 0.32);
+    background: rgba(110, 231, 168, 0.09);
+  }
+
+  .tag.warn, .pill.warn {
+    color: var(--amber);
+    border-color: rgba(245, 196, 107, 0.34);
+    background: rgba(245, 196, 107, 0.09);
+  }
+
+  .tag.bad, .pill.bad {
+    color: var(--red);
+    border-color: rgba(242, 139, 139, 0.32);
+    background: rgba(242, 139, 139, 0.09);
+  }
+
+  .mono { font-family: var(--mono); }
+  .muted { color: var(--muted); }
+  .dim { color: var(--dim); }
+  .accent-text { color: var(--accent); }
+  .good-text { color: var(--green); }
+  .warn-text { color: var(--amber); }
+
+  .metric {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    padding: 24px;
+    border-radius: 20px;
+    border: 1px solid var(--line);
+    background: rgba(255, 255, 255, 0.035);
+  }
+
+  .metric b {
+    font-size: 56px;
+    line-height: 1;
+    letter-spacing: -0.04em;
+    font-weight: 750;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .metric span {
+    font-size: 15px;
+    color: var(--muted);
+  }
+
+  .checklist {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .checklist li {
+    display: flex;
+    gap: 12px;
+    align-items: flex-start;
+    font-size: 19px;
+    line-height: 1.35;
+    color: var(--muted);
+  }
+
+  .checklist li::before {
+    content: "✓";
+    flex: 0 0 auto;
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    display: grid;
+    place-items: center;
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--green);
+    background: rgba(110, 231, 168, 0.12);
+    border: 1px solid rgba(110, 231, 168, 0.28);
+  }
+
+  .checklist.todo li::before {
+    content: "○";
+    color: var(--amber);
+    background: rgba(245, 196, 107, 0.09);
+    border-color: rgba(245, 196, 107, 0.28);
+  }
+
+  .flow {
+    display: flex;
+    align-items: stretch;
+    gap: 12px;
+  }
+
+  .flow .node {
+    flex: 1;
+    min-width: 0;
+    padding: 20px 18px;
+    border-radius: 18px;
+    border: 1px solid var(--line);
+    background: rgba(255, 255, 255, 0.04);
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  .flow .node b {
+    font-size: 18px;
+    font-weight: 650;
+    line-height: 1.2;
+  }
+
+  .flow .node span {
+    font-size: 13px;
+    color: var(--muted);
+    line-height: 1.35;
+  }
+
+  .flow .arrow {
+    align-self: center;
+    flex: 0 0 auto;
+    font-size: 28px;
+    color: var(--accent);
+    font-weight: 400;
+  }
+
+  .arch {
+    display: grid;
+    grid-template-columns: 1fr 64px 1.15fr 64px 1.35fr;
+    align-items: center;
+    gap: 0;
+  }
+
+  .arch-col {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .arch-label {
+    font-size: 12px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--dim);
+    font-weight: 600;
+  }
+
+  .arch-box {
+    padding: 18px 20px;
+    border-radius: 18px;
+    border: 1px solid var(--line);
+    background: rgba(255, 255, 255, 0.045);
+    font-size: 19px;
+    font-weight: 650;
+    line-height: 1.2;
+  }
+
+  .arch-box span {
+    display: block;
+    margin-top: 5px;
+    font-family: var(--mono);
+    font-size: 12px;
+    font-weight: 400;
+    color: var(--muted);
+  }
+
+  .arch-box.accent {
+    border-color: rgba(143, 199, 238, 0.42);
+    background: rgba(143, 199, 238, 0.10);
+  }
+
+  .arch-box.wide { width: 100%; }
+
+  .arch-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+  }
+
+  .arch-arrow {
+    text-align: center;
+    font-size: 30px;
+    color: var(--accent);
+  }
+
+  .schema {
+    display: grid;
+    grid-template-columns: 1fr 70px 1fr 70px 1fr;
+    align-items: center;
+    gap: 0;
+  }
+
+  .schema-card {
+    padding: 22px;
+    border-radius: 20px;
+    border: 1px solid var(--line);
+    background: rgba(255, 255, 255, 0.04);
+  }
+
+  .schema-card h3 { font-size: 20px; margin-bottom: 12px; }
+
+  .schema-card .field {
+    display: flex;
+    justify-content: space-between;
+    gap: 10px;
+    padding: 5px 0;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.055);
+    font-family: var(--mono);
+    font-size: 12.5px;
+    color: var(--muted);
+  }
+
+  .schema-card .field:last-child { border-bottom: 0; }
+  .schema-card .field b { color: var(--text); font-weight: 500; }
+
+  .schema-link {
+    text-align: center;
+    font-family: var(--mono);
+    font-size: 12px;
+    color: var(--accent);
+  }
+
+  .schema-link span {
+    display: block;
+    font-size: 26px;
+    line-height: 1;
+    margin-bottom: 4px;
+  }
+
+  .matrix {
+    display: grid;
+    grid-template-columns: 1.05fr 1fr;
+    gap: 34px;
+    align-items: center;
+  }
+
+  .matrix-visual {
+    padding: 24px;
+    border-radius: 22px;
+    border: 1px solid var(--line);
+    background: rgba(255, 255, 255, 0.03);
+  }
+
+  .matrix-grid {
+    display: grid;
+    grid-template-columns: repeat(12, 1fr);
+    gap: 6px;
+    margin: 18px 0 14px;
+  }
+
+  .matrix-grid i {
+    aspect-ratio: 1;
+    border-radius: 5px;
+    background: rgba(143, 199, 238, 0.16);
+    border: 1px solid rgba(143, 199, 238, 0.12);
+  }
+
+  .matrix-grid i.hot {
+    background: rgba(143, 199, 238, 0.62);
+    border-color: rgba(143, 199, 238, 0.8);
+  }
+
+  .matrix-axis {
+    display: flex;
+    justify-content: space-between;
+    font-family: var(--mono);
+    font-size: 12px;
+    color: var(--dim);
+  }
+
+  .formula {
+    padding: 16px 20px;
+    border-radius: 14px;
+    border: 1px dashed rgba(143, 199, 238, 0.34);
+    background: rgba(143, 199, 238, 0.06);
+    font-family: var(--mono);
+    font-size: 15px;
+    color: var(--accent);
+  }
+
+  .big-quote {
+    padding: 28px 32px;
+    border-left: 3px solid var(--accent);
+    background: rgba(143, 199, 238, 0.06);
+    border-radius: 0 18px 18px 0;
+    font-size: 25px;
+    line-height: 1.4;
+    color: var(--text);
+  }
+
+  .callout {
+    display: flex;
+    gap: 14px;
+    align-items: flex-start;
+    padding: 18px 20px;
+    border-radius: 16px;
+    border: 1px solid var(--line);
+    background: rgba(255, 255, 255, 0.035);
+    font-size: 18px;
+    line-height: 1.4;
+    color: var(--muted);
+  }
+
+  .callout b { color: var(--text); }
+
+  .dot {
+    flex: 0 0 auto;
+    width: 10px;
+    height: 10px;
+    margin-top: 7px;
+    border-radius: 50%;
+    background: var(--accent);
+  }
+
+  .dot.green { background: var(--green); }
+  .dot.amber { background: var(--amber); }
+  .dot.red { background: var(--red); }
+
+  .timeline {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 14px;
+    position: relative;
+    margin-top: 14px;
+  }
+
+  .timeline::before {
+    content: "";
+    position: absolute;
+    top: 21px;
+    left: 6%;
+    right: 6%;
+    height: 1px;
+    background: var(--line-strong);
+  }
+
+  .timeline-item {
+    position: relative;
+    padding-top: 54px;
+  }
+
+  .timeline-item::before {
+    content: "";
+    position: absolute;
+    top: 14px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 15px;
+    height: 15px;
+    border-radius: 50%;
+    background: var(--bg);
+    border: 2px solid var(--dim);
+    z-index: 1;
+  }
+
+  .timeline-item.done::before {
+    border-color: var(--green);
+    background: var(--green);
+    box-shadow: 0 0 0 6px rgba(110, 231, 168, 0.12);
+  }
+
+  .timeline-item.next::before {
+    border-color: var(--accent);
+    background: var(--accent);
+    box-shadow: 0 0 0 6px rgba(143, 199, 238, 0.12);
+  }
+
+  .timeline-item h3 { font-size: 17px; text-align: center; }
+  .timeline-item p { font-size: 13px; text-align: center; }
+
+  .ui-mock {
+    display: grid;
+    grid-template-columns: 260px 1fr 310px;
+    gap: 12px;
+    height: 470px;
+    padding: 16px;
+    border-radius: 24px;
+    border: 1px solid var(--line);
+    background: rgba(255, 255, 255, 0.025);
+  }
+
+  .ui-col {
+    border-radius: 16px;
+    border: 1px solid var(--line);
+    background: rgba(255, 255, 255, 0.035);
+    padding: 14px;
+    display: flex;
+    flex-direction: column;
+    gap: 9px;
+    min-height: 0;
+  }
+
+  .ui-bar {
+    height: 10px;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.10);
+  }
+
+  .ui-bar.accent { background: rgba(143, 199, 238, 0.55); }
+  .ui-bar.short { width: 62%; }
+  .ui-bar.tiny { width: 40%; }
+  .ui-bar.card { height: 38px; border-radius: 12px; background: rgba(255, 255, 255, 0.055); }
+  .ui-bar.bubble { height: 46px; border-radius: 14px; background: rgba(143, 199, 238, 0.12); }
+  .ui-bar.bubble.right { margin-left: 30%; }
+
+  .commands {
+    padding: 18px 22px;
+    border-radius: 16px;
+    border: 1px solid var(--line);
+    background: #070a0e;
+    font-family: var(--mono);
+    font-size: 15px;
+    line-height: 1.75;
+    color: var(--muted);
+  }
+
+  .commands b { color: var(--green); font-weight: 500; }
+
+  .controls {
+    position: fixed;
+    right: 22px;
+    bottom: 18px;
+    z-index: 20;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px;
+    border-radius: 14px;
+    border: 1px solid rgba(255, 255, 255, 0.14);
+    background: rgba(8, 11, 15, 0.78);
+    backdrop-filter: blur(14px);
+  }
+
+  .controls button {
+    width: 34px;
+    height: 34px;
+    border: 1px solid rgba(255, 255, 255, 0.13);
+    border-radius: 9px;
+    background: rgba(255, 255, 255, 0.06);
+    color: var(--text);
+    font-size: 16px;
+    cursor: pointer;
+  }
+
+  .controls button:hover { background: rgba(255, 255, 255, 0.13); }
+  .controls .counter { min-width: 56px; text-align: center; font-family: var(--mono); font-size: 12px; color: var(--muted); }
+
+  .progress {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    height: 3px;
+    background: rgba(255, 255, 255, 0.08);
+    z-index: 20;
+  }
+
+  .progress i {
+    display: block;
+    height: 100%;
+    width: 0;
+    background: linear-gradient(90deg, var(--accent-2), var(--accent));
+    transition: width 220ms ease;
+  }
+
+  .hint {
+    position: fixed;
+    left: 22px;
+    bottom: 22px;
+    z-index: 20;
+    font-family: var(--mono);
+    font-size: 11px;
+    color: rgba(255, 255, 255, 0.42);
+  }
+
+  .title-mark {
+    position: absolute;
+    right: 96px;
+    top: 96px;
+    width: 300px;
+    height: 300px;
+    border-radius: 50%;
+    border: 1px solid rgba(143, 199, 238, 0.22);
+    display: grid;
+    place-items: center;
+  }
+
+  .title-mark::before,
+  .title-mark::after {
+    content: "";
+    position: absolute;
+    border-radius: 50%;
+    border: 1px solid rgba(143, 199, 238, 0.14);
+  }
+
+  .title-mark::before { inset: 34px; }
+  .title-mark::after { inset: 72px; }
+
+  .title-mark b {
+    font-family: var(--mono);
+    font-size: 44px;
+    color: var(--accent);
+    letter-spacing: -0.08em;
+  }
+
+  .closing {
+    display: grid;
+    grid-template-columns: 1.25fr 1fr;
+    gap: 40px;
+    align-items: center;
+  }
+
+  .closing h1 { font-size: 110px; }
+
+  .repo {
+    margin-top: 20px;
+    font-family: var(--mono);
+    font-size: 15px;
+    color: var(--dim);
+  }
+
+  @media print {
+    @page { size: 1920px 1080px; margin: 0; }
+    html, body { overflow: visible; background: #fff; }
+    .viewport { position: static; display: block; }
+    .deck { width: 1920px; height: auto; transform: none !important; box-shadow: none; position: static; left: auto; top: auto; }
+    .slide { position: relative; display: flex !important; page-break-after: always; break-after: page; width: 1920px; height: 1080px; }
+    .controls, .progress, .hint { display: none; }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .slide.active { animation: none; }
+    .progress i { transition: none; }
+  }
+</style>
+</head>
+<body>
+<div class="viewport">
+  <main class="deck" id="deck">
+
+    <!-- 1. Титул -->
+    <section class="slide active">
+      <div class="title-mark"><b>S</b></div>
+      <div class="kicker">НЭТИ-НЕКСТ 2.0 · ML Product · Чекпоинт 1</div>
+      <h1>Ассистент<br>СибГУТИ</h1>
+      <p class="lead">RAG-справочник для абитуриентов и студентов: отвечает по официальным документам и показывает источники.</p>
+      <div class="content" style="justify-content:flex-end;">
+        <div style="display:flex;gap:10px;flex-wrap:wrap;">
+          <span class="tag accent">локальный запуск</span>
+          <span class="tag">без Docker</span>
+          <span class="tag">со ссылками на источники</span>
+          <span class="tag good">9 документов · 179 чанков</span>
+        </div>
+        <div class="flow" style="margin-top:8px;">
+          <div class="node"><b>Документы</b><span>data/docs</span></div>
+          <div class="arrow">→</div>
+          <div class="node"><b>Поиск</b><span>слова + смысл</span></div>
+          <div class="arrow">→</div>
+          <div class="node"><b>Ответ</b><span>LLM + источники</span></div>
+        </div>
+      </div>
+      <div class="footer"><span>Ассистент СибГУТИ</span><strong>Чекпоинт 1 · архитектура и статус</strong></div>
+    </section>
+
+    <!-- 2. Проблема -->
+    <section class="slide">
+      <div class="kicker">Зачем это нужно</div>
+      <h2>Информация есть.<br>Но искать её долго.</h2>
+      <div class="content">
+        <div class="grid-3">
+          <div class="card">
+            <div class="tag bad">проблема 1</div>
+            <h3 style="margin-top:16px;">Разрозненные источники</h3>
+            <p>Правила приёма, приказы, программы, общежития и стипендии лежат в разных разделах сайта и PDF.</p>
+          </div>
+          <div class="card">
+            <div class="tag bad">проблема 2</div>
+            <h3 style="margin-top:16px;">Обычный чат-бот выдумывает</h3>
+            <p>Без базы знаний модель может придумать срок, балл или стоимость. Для вуза это недопустимо.</p>
+          </div>
+          <div class="card">
+            <div class="tag bad">проблема 3</div>
+            <h3 style="margin-top:16px;">Нет доверия к ответу</h3>
+            <p>Абитуриенту нужен не просто текст, а ссылка на официальный документ, который можно проверить.</p>
+          </div>
+        </div>
+        <div class="big-quote">Нужен ответ за минуту, с фактами и источником — а не 20 открытых вкладок.</div>
+      </div>
+      <div class="footer"><span>Проблема</span><strong>Почему RAG, а не обычная языковая модель</strong></div>
+    </section>
+
+    <!-- 3. Решение -->
+    <section class="slide">
+      <div class="kicker">Наше решение</div>
+      <h2>RAG: сначала найти,<br>потом ответить.</h2>
+      <div class="content">
+        <div class="flow">
+          <div class="node"><b>Вопрос</b><span>пользователь</span></div>
+          <div class="arrow">→</div>
+          <div class="node accent" style="border-color:rgba(143,199,238,.42);background:rgba(143,199,238,.10);"><b>Поиск по базе</b><span>находим фрагменты</span></div>
+          <div class="arrow">→</div>
+          <div class="node"><b>Языковая модель</b><span>отвечает по фактам</span></div>
+          <div class="arrow">→</div>
+          <div class="node"><b>Ответ + ссылки</b><span>можно проверить</span></div>
+        </div>
+        <div class="grid-3">
+          <div class="card soft"><h3>Только факты</h3><p>Модель получает не весь интернет, а конкретные куски официальных документов.</p></div>
+          <div class="card soft"><h3>Источники</h3><p>В ответе видны названия документов, разделы и ссылки на sibsutis.ru.</p></div>
+          <div class="card soft"><h3>Локально</h3><p>SQLite и NumPy вместо внешней векторной базы. Запуск без Docker.</p></div>
+        </div>
+        <div class="callout"><span class="dot"></span><span><b>RAG</b> — Retrieval-Augmented Generation. Сначала поиск нужных фрагментов, затем генерация ответа на их основе.</span></div>
+      </div>
+      <div class="footer"><span>Решение</span><strong>Поиск + генерация + проверяемые источники</strong></div>
+    </section>
+
+    <!-- 4. Статус -->
+    <section class="slide">
+      <div class="kicker">Статус на чекпоинт</div>
+      <h2>Что уже работает</h2>
+      <div class="content">
+        <div class="grid-4">
+          <div class="metric"><b>9</b><span>документов в базе</span></div>
+          <div class="metric"><b>179</b><span>чанков текста</span></div>
+          <div class="metric"><b>114 299</b><span>символов</span></div>
+          <div class="metric"><b>16</b><span>автотестов</span></div>
+        </div>
+        <div class="grid-2">
+          <div class="card good">
+            <div class="tag good">готово</div>
+            <ul class="checklist" style="margin-top:18px;">
+              <li>Сбор базы из MD, HTML, PDF и TXT</li>
+              <li>SQLite + FTS5 и эмбеддинги</li>
+              <li>Гибридный поиск и ответы со ссылками</li>
+              <li>Изоляция сессий и защита от инъекций</li>
+              <li>Резервные копии и восстановление базы</li>
+              <li>Пересборка из папки и проверка модели</li>
+            </ul>
+          </div>
+          <div class="card">
+            <div class="tag warn">следующие шаги</div>
+            <ul class="checklist todo" style="margin-top:18px;">
+              <li>Убрать офлайн-демо из чата</li>
+              <li>Реальная правая панель вместо демо-данных</li>
+              <li>Автопарсинг сайта по расписанию</li>
+              <li>Фоновая пересборка и прогресс</li>
+              <li>Авторизация и лимиты запросов</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+      <div class="footer"><span>Статус</span><strong>MVP уже можно запускать и тестировать</strong></div>
+    </section>
+
+    <!-- 5. Архитектура -->
+    <section class="slide">
+      <div class="kicker">Архитектура</div>
+      <h2>Три слоя: интерфейс, сервер, данные</h2>
+      <div class="content">
+        <div class="arch">
+          <div class="arch-col">
+            <div class="arch-label">1 · Интерфейс</div>
+            <div class="arch-box accent">web/index.html<span>чат · настройки · база</span></div>
+            <div class="arch-box">Браузер<span>localStorage</span></div>
+          </div>
+          <div class="arch-arrow">→</div>
+          <div class="arch-col">
+            <div class="arch-label">2 · Сервер</div>
+            <div class="arch-box">FastAPI<span>src/api.py</span></div>
+            <div class="arch-box">Агент<span>src/agent.py</span></div>
+            <div class="arch-box">Безопасность<span>src/security.py</span></div>
+          </div>
+          <div class="arch-arrow">→</div>
+          <div class="arch-col">
+            <div class="arch-label">3 · Данные и модели</div>
+            <div class="arch-row">
+              <div class="arch-box">Поиск<span>retrieval.py</span></div>
+              <div class="arch-box">LLM API<span>генерация</span></div>
+            </div>
+            <div class="arch-box wide">SQLite + FTS5<span>тексты и чанки</span></div>
+            <div class="arch-box wide">embeddings.npy<span>векторы смысла</span></div>
+          </div>
+        </div>
+        <div class="callout"><span class="dot"></span><span>Один HTML-файл, один SQLite-файл и один NumPy-файл. Нет Docker, React и внешней векторной БД.</span></div>
+      </div>
+      <div class="footer"><span>Архитектура</span><strong>Простота важнее инфраструктуры</strong></div>
+    </section>
+
+    <!-- 6. Путь документа -->
+    <section class="slide">
+      <div class="kicker">Как наполняется база</div>
+      <h2>От документа до вектора</h2>
+      <div class="content">
+        <div class="flow">
+          <div class="node"><b>Источник</b><span>data/docs · upload</span></div>
+          <div class="arrow">→</div>
+          <div class="node"><b>Очистка</b><span>HTML, таблицы, мусор</span></div>
+          <div class="arrow">→</div>
+          <div class="node"><b>Чанки</b><span>~1100 символов</span></div>
+          <div class="arrow">→</div>
+          <div class="node"><b>Векторы</b><span>1024 измерения</span></div>
+          <div class="arrow">→</div>
+          <div class="node accent" style="border-color:rgba(143,199,238,.42);background:rgba(143,199,238,.10);"><b>База</b><span>SQLite + .npy</span></div>
+        </div>
+        <div class="grid-4">
+          <div class="card soft"><h3>Дедупликация</h3><p>SHA-256: одинаковый текст не попадёт в базу дважды.</p></div>
+          <div class="card soft"><h3>Перекрытие</h3><p>150 символов, чтобы смысл не терялся на границе кусков.</p></div>
+          <div class="card soft"><h3>Таблицы</h3><p>Строки таблиц не разрываются, шапка повторяется.</p></div>
+          <div class="card soft"><h3>Метаданные</h3><p>Заголовок, URL, раздел и год для каждого документа.</p></div>
+        </div>
+        <div class="callout"><span class="dot green"></span><span>Пересборка запускается из папки <span class="mono">data/docs</span> или через загрузку файла в интерфейсе.</span></div>
+      </div>
+      <div class="footer"><span>Ingest</span><strong>Один и тот же pipeline для ручной и серверной сборки</strong></div>
+    </section>
+
+    <!-- 7. Путь вопроса -->
+    <section class="slide">
+      <div class="kicker">Как рождается ответ</div>
+      <h2>Путь вопроса за 6 шагов</h2>
+      <div class="content">
+        <div class="grid-2" style="align-items:start;">
+          <div style="display:flex;flex-direction:column;gap:14px;">
+            <div class="card soft" style="padding:18px 20px;"><b class="accent-text mono">01</b> &nbsp; <b>Вопрос</b><p style="margin-top:5px;">UI отправляет текст и session_id на /api/chat.</p></div>
+            <div class="card soft" style="padding:18px 20px;"><b class="accent-text mono">02</b> &nbsp; <b>Безопасность</b><p style="margin-top:5px;">Проверка попыток сменить роль или вытащить промпт.</p></div>
+            <div class="card soft" style="padding:18px 20px;"><b class="accent-text mono">03</b> &nbsp; <b>Переформулировка</b><p style="margin-top:5px;">Follow-up превращается в самостоятельный запрос.</p></div>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:14px;">
+            <div class="card soft" style="padding:18px 20px;"><b class="accent-text mono">04</b> &nbsp; <b>Гибридный поиск</b><p style="margin-top:5px;">Слова + смысл → RRF → топ-8 чанков.</p></div>
+            <div class="card soft" style="padding:18px 20px;"><b class="accent-text mono">05</b> &nbsp; <b>Генерация</b><p style="margin-top:5px;">LLM получает инструкцию, контекст и вопрос.</p></div>
+            <div class="card soft" style="padding:18px 20px;"><b class="accent-text mono">06</b> &nbsp; <b>Ответ</b><p style="margin-top:5px;">Markdown, источники, время и запись в лог.</p></div>
+          </div>
+        </div>
+        <div class="big-quote" style="font-size:22px;">Модель не отвечает «из головы»: если в найденных документах нет ответа, она честно говорит об этом.</div>
+      </div>
+      <div class="footer"><span>Пайплайн</span><strong>Контекст важнее размера модели</strong></div>
+    </section>
+
+    <!-- 8. Гибридный поиск -->
+    <section class="slide">
+      <div class="kicker">Сердце системы</div>
+      <h2>Почему поиск гибридный</h2>
+      <div class="content">
+        <div class="grid-2">
+          <div class="card">
+            <div class="tag accent">точные слова</div>
+            <h3 style="margin-top:16px;">SQLite FTS5 + BM25</h3>
+            <p>Находит коды <span class="mono">09.03.01</span>, даты, суммы, телефоны и фамилии. Работает быстро и без модели.</p>
+            <div class="pill" style="margin-top:18px;">top-15 кандидатов</div>
+          </div>
+          <div class="card">
+            <div class="tag accent">смысл</div>
+            <h3 style="margin-top:16px;">Косинусное сходство</h3>
+            <p>Находит перефразировки: «где учиться на айти» и «ИТ-направления» становятся близкими.</p>
+            <div class="pill" style="margin-top:18px;">top-15 кандидатов</div>
+          </div>
+        </div>
+        <div class="flow">
+          <div class="node"><b>FTS5</b><span>точные совпадения</span></div>
+          <div class="arrow">→</div>
+          <div class="node accent" style="border-color:rgba(143,199,238,.42);background:rgba(143,199,238,.10);"><b>RRF</b><span>объединение рейтингов</span></div>
+          <div class="arrow">←</div>
+          <div class="node"><b>Векторы</b><span>близость по смыслу</span></div>
+        </div>
+        <div class="grid-3">
+          <div class="card soft"><h3>Топ-8</h3><p>В контекст уходит не больше 8 фрагментов.</p></div>
+          <div class="card soft"><h3>Не больше 4</h3><p>С одного документа — чтобы ответ не был однобоким.</p></div>
+          <div class="card soft"><h3>Почти дубли</h3><p>Фрагменты со сходством ≥ 0.97 отбрасываются.</p></div>
+        </div>
+      </div>
+      <div class="footer"><span>Retrieval</span><strong>Точность кодов + гибкость смысла</strong></div>
+    </section>
+
+    <!-- 9. Карта данных -->
+    <section class="slide">
+      <div class="kicker">Данные</div>
+      <h2>Из чего состоит база знаний</h2>
+      <div class="content">
+        <div class="grid-4">
+          <div class="card"><div class="tag accent">главное</div><h3 class="mono" style="margin-top:14px;font-size:19px;">kb.sqlite</h3><p>Документы, чанки и полнотекстовый индекс FTS5.</p></div>
+          <div class="card"><div class="tag accent">векторы</div><h3 class="mono" style="margin-top:14px;font-size:19px;">embeddings.npy</h3><p>Матрица смыслов: 179 строк × 1024 числа.</p></div>
+          <div class="card"><div class="tag">аудит</div><h3 class="mono" style="margin-top:14px;font-size:19px;">registry.json</h3><p>Реестр источников: что, откуда и когда добавлено.</p></div>
+          <div class="card"><div class="tag">сводка</div><h3 class="mono" style="margin-top:14px;font-size:19px;">stats.json</h3><p>Цифры для интерфейса: документы, чанки, ошибки.</p></div>
+          <div class="card"><div class="tag">настройки</div><h3 class="mono" style="margin-top:14px;font-size:19px;">app_settings.json</h3><p>Путь к папке источников. Без ключей.</p></div>
+          <div class="card"><div class="tag">бэкапы</div><h3 class="mono" style="margin-top:14px;font-size:19px;">backups/</h3><p>Снимки базы и векторов для отката.</p></div>
+          <div class="card"><div class="tag">логи</div><h3 class="mono" style="margin-top:14px;font-size:19px;">logs/events.jsonl</h3><p>События без текста вопроса и ключей.</p></div>
+          <div class="card"><div class="tag">источники</div><h3 class="mono" style="margin-top:14px;font-size:19px;">data/docs, raw</h3><p>Markdown-база и оригиналы HTML/PDF.</p></div>
+        </div>
+      </div>
+      <div class="footer"><span>Данные</span><strong>Всё лежит локально и проверяемо</strong></div>
+    </section>
+
+    <!-- 10. kb.sqlite -->
+    <section class="slide">
+      <div class="kicker">Главный файл</div>
+      <h2>Как устроен kb.sqlite</h2>
+      <div class="content">
+        <div class="schema">
+          <div class="schema-card">
+            <h3 class="mono">documents</h3>
+            <div class="field"><span>doc_id</span><b>PK</b></div>
+            <div class="field"><span>title</span><b>заголовок</b></div>
+            <div class="field"><span>url</span><b>источник</b></div>
+            <div class="field"><span>section</span><b>раздел</b></div>
+            <div class="field"><span>sha256</span><b>уникальность</b></div>
+            <div class="field"><span>chunk_count</span><b>чанков</b></div>
+          </div>
+          <div class="schema-link"><span>→</span>doc_id</div>
+          <div class="schema-card">
+            <h3 class="mono">chunks</h3>
+            <div class="field"><span>id</span><b>PK</b></div>
+            <div class="field"><span>doc_id</span><b>FK</b></div>
+            <div class="field"><span>idx</span><b>порядок</b></div>
+            <div class="field"><span>heading</span><b>заголовок</b></div>
+            <div class="field"><span>text</span><b>текст</b></div>
+            <div class="field"><span>chars</span><b>длина</b></div>
+          </div>
+          <div class="schema-link"><span>→</span>chunk_id</div>
+          <div class="schema-card">
+            <h3 class="mono">chunks_fts</h3>
+            <div class="field"><span>chunk_id</span><b>ссылка</b></div>
+            <div class="field"><span>text</span><b>поиск</b></div>
+            <div class="field"><span>title</span><b>поиск</b></div>
+            <div class="field"><span>section</span><b>поиск</b></div>
+            <div class="field"><span>FTS5</span><b>BM25</b></div>
+          </div>
+        </div>
+        <div class="grid-3">
+          <div class="card soft"><h3>Зачем три таблицы</h3><p>Источник, текст и поисковый индекс разделены, чтобы не дублировать логику.</p></div>
+          <div class="card soft"><h3>Связь</h3><p><span class="mono">chunks.id</span> связывает обычную таблицу с FTS. Один чанк — одна строка.</p></div>
+          <div class="card soft"><h3>Сейчас</h3><p>9 документов, 179 чанков. Число чанков должно совпадать с числом векторов.</p></div>
+        </div>
+        <div class="callout"><span class="dot"></span><span><b>WAL-режим</b> ускоряет чтение и уменьшает блокировки. Рядом могут появляться <span class="mono">-wal</span> и <span class="mono">-shm</span> — это нормально.</span></div>
+      </div>
+      <div class="footer"><span>kb.sqlite</span><strong>Тексты, метаданные и поиск в одном файле</strong></div>
+    </section>
+
+    <!-- 11. embeddings.npy -->
+    <section class="slide">
+      <div class="kicker">Векторы</div>
+      <h2>Как работает embeddings.npy</h2>
+      <div class="content">
+        <div class="matrix">
+          <div class="matrix-visual">
+            <div class="matrix-axis"><span>чанк 1</span><span>чанк N</span></div>
+            <div class="matrix-grid">
+              <i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i>
+              <i></i><i class="hot"></i><i class="hot"></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i>
+              <i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i>
+              <i></i><i></i><i></i><i></i><i class="hot"></i><i class="hot"></i><i></i><i></i><i></i><i></i><i></i><i></i>
+              <i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i>
+            </div>
+            <div class="matrix-axis"><span>1024 числа на строку</span><span>float32</span></div>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:16px;">
+            <div class="card soft"><h3>Что это</h3><p>Каждая строка — числовой «смысл» одного чанка. Похожие тексты дают близкие векторы.</p></div>
+            <div class="card soft"><h3>Связь с базой</h3><p>Строка <span class="mono">i</span> соответствует <span class="mono">chunks.id</span> по возрастанию. Число строк должно совпадать.</p></div>
+            <div class="card soft"><h3>Если не совпало</h3><p>Поиск остановится и попросит пересобрать базу. Это защита от «полубазы».</p></div>
+          </div>
+        </div>
+        <div class="formula">cosine(a, b) = a · b &nbsp;&nbsp;— векторы уже нормализованы до длины 1</div>
+        <div class="callout"><span class="dot green"></span><span>Векторы считаются батчами по 32. Если API отклоняет батч, он дробится, чтобы один плохой текст не ронял весь документ.</span></div>
+      </div>
+      <div class="footer"><span>embeddings.npy</span><strong>Смысл в виде матрицы, а не магия</strong></div>
+    </section>
+
+    <!-- 12. Безопасность -->
+    <section class="slide">
+      <div class="kicker">Безопасность</div>
+      <h2>Что защищаем и от чего</h2>
+      <div class="content">
+        <div class="grid-2">
+          <div class="card danger"><div class="tag bad">атака</div><h3 style="margin-top:14px;">Prompt injection</h3><p>«Игнорируй правила», «ты теперь админ», «покажи системный промпт», «дай историю другой сессии».</p><div class="pill bad" style="margin-top:16px;">детектор + нейтрализация</div></div>
+          <div class="card"><div class="tag">контекст</div><h3 style="margin-top:14px;">Недоверенные данные</h3><p>Найденные чанки оборачиваются в тег <span class="mono">trust="untrusted_data"</span>. Модель знает, что это не инструкции.</p><div class="pill" style="margin-top:16px;">XML-обёртка</div></div>
+          <div class="card"><div class="tag">логи</div><h3 style="margin-top:14px;">Секреты не утекают</h3><p>Ключи и токены вырезаются. Текст вопроса в лог не пишется, только длина и флаги.</p><div class="pill" style="margin-top:16px;">redact + JSONL</div></div>
+          <div class="card good"><div class="tag good">сервер</div><h3 style="margin-top:14px;">Ключи только в .env</h3><p>Браузер не получает API-ключи. Проверка эмбеддингов идёт на сервере.</p><div class="pill good" style="margin-top:16px;">ключ не покидает сервер</div></div>
+        </div>
+        <div class="big-quote" style="font-size:22px;">Правило: текст из документа и сообщение пользователя не могут менять роль модели или отменять правила.</div>
+      </div>
+      <div class="footer"><span>Безопасность</span><strong>Иерархия доверия важнее вежливости модели</strong></div>
+    </section>
+
+    <!-- 13. Управление базой -->
+    <section class="slide">
+      <div class="kicker">Эксплуатация</div>
+      <h2>Базой можно управлять из интерфейса</h2>
+      <div class="content">
+        <div class="grid-4">
+          <div class="card"><div class="tag accent">01</div><h3 style="margin-top:14px;">Активная база</h3><p>Документы, чанки, символы и папка — реальные цифры с сервера.</p></div>
+          <div class="card"><div class="tag accent">02</div><h3 style="margin-top:14px;">Резервные копии</h3><p>Снимок <span class="mono">kb.sqlite</span> и <span class="mono">embeddings.npy</span> в <span class="mono">data/backups</span>.</p></div>
+          <div class="card"><div class="tag accent">03</div><h3 style="margin-top:14px;">Проверка модели</h3><p>Сервер реально вызывает embedding API и возвращает модель, размерность и задержку.</p></div>
+          <div class="card"><div class="tag accent">04</div><h3 style="margin-top:14px;">Пересборка</h3><p>Папка внутри <span class="mono">data/</span> → полная пересборка FTS и векторов.</p></div>
+        </div>
+        <div class="flow">
+          <div class="node"><b>Копия</b><span>перед изменениями</span></div>
+          <div class="arrow">→</div>
+          <div class="node"><b>Изменения</b><span>загрузка / пересборка</span></div>
+          <div class="arrow">→</div>
+          <div class="node"><b>Проверка</b><span>цифры и поиск</span></div>
+          <div class="arrow">→</div>
+          <div class="node accent" style="border-color:rgba(143,199,238,.42);background:rgba(143,199,238,.10);"><b>Откат</b><span>если что-то сломалось</span></div>
+        </div>
+        <div class="callout"><span class="dot green"></span><span>Это не макеты: кнопки вызывают реальные API, копии лежат на диске, восстановление атомарное.</span></div>
+      </div>
+      <div class="footer"><span>База данных</span><strong>Обновлять и откатывать можно без консоли</strong></div>
+    </section>
+
+    <!-- 14. UI -->
+    <section class="slide">
+      <div class="kicker">Интерфейс</div>
+      <h2>Один HTML-файл, без сборки</h2>
+      <div class="content">
+        <div class="ui-mock">
+          <div class="ui-col">
+            <div class="ui-bar accent" style="width:70%;"></div>
+            <div class="ui-bar card"></div>
+            <div class="ui-bar card"></div>
+            <div class="ui-bar card"></div>
+            <div class="ui-bar short"></div>
+          </div>
+          <div class="ui-col">
+            <div class="ui-bar short"></div>
+            <div class="ui-bar bubble right"></div>
+            <div class="ui-bar bubble" style="width:82%;"></div>
+            <div class="ui-bar bubble right" style="width:64%;"></div>
+            <div style="margin-top:auto;" class="ui-bar card"></div>
+          </div>
+          <div class="ui-col">
+            <div class="ui-bar accent" style="width:62%;"></div>
+            <div class="ui-bar card"></div>
+            <div class="ui-bar card"></div>
+            <div class="ui-bar card"></div>
+          </div>
+        </div>
+        <div class="grid-3">
+          <div class="card soft"><h3>Чат</h3><p>Ответы в Markdown, таблицы, цитаты и кликабельные источники.</p></div>
+          <div class="card soft"><h3>Настройки</h3><p>Подключение, интерфейс и база данных. Всё подписано.</p></div>
+          <div class="card soft"><h3>Хранение</h3><p>История и тема — в localStorage. База и ключи — на сервере.</p></div>
+        </div>
+        <div style="display:flex;gap:10px;flex-wrap:wrap;">
+          <span class="tag accent">FastAPI</span>
+          <span class="tag">прямой API</span>
+          <span class="tag warn">офлайн-демо</span>
+          <span class="tag">localStorage: sibsutis_assistant_v3</span>
+        </div>
+      </div>
+      <div class="footer"><span>Интерфейс</span><strong>Быстро показать, легко заменить</strong></div>
+    </section>
+
+    <!-- 15. Почему так -->
+    <section class="slide">
+      <div class="kicker">Выбор технологий</div>
+      <h2>Почему именно так</h2>
+      <div class="content">
+        <div class="grid-2">
+          <div class="card"><div class="tag accent">данные</div><h3 style="margin-top:14px;">SQLite + FTS5</h3><p>Не нужен Docker и внешний сервер. База — один файл, который легко скопировать и откатить.</p></div>
+          <div class="card"><div class="tag accent">поиск</div><h3 style="margin-top:14px;">Гибрид, а не только векторы</h3><p>Коды и даты лучше ищутся словами, общие вопросы — по смыслу. Вместе точнее.</p></div>
+          <div class="card"><div class="tag accent">фронтенд</div><h3 style="margin-top:14px;">Один HTML</h3><p>Нет React, npm и сборки. Открыл файл — работает. Легко заменить на другой UI.</p></div>
+          <div class="card"><div class="tag accent">секреты</div><h3 style="margin-top:14px;">Ключи на сервере</h3><p>Браузер не видит API-ключи. Ошибки очищаются, логи не содержат токенов.</p></div>
+        </div>
+        <div class="commands">
+          <b>pip install -r requirements.txt</b><br>
+          <b>python -m src.ingest --dir data/docs</b><br>
+          <b>uvicorn src.api:app --host 127.0.0.1 --port 8000</b>
+        </div>
+      </div>
+      <div class="footer"><span>Технологии</span><strong>Минимум инфраструктуры, максимум проверяемости</strong></div>
+    </section>
+
+    <!-- 16. Roadmap -->
+    <section class="slide">
+      <div class="kicker">Что дальше</div>
+      <h2>Дорожная карта</h2>
+      <div class="content">
+        <div class="timeline">
+          <div class="timeline-item done"><h3>MVP</h3><p>База, поиск, чат, источники</p><span class="tag good">готово</span></div>
+          <div class="timeline-item done"><h3>База</h3><p>Копии, откат, пересборка</p><span class="tag good">готово</span></div>
+          <div class="timeline-item next"><h3>Без демо</h3><p>Убрать офлайн-ответы чата</p><span class="tag warn">следующее</span></div>
+          <div class="timeline-item"><h3>Панель</h3><p>Реальные баллы и стоимость</p><span class="tag">потом</span></div>
+          <div class="timeline-item"><h3>Автопарсинг</h3><p>Обновление с сайта</p><span class="tag">потом</span></div>
+        </div>
+        <div class="grid-3">
+          <div class="card soft"><h3>1 · Убрать демо</h3><p>Оставить только FastAPI и прямой API. Все ответы — через базу.</p></div>
+          <div class="card soft"><h3>2 · Реальная панель</h3><p><span class="mono">GET /api/overview</span>: стоимость, баллы, места, стипендии.</p></div>
+          <div class="card soft"><h3>3 · Автопарсинг</h3><p>Планировщик, SHA-256, дедупликация и пересборка индекса.</p></div>
+        </div>
+        <div class="callout"><span class="dot amber"></span><span>После этого — фоновая пересборка с прогрессом, авторизация и лимиты для публичного запуска.</span></div>
+      </div>
+      <div class="footer"><span>Roadmap</span><strong>Сначала честные данные, потом автоматизация</strong></div>
+    </section>
+
+    <!-- 17. Демо -->
+    <section class="slide">
+      <div class="kicker">Демо</div>
+      <h2>Что показать за 3–4 минуты</h2>
+      <div class="content">
+        <div class="grid-2">
+          <div style="display:flex;flex-direction:column;gap:12px;">
+            <div class="card soft" style="padding:18px 20px;"><b class="accent-text mono">01</b> &nbsp; <b>Вопрос про поступление</b><p style="margin-top:5px;">Показать ответ, таблицу и ссылки на источники.</p></div>
+            <div class="card soft" style="padding:18px 20px;"><b class="accent-text mono">02</b> &nbsp; <b>Follow-up</b><p style="margin-top:5px;">«А на бюджет?» — контекст сохраняется.</p></div>
+            <div class="card soft" style="padding:18px 20px;"><b class="accent-text mono">03</b> &nbsp; <b>База данных</b><p style="margin-top:5px;">Показать 9 документов и 179 чанков.</p></div>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:12px;">
+            <div class="card soft" style="padding:18px 20px;"><b class="accent-text mono">04</b> &nbsp; <b>Резервная копия</b><p style="margin-top:5px;">Создать и восстановить — база вернулась.</p></div>
+            <div class="card soft" style="padding:18px 20px;"><b class="accent-text mono">05</b> &nbsp; <b>Проверка модели</b><p style="margin-top:5px;">Реальный ответ embedding API: модель и размерность.</p></div>
+            <div class="card soft" style="padding:18px 20px;"><b class="accent-text mono">06</b> &nbsp; <b>Пересборка</b><p style="margin-top:5px;">Папка data/docs → база обновилась.</p></div>
+          </div>
+        </div>
+        <div class="big-quote" style="font-size:21px;">Главный акцент: мы показываем не «красивый чат», а полный цикл — документ → база → поиск → ответ → откат.</div>
+      </div>
+      <div class="footer"><span>Демо</span><strong>Сначала результат, потом архитектура</strong></div>
+    </section>
+
+    <!-- 18. Финал -->
+    <section class="slide">
+      <div class="kicker">Чекпоинт 1</div>
+      <div class="content" style="justify-content:center;">
+        <div class="closing">
+          <div>
+            <h1>Спасибо.<br>Вопросы?</h1>
+            <p class="lead">Ассистент СибГУТИ — локальный RAG-справочник с проверяемыми источниками.</p>
+            <div class="repo">github.com/bxtrxyxl/HakatonVittoria</div>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:12px;">
+            <div class="metric"><b>9 / 179</b><span>документов / чанков</span></div>
+            <div class="metric"><b>8</b><span>фрагментов в контексте</span></div>
+            <div class="metric"><b>0</b><span>ошибок сборки</span></div>
+            <div class="metric"><b>16</b><span>автотестов</span></div>
+          </div>
+        </div>
+      </div>
+      <div class="footer"><span>Ассистент СибГУТИ</span><strong>Чекпоинт 1 · спасибо за внимание</strong></div>
+    </section>
+
+  </main>
+</div>
+
+<div class="controls">
+  <button id="prevBtn" title="Назад">←</button>
+  <span class="counter" id="counter">1 / 18</span>
+  <button id="nextBtn" title="Вперёд">→</button>
+  <button id="fullBtn" title="Полный экран">⛶</button>
+</div>
+<div class="progress"><i id="progressBar"></i></div>
+<div class="hint">← → · Space · Home / End · F — полный экран</div>
+
+<script>
+  (function () {
+    const deck = document.getElementById('deck');
+    const slides = Array.from(document.querySelectorAll('.slide'));
+    const counter = document.getElementById('counter');
+    const progressBar = document.getElementById('progressBar');
+    let index = 0;
+
+    function fit() {
+      const scale = Math.min(window.innerWidth / 1920, window.innerHeight / 1080);
+      deck.style.transform = 'translate(-50%, -50%) scale(' + scale + ')';
+    }
+
+    function show(next) {
+      index = Math.max(0, Math.min(slides.length - 1, next));
+      slides.forEach((slide, i) => slide.classList.toggle('active', i === index));
+      counter.textContent = (index + 1) + ' / ' + slides.length;
+      progressBar.style.width = ((index + 1) / slides.length * 100) + '%';
+      history.replaceState(null, '', '#' + (index + 1));
+    }
+
+    function next() { show(index + 1); }
+    function prev() { show(index - 1); }
+
+    document.getElementById('nextBtn').addEventListener('click', next);
+    document.getElementById('prevBtn').addEventListener('click', prev);
+    document.getElementById('fullBtn').addEventListener('click', () => {
+      if (!document.fullscreenElement) {
+        document.documentElement.requestFullscreen().catch(() => {});
+      } else {
+        document.exitFullscreen();
+      }
+    });
+
+    document.addEventListener('keydown', (event) => {
+      if (event.key === 'ArrowRight' || event.key === 'PageDown' || event.key === ' ') {
+        event.preventDefault();
+        next();
+      } else if (event.key === 'ArrowLeft' || event.key === 'PageUp') {
+        event.preventDefault();
+        prev();
+      } else if (event.key === 'Home') {
+        event.preventDefault();
+        show(0);
+      } else if (event.key === 'End') {
+        event.preventDefault();
+        show(slides.length - 1);
+      } else if (event.key.toLowerCase() === 'f') {
+        event.preventDefault();
+        document.getElementById('fullBtn').click();
+      }
+    });
+
+    window.addEventListener('resize', fit);
+    const fromHash = parseInt(location.hash.replace('#', ''), 10);
+    show(Number.isFinite(fromHash) && fromHash > 0 ? fromHash - 1 : 0);
+    fit();
+  })();
+</script>
+</body>
+</html>

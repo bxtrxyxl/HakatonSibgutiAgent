@@ -71,6 +71,14 @@ def index() -> FileResponse:
     return FileResponse(page, media_type="text/html")
 
 
+@app.get("/presentation")
+def presentation() -> FileResponse:
+    page = config.WEB_DIR / "presentation.html"
+    if not page.exists():
+        raise HTTPException(status_code=404, detail="web/presentation.html не найден")
+    return FileResponse(page, media_type="text/html")
+
+
 @app.post("/api/session/new")
 def new_session() -> dict[str, str]:
     return {"session_id": get_agent().new_session()}
