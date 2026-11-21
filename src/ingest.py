@@ -111,6 +111,56 @@ def detect_format(url: str, content_type: str, filename: str = "") -> str:
 
 # --- Загрузка -------------------------------------------------------------
 
+class FetchError(RuntimeError):
+    """Ошибка загрузки с машиночитаемой причиной для `stats.json`."""
+
+    def __init__(self, message: str, reason: str = "unknown") -> None:
+        super().__init__(message)
+        self.reason = reason
+
+
+def _classify_fetch_error(exc: Exception) -> str:
+    if isinstance(exc, httpx.TimeoutException):
+        return "timeout"
+    if isinstance(exc, httpx.ConnectError):
+        text = str(exc).lower()
+        if "getaddrinfo" in text or "name or service not known" in text:
+            return "dns"
+        return "connection"
+    if isinstance(exc, httpx.RemoteProtocolError):
+        return "protocol"
+    if isinstance(exc, httpx.HTTPStatusError):
+        status = exc.response.status_code
+        if status == 429:
+            return "rate_limited"
+        if status >= 500:
+            return "server_error"
+        return "client_error"
+    if isinstance(exc, httpx.TransportError):
+        return "connection"
+    return "unknown"
+
+
+def _error_reason(exc: Exception) -> str:
+    return exc.reason if isinstance(exc, FetchError) else "unknown"
+
+
+def _is_retryable(exc: Exception) -> bool:
+    """Повторяем только временные сбои: сеть, таймауты, 429 и 5xx."""
+    if isinstance(exc, httpx.HTTPStatusError):
+        status = exc.response.status_code
+        return status == 429 or status >= 500
+    return isinstance(exc, httpx.TransportError)
+
+
+def _retry_delay(exc: Exception, attempt: int) -> float:
+    if isinstance(exc, httpx.HTTPStatusError):
+        header = exc.response.headers.get("retry-after", "").strip()
+        if header.isdigit():
+            return min(float(header), 10.0)
+    return min(1.5 * (2**attempt), 8.0)
+
+
 def _http_get(client: httpx.Client, url: str) -> httpx.Response:
     last_error: Exception | None = None
     for attempt in range(config.FETCH_RETRIES + 1):
@@ -120,9 +170,18 @@ def _http_get(client: httpx.Client, url: str) -> httpx.Response:
             return response
         except Exception as exc:
             last_error = exc
-            if attempt < config.FETCH_RETRIES:
-                time.sleep(1.5 * (attempt + 1))
-    raise RuntimeError(f"fetch failed: {type(last_error).__name__}: {last_error}")
+            if attempt < config.FETCH_RETRIES and _is_retryable(exc):
+                time.sleep(_retry_delay(exc, attempt))
+                continue
+            break
+    if last_error is None:
+        raise FetchError(f"fetch failed: {url}", reason="unknown")
+    reason = _classify_fetch_error(last_error)
+    raise FetchError(
+        f"fetch failed ({reason}): {type(last_error).__name__}: {last_error}",
+        reason=reason,
+    ) from last_error
+
 
 
 def _archive_candidates(client: httpx.Client, url: str) -> list[str]:
@@ -153,8 +212,15 @@ def fetch_url(url: str, use_wayback: bool = True) -> tuple[bytes, str, str, str]
             ctype = response.headers.get("content-type", "")
             return response.content, ctype, str(response.url), "origin"
         except Exception as origin_error:
+            origin_reason = (
+                origin_error.reason
+                if isinstance(origin_error, FetchError)
+                else _classify_fetch_error(origin_error)
+            )
             if not use_wayback:
-                raise RuntimeError(f"origin unavailable: {origin_error}") from origin_error
+                raise FetchError(
+                    f"origin unavailable: {origin_error}", reason=origin_reason
+                ) from origin_error
             archive_errors: list[str] = []
             for archive_url in _archive_candidates(client, url):
                 try:
@@ -168,8 +234,9 @@ def fetch_url(url: str, use_wayback: bool = True) -> tuple[bytes, str, str, str]
                     continue
                 ctype = response.headers.get("content-type", "")
                 return response.content, ctype, str(response.url), "wayback"
-            raise RuntimeError(
-                f"origin unavailable ({origin_error}); archive unavailable ({'; '.join(archive_errors)})"
+            raise FetchError(
+                f"origin unavailable ({origin_error}); archive unavailable ({'; '.join(archive_errors)})",
+                reason=origin_reason,
             ) from origin_error
 
 
@@ -806,7 +873,14 @@ def run_urls(
                 print(f"[{index}/{len(sources)}] ok {chunk_count} chunks {url}")
         except Exception as exc:
             message = str(exc)
-            errors.append({"url": url, "error": message, "stage": "fetch+extract"})
+            errors.append(
+                {
+                    "url": url,
+                    "error": message,
+                    "stage": "fetch+extract",
+                    "reason": _error_reason(exc),
+                }
+            )
             print(f"[{index}/{len(sources)}] ERROR {url}: {message}", file=sys.stderr)
         finally:
             # Состояние фиксируется после каждого источника: обрыв не теряет прогресс.
@@ -933,7 +1007,9 @@ def run_directory(directory: Path, rebuild: bool = True) -> dict[str, Any]:
                 append_embeddings(vectors)
                 print(f"[{index}/{len(files)}] ok {vectors.shape[0]} chunks {relative}")
         except Exception as exc:
-            errors.append({"url": relative, "error": str(exc), "stage": "local_file"})
+            errors.append(
+                {"url": relative, "error": str(exc), "stage": "local_file", "reason": "local_io"}
+            )
             print(f"[{index}/{len(files)}] ERROR {relative}: {exc}", file=sys.stderr)
         finally:
             write_registry(connection)
@@ -970,7 +1046,9 @@ def run_single_file(
         else:
             vectors.append(result)
     except Exception as exc:
-        errors.append({"url": url or path.name, "error": str(exc), "stage": "local_file"})
+        errors.append(
+            {"url": url or path.name, "error": str(exc), "stage": "local_file", "reason": "local_io"}
+        )
 
     sync_embeddings(vectors, rebuild=False)
     registry = write_registry(connection)
@@ -1764,6 +1842,44 @@ def job_status() -> dict[str, Any]:
         return copy.deepcopy(_JOB_STATE)
 
 
+def _persist_job_state() -> None:
+    """Сохраняет снимок задачи, чтобы её статус пережил перезапуск сервера."""
+    with _JOB_GUARD:
+        snapshot = copy.deepcopy(_JOB_STATE)
+    if snapshot["status"] == "idle":
+        return
+    try:
+        write_app_settings({"last_job": snapshot})
+    except OSError:
+        pass
+
+
+def _restore_job_state() -> None:
+    """Восстанавливает последнюю задачу; прерванную рестартом помечает `interrupted`."""
+    persisted = read_app_settings().get("last_job")
+    if not isinstance(persisted, dict) or not persisted.get("id"):
+        return
+    state = copy.deepcopy(_JOB_STATE)
+    state.update({key: persisted[key] for key in state if key in persisted})
+    interrupted = state.get("status") == "running"
+    if interrupted:
+        state.update(
+            {
+                "status": "interrupted",
+                "finished_at": utc_now(),
+                "error": "Задача прервана перезапуском сервера",
+            }
+        )
+    with _JOB_GUARD:
+        _JOB_STATE.update(state)
+    if interrupted:
+        patch: dict[str, Any] = {"last_job": state}
+        if state.get("kind") == "site_rebuild":
+            # Прерванная пересборка не должна блокировать повторный запуск на сутки.
+            patch["last_site_rebuild_at"] = ""
+        write_app_settings(patch)
+
+
 def _job_progress(done: int, total: int, step: str = "") -> None:
     total = max(1, int(total))
     percent = max(0, min(100, int(done / total * 100)))
@@ -1791,6 +1907,7 @@ def start_job(kind: str, target: Callable[[Callable[..., None]], Any]) -> dict[s
                 "error": "",
             }
         )
+    _persist_job_state()
     thread = threading.Thread(target=_run_job, args=(kind, target), name=f"job-{kind}", daemon=True)
     thread.start()
     return job_status()
@@ -1812,6 +1929,7 @@ def _run_job(kind: str, target: Callable[[Callable[..., None]], Any]) -> None:
                     "result": result,
                 }
             )
+        _persist_job_state()
     except Exception as exc:
         with _JOB_GUARD:
             _JOB_STATE.update(
@@ -1822,6 +1940,7 @@ def _run_job(kind: str, target: Callable[[Callable[..., None]], Any]) -> None:
                     "error": f"{type(exc).__name__}: {exc}",
                 }
             )
+        _persist_job_state()
 
 
 def run_site_rebuild(progress: Callable[..., None] | None = None) -> dict[str, Any]:
@@ -2152,6 +2271,9 @@ def main(argv: Iterable[str] | None = None) -> int:
     for error in stats["errors"]:
         print(f"  ! {error['url']}: {error['error']}", file=sys.stderr)
     return 0
+
+
+_restore_job_state()
 
 
 if __name__ == "__main__":

@@ -4073,6 +4073,7 @@
           dbSiteCooldown: 'Пересборка с сайта уже выполнялась менее суток назад',
           dbSiteDone: 'База пересобрана',
           dbSiteFailed: 'Пересборка не удалась',
+          dbSiteInterrupted: 'Пересборка прервана',
           dbSiteBackup: 'Копия',
           dbSourcesFound: 'Ссылок найдено',
           dbLocalBadge: 'локально',
@@ -4300,6 +4301,7 @@
           dbSiteCooldown: 'A full site rebuild ran less than a day ago',
           dbSiteDone: 'Database rebuilt',
           dbSiteFailed: 'Rebuild failed',
+          dbSiteInterrupted: 'Rebuild interrupted',
           dbSiteBackup: 'Backup',
           dbSourcesFound: 'Links found',
           dbLocalBadge: 'local',
@@ -6144,6 +6146,7 @@
       let siteRebuildTimer = null;
       let siteRebuildActive = false;
       let siteCooldown = null;
+      let siteJobView = null;
 
       function stopSiteRebuildPolling() {
         if (siteRebuildTimer) {
@@ -6164,6 +6167,7 @@
           return;
         }
         el.rebuildSiteBtn.disabled = false;
+        if (siteJobView) return;
         el.siteRebuildBadge.style.display = 'none';
         el.siteRebuildProgressWrap.style.display = 'none';
         el.siteRebuildNote.textContent = t('dbSiteNote');
@@ -6179,14 +6183,16 @@
       }
 
       function renderSiteJob(job) {
+        siteJobView = job;
         const running = job.status === 'running';
         const failed = job.status === 'error';
+        const interrupted = job.status === 'interrupted';
         el.siteRebuildBadge.style.display = '';
         el.siteRebuildBadge.classList.toggle('is-run', running);
-        el.siteRebuildBadge.classList.toggle('is-ok', !running && !failed);
+        el.siteRebuildBadge.classList.toggle('is-ok', !running && !failed && !interrupted);
         el.siteRebuildBadge.textContent = running
           ? t('dbSiteRunning')
-          : (failed ? t('dbSiteFailed') : t('dbSiteDone'));
+          : (interrupted ? t('dbSiteInterrupted') : (failed ? t('dbSiteFailed') : t('dbSiteDone')));
         el.siteRebuildProgressWrap.style.display = running ? 'block' : 'none';
         el.siteRebuildProgressBar.style.width = `${running ? (job.progress || 0) : 100}%`;
         el.rebuildSiteBtn.disabled = running;
@@ -6194,6 +6200,10 @@
         if (running) {
           el.siteRebuildNote.textContent =
             `${t('dbSiteRunning')}: ${job.progress || 0}% · ${job.step || ''}`;
+          return;
+        }
+        if (interrupted) {
+          el.siteRebuildNote.textContent = `${t('dbSiteInterrupted')}: ${job.error || ''}`;
           return;
         }
         if (failed) {
@@ -6217,6 +6227,7 @@
         }
         if (!job || job.kind !== 'site_rebuild' || job.status === 'idle') {
           siteRebuildActive = false;
+          siteJobView = null;
           applySiteCooldown();
           return;
         }
@@ -6233,6 +6244,9 @@
           fetchDatabaseView();
           fetchSiteCooldown();
           tryFetchBackendOverview();
+        } else if (job.status === 'interrupted') {
+          showToast(t('dbSiteInterrupted'), 'err');
+          fetchDatabaseView();
         } else {
           showToast(`${t('dbSiteFailed')}: ${job.error || ''}`, 'err');
           fetchDatabaseView();

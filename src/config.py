@@ -82,7 +82,7 @@ EMBED_MAX_CHARS = 6000
 # Сеть
 USER_AGENT = "SibSUTIS-Agent/1.0 (+educational hackathon project)"
 FETCH_TIMEOUT = 20.0
-FETCH_RETRIES = 1
+FETCH_RETRIES = 2
 
 # Авторизация и лимиты тяжёлых/админ-операций
 ADMIN_TOKEN = _env("ADMIN_TOKEN")
