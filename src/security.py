@@ -136,6 +136,14 @@ class RateLimiter:
     def __init__(self) -> None:
         self._lock = threading.Lock()
         self._buckets: dict[str, deque[float]] = {}
+        self._last_prune = time.monotonic()
+
+    def _prune_locked(self, cutoff: float, now: float) -> None:
+        """Удаляет пустые и полностью устаревшие бакеты, чтобы словарь не рос бесконечно."""
+        stale = [key for key, bucket in self._buckets.items() if not bucket or bucket[-1] <= cutoff]
+        for key in stale:
+            del self._buckets[key]
+        self._last_prune = now
 
     def check(
         self,
@@ -153,6 +161,8 @@ class RateLimiter:
         now = time.monotonic()
         cutoff = now - window
         with self._lock:
+            if now - self._last_prune >= window or len(self._buckets) > 4096:
+                self._prune_locked(cutoff, now)
             bucket = self._buckets.setdefault(key, deque())
             while bucket and bucket[0] <= cutoff:
                 bucket.popleft()

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import re
+import threading
 import time
 import uuid
 from typing import Any
@@ -35,32 +36,52 @@ class SessionStore:
     через конкретный идентификатор, поэтому утечка между сессиями невозможна.
     """
 
-    def __init__(self) -> None:
+    def __init__(self, limit: int | None = None) -> None:
+        self._limit = config.SESSION_LIMIT if limit is None else limit
+        self._lock = threading.Lock()
         self._sessions: dict[str, list[dict[str, str]]] = {}
+
+    def _evict_locked(self) -> None:
+        """Удаляет самые старые сессии, пока не уложимся в лимит."""
+        if self._limit <= 0:
+            return
+        while len(self._sessions) > self._limit:
+            oldest = next(iter(self._sessions))
+            self._sessions.pop(oldest, None)
 
     def new_session(self) -> str:
         session_id = str(uuid.uuid4())
-        self._sessions[session_id] = []
+        with self._lock:
+            self._sessions[session_id] = []
+            self._evict_locked()
         return session_id
 
     def exists(self, session_id: str) -> bool:
-        return session_id in self._sessions
+        with self._lock:
+            return session_id in self._sessions
 
     def ensure(self, session_id: str) -> str:
-        if session_id not in self._sessions:
-            self._sessions[session_id] = []
-        return session_id
+        with self._lock:
+            if session_id not in self._sessions:
+                self._sessions[session_id] = []
+                self._evict_locked()
+            return session_id
 
     def history(self, session_id: str) -> list[dict[str, str]]:
-        return [dict(message) for message in self._sessions.get(session_id, [])]
+        with self._lock:
+            messages = self._sessions.get(session_id, [])
+            return [dict(message) for message in messages]
 
     def append(self, session_id: str, role: str, content: str) -> None:
-        self._sessions.setdefault(session_id, []).append({"role": role, "content": content})
-        if len(self._sessions[session_id]) > HISTORY_LIMIT * 2:
-            self._sessions[session_id] = self._sessions[session_id][-HISTORY_LIMIT * 2:]
+        with self._lock:
+            messages = self._sessions.setdefault(session_id, [])
+            messages.append({"role": role, "content": content})
+            if len(messages) > HISTORY_LIMIT * 2:
+                del messages[:-HISTORY_LIMIT * 2]
 
     def reset(self, session_id: str) -> None:
-        self._sessions[session_id] = []
+        with self._lock:
+            self._sessions[session_id] = []
 
 
 class SibSUTISAgent:

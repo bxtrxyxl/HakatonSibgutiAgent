@@ -1222,14 +1222,40 @@ def build_program_catalog() -> dict[str, Any]:
     return payload
 
 
-def load_program_catalog() -> dict[str, Any]:
-    if not config.PROGRAMS_PATH.exists():
-        return {"generated_at": "", "count": 0, "programs": [], "errors": []}
+_CATALOG_CACHE: dict[str, tuple[int, int, dict[str, Any]]] = {}
+_CATALOG_LOCK = threading.Lock()
+
+
+def _load_json_catalog(path: Path, default: dict[str, Any]) -> dict[str, Any]:
+    """Читает JSON-каталог с кэшем по `mtime`/размеру и отдаёт копию.
+
+    Пересборка каталога меняет файл, поэтому кэш инвалидируется сам.
+    """
     try:
-        payload = json.loads(config.PROGRAMS_PATH.read_text(encoding="utf-8"))
+        stat = path.stat()
+    except OSError:
+        return copy.deepcopy(default)
+    key = str(path)
+    with _CATALOG_LOCK:
+        cached = _CATALOG_CACHE.get(key)
+        if cached and cached[0] == stat.st_mtime_ns and cached[1] == stat.st_size:
+            return copy.deepcopy(cached[2])
+    try:
+        payload = json.loads(path.read_text(encoding="utf-8"))
     except (OSError, json.JSONDecodeError):
-        return {"generated_at": "", "count": 0, "programs": [], "errors": []}
-    return payload if isinstance(payload, dict) else {"programs": []}
+        return copy.deepcopy(default)
+    if not isinstance(payload, dict):
+        return copy.deepcopy(default)
+    with _CATALOG_LOCK:
+        _CATALOG_CACHE[key] = (stat.st_mtime_ns, stat.st_size, payload)
+    return copy.deepcopy(payload)
+
+
+def load_program_catalog() -> dict[str, Any]:
+    return _load_json_catalog(
+        config.PROGRAMS_PATH,
+        {"generated_at": "", "count": 0, "programs": [], "errors": []},
+    )
 
 
 ACHIEVEMENTS_URL = (
@@ -1326,13 +1352,10 @@ def build_achievements_catalog() -> dict[str, Any]:
 
 
 def load_achievements_catalog() -> dict[str, Any]:
-    if not config.ACHIEVEMENTS_PATH.exists():
-        return {"bachelor": [], "master": [], "target": [], "max_bachelor": 10, "max_master": 50}
-    try:
-        payload = json.loads(config.ACHIEVEMENTS_PATH.read_text(encoding="utf-8"))
-    except (OSError, json.JSONDecodeError):
-        return {"bachelor": [], "master": [], "target": [], "max_bachelor": 10, "max_master": 50}
-    return payload if isinstance(payload, dict) else {"bachelor": [], "master": [], "target": []}
+    return _load_json_catalog(
+        config.ACHIEVEMENTS_PATH,
+        {"bachelor": [], "master": [], "target": [], "max_bachelor": 10, "max_master": 50},
+    )
 
 
 MIN_SCORES_URL = (
@@ -1409,13 +1432,7 @@ def build_min_scores_catalog() -> dict[str, Any]:
 
 
 def load_min_scores_catalog() -> dict[str, Any]:
-    if not config.MIN_SCORES_PATH.exists():
-        return {"soo": [], "spo": [], "master": 35}
-    try:
-        payload = json.loads(config.MIN_SCORES_PATH.read_text(encoding="utf-8"))
-    except (OSError, json.JSONDecodeError):
-        return {"soo": [], "spo": [], "master": 35}
-    return payload if isinstance(payload, dict) else {"soo": [], "spo": [], "master": 35}
+    return _load_json_catalog(config.MIN_SCORES_PATH, {"soo": [], "spo": [], "master": 35})
 
 
 SITE_PAGES: list[tuple[str, str, str]] = [

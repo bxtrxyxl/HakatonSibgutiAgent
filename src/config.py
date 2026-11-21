@@ -69,6 +69,8 @@ EMBED_MODEL = _env("EMBED_MODEL")
 TOP_K = int(_env("TOP_K", "8") or 8)
 CANDIDATES_PER_SOURCE = 15
 MAX_CHUNKS_PER_DOC = 4
+# Предел числа сессий в памяти: старые вытесняются, чтобы процесс не рос бесконечно.
+SESSION_LIMIT = _env_int("SESSION_LIMIT", 500)
 REQUEST_TIMEOUT = 60.0
 LLM_TIMEOUT = 90.0
 

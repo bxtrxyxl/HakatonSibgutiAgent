@@ -8,6 +8,7 @@ import os
 import re
 import sqlite3
 import tempfile
+import threading
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
@@ -79,6 +80,8 @@ class HybridRetriever:
         self.top_k = top_k
         self._embeddings: np.ndarray | None = None
         self._chunk_ids: np.ndarray | None = None
+        self._id_to_pos: dict[int, int] | None = None
+        self._load_lock = threading.Lock()
         self._embedder = None
 
     # --- ресурсы ---------------------------------------------------------
@@ -93,9 +96,16 @@ class HybridRetriever:
     def _load_embeddings(self) -> None:
         if self._embeddings is not None:
             return
+        with self._load_lock:
+            if self._embeddings is not None:
+                return
+            self._load_embeddings_locked()
+
+    def _load_embeddings_locked(self) -> None:
         if not self.embeddings_path.exists():
             self._embeddings = np.zeros((0, 0), dtype=np.float32)
             self._chunk_ids = np.zeros((0,), dtype=np.int64)
+            self._id_to_pos = {}
             return
         matrix = np.load(self.embeddings_path).astype(np.float32)
         connection = self._connect()
@@ -110,6 +120,17 @@ class HybridRetriever:
             )
         self._embeddings = matrix
         self._chunk_ids = ids
+        self._id_to_pos = {int(chunk_id): position for position, chunk_id in enumerate(ids)}
+
+    def _id_positions(self) -> dict[int, int]:
+        self._load_embeddings()
+        if self._id_to_pos is None:
+            self._id_to_pos = (
+                {int(chunk_id): position for position, chunk_id in enumerate(self._chunk_ids)}
+                if self._chunk_ids is not None
+                else {}
+            )
+        return self._id_to_pos
 
     def _query_vector(self, query: str) -> np.ndarray | None:
         if self._embeddings is None or self._embeddings.size == 0:
@@ -188,8 +209,7 @@ class HybridRetriever:
 
         selected: list[Chunk] = []
         per_doc: dict[str, int] = {}
-        self._load_embeddings()
-        id_to_pos = {int(cid): pos for pos, cid in enumerate(self._chunk_ids)} if self._chunk_ids is not None else {}
+        id_to_pos = self._id_positions()
 
         for chunk_id, score in ordered:
             row = rows.get(chunk_id)
