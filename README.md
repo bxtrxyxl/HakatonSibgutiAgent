@@ -134,7 +134,7 @@ web/index.html    одностраничный UI без сборки
 ```
 
 Поток запроса: `security.detect_injection` → переформулировка запроса по истории сессии →
-`HybridRetriever.search` (top-15 BM25 + top-15 косинус → RRF → top-6) →
+`HybridRetriever.search` (top-15 BM25 + top-15 косинус → RRF → top-8) →
 `sanitize_chunks` → LLM → ответ с цитатами `[n]` → источники → `logs/events.jsonl`.
 
 ## API
