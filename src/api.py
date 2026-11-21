@@ -17,11 +17,13 @@ from pydantic import BaseModel, Field
 from src import config
 from src.agent import get_agent
 from src.ingest import (
+    build_achievements_catalog,
     build_program_catalog,
     create_backup,
     database_status,
     delete_backup,
     discover_site_sources,
+    load_achievements_catalog,
     load_program_catalog,
     restore_backup,
     run_directory,
@@ -269,6 +271,27 @@ def programs() -> dict[str, Any]:
 @app.get("/api/overview")
 def overview() -> dict[str, Any]:
     return build_overview()
+
+
+@app.get("/api/achievements")
+def achievements() -> dict[str, Any]:
+    return load_achievements_catalog()
+
+
+@app.post("/api/achievements/refresh")
+def refresh_achievements() -> dict[str, Any]:
+    try:
+        with _DB_LOCK:
+            payload = build_achievements_catalog()
+    except Exception as exc:
+        raise HTTPException(status_code=502, detail=_safe_error(exc)) from exc
+    return {
+        "status": "ok",
+        "bachelor": len(payload.get("bachelor", [])),
+        "master": len(payload.get("master", [])),
+        "target": len(payload.get("target", [])),
+        "generated_at": payload.get("generated_at", ""),
+    }
 
 
 @app.post("/api/programs/refresh")

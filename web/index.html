@@ -3664,6 +3664,7 @@
                 <span data-i18n="dbRefreshPrograms">Обновить с сайта</span>
               </button>
               <button id="discoverSourcesBtn" class="btn-pill-ghost" style="height:34px;" data-i18n="dbDiscoverSources">Показать ссылки парсинга</button>
+              <button id="refreshAchievementsBtn" class="btn-pill-ghost" style="height:34px;" data-i18n="dbRefreshAchievements">Обновить достижения</button>
             </div>
             <p id="programCatalogStatus" class="db-note" data-i18n="dbProgramsNote">Каталог обновляется с portal.sibsutis.ru и не меняет основную базу, пока вы не запустите пересборку.</p>
           </div>
@@ -3888,6 +3889,8 @@
           dbProgramsDesc: '38 профилей с дисциплинами, профессиями и проходными баллами. Используется для подбора по стеку.',
           dbRefreshPrograms: 'Обновить с сайта',
           dbDiscoverSources: 'Показать ссылки парсинга',
+          dbRefreshAchievements: 'Обновить достижения',
+          dbAchievementsUpdated: 'Достижения обновлены',
           dbProgramsNote: 'Каталог обновляется с portal.sibsutis.ru и не меняет основную базу, пока вы не запустите пересборку.',
           dbProgramsUpdated: 'Каталог обновлён',
           dbProgramsLoading: 'Обновление каталога...',
@@ -3944,6 +3947,7 @@
             { q: 'Сколько стоит обучение на бакалавриате и магистратуре?', sub: 'Стоимость за семестр' },
             { q: 'Как получить место в общежитии и сколько стоит проживание?', sub: 'Общежития · Кампус' },
             { q: 'Какие виды стипендий и доп. баллы ИД есть в СибГУТИ?', sub: 'Стипендии · Достижения' },
+            { q: 'За какие индивидуальные достижения дают дополнительные баллы?', sub: 'Достижения · Баллы' },
             { q: 'Подбери направление, где учат Python и машинному обучению', sub: 'Подбор · стек' },
             { q: 'Какой у меня шанс поступить на ИВТ?', sub: 'Шанс поступления' }
           ]
@@ -4066,6 +4070,8 @@
           dbProgramsDesc: '38 profiles with disciplines, professions, and passing scores. Used for stack-based matching.',
           dbRefreshPrograms: 'Refresh from site',
           dbDiscoverSources: 'Show parsing links',
+          dbRefreshAchievements: 'Refresh achievements',
+          dbAchievementsUpdated: 'Achievements updated',
           dbProgramsNote: 'The catalog is refreshed from portal.sibsutis.ru and does not change the main database until you rebuild.',
           dbProgramsUpdated: 'Catalog updated',
           dbProgramsLoading: 'Refreshing catalog...',
@@ -4122,6 +4128,7 @@
             { q: 'Сколько стоит обучение на бакалавриате и магистратуре?', sub: 'Tuition per semester' },
             { q: 'Как получить место в общежитии и сколько стоит проживание?', sub: 'Dormitories · Campus' },
             { q: 'Какие виды стипендий и доп. баллы ИД есть в СибГУТИ?', sub: 'Scholarships · Bonus points' },
+            { q: 'За какие индивидуальные достижения дают дополнительные баллы?', sub: 'Achievements · Points' },
             { q: 'Подбери направление, где учат Python и машинному обучению', sub: 'Matching · stack' },
             { q: 'What are my chances of getting into CS?', sub: 'Admission chance' }
           ]
@@ -4321,6 +4328,7 @@
         programCatalogCount: document.getElementById('programCatalogCount'),
         refreshProgramsBtn: document.getElementById('refreshProgramsBtn'),
         discoverSourcesBtn: document.getElementById('discoverSourcesBtn'),
+        refreshAchievementsBtn: document.getElementById('refreshAchievementsBtn'),
         programCatalogStatus: document.getElementById('programCatalogStatus'),
         exportJsonBtn: document.getElementById('exportJsonBtn'),
         clearHistoryBtn: document.getElementById('clearHistoryBtn'),
@@ -5648,6 +5656,23 @@
         }
       }
 
+      async function refreshAchievements() {
+        const button = el.refreshAchievementsBtn;
+        button.disabled = true;
+        try {
+          const data = await dbFetch('/api/achievements/refresh', { method: 'POST' });
+          showToast(
+            `${t('dbAchievementsUpdated')}: ${data.bachelor || 0} / ${data.master || 0}`,
+            'ok'
+          );
+        } catch (err) {
+          showToast(err.message, 'err');
+          setDbError(err.message);
+        } finally {
+          button.disabled = false;
+        }
+      }
+
       async function createDatabaseBackup() {
         el.createDbBackupBtn.disabled = true;
         try {
@@ -5982,6 +6007,7 @@
         el.rebuildFolderBtn.addEventListener('click', rebuildFolder);
         el.refreshProgramsBtn.addEventListener('click', refreshPrograms);
         el.discoverSourcesBtn.addEventListener('click', discoverSources);
+        el.refreshAchievementsBtn.addEventListener('click', refreshAchievements);
         el.dbRetryBtn.addEventListener('click', fetchDatabaseView);
         el.dbBackupList.addEventListener('click', (event) => {
           const btn = event.target.closest('[data-action]');

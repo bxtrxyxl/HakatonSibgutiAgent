@@ -57,3 +57,12 @@ def test_api_overview(client: TestClient) -> None:
     assert len(payload["scoreDirections"]) >= 4
     assert payload["minSubjectScores"]["subjects"]
     assert payload["seats"]
+
+
+def test_api_achievements(client: TestClient) -> None:
+    response = client.get("/api/achievements")
+    assert response.status_code == 200
+    payload = response.json()
+    assert len(payload["bachelor"]) >= 15
+    assert len(payload["master"]) >= 10
+    assert payload["max_bachelor"] == 10

@@ -1142,6 +1142,109 @@ def load_program_catalog() -> dict[str, Any]:
     return payload if isinstance(payload, dict) else {"programs": []}
 
 
+ACHIEVEMENTS_URL = (
+    "https://sibsutis.ru/upload/iblock/a08/"
+    "Приложение 3 Перечень и порядок учета индивидуальных достижений "
+    "при поступлении в СибГУТИ и филиалы.pdf"
+)
+
+
+def _parse_achievement_table(lines: list[str], start_marker: str, end_marker: str) -> list[dict[str, Any]]:
+    start = next((i for i, line in enumerate(lines) if start_marker in line), 0)
+    end = next((i for i, line in enumerate(lines[start + 1:], start + 1) if end_marker in line), len(lines))
+    entries: list[dict[str, Any]] = []
+    current: dict[str, Any] | None = None
+    for raw in lines[start:end]:
+        line = " ".join(raw.split())
+        if not line:
+            continue
+        match = re.match(r"^(\d{1,2})\.\s*(.*)$", line)
+        if match:
+            if current and current.get("points") is not None:
+                entries.append(current)
+            title = match.group(2).strip()
+            points = None
+            inline = re.search(r"\s(\d{1,2})(?:\s*\([^)]*\))?\s*$", title)
+            if inline:
+                points = int(inline.group(1))
+                title = title[: inline.start()].strip()
+            current = {
+                "number": int(match.group(1)),
+                "title": title,
+                "details": [],
+                "points": points,
+            }
+            continue
+        if current is None:
+            continue
+        if re.fullmatch(r"\d{1,2}", line) and current.get("details") and current.get("points") is None:
+            current["points"] = int(line)
+            continue
+        if current.get("points") is None and len(line) > 2:
+            current["details"].append(line)
+    if current and current.get("points") is not None:
+        entries.append(current)
+
+    result: list[dict[str, Any]] = []
+    for entry in entries:
+        details = " ".join(entry["details"]).strip()
+        title = (entry["title"] or details).strip()
+        if len(title) > 120:
+            title = title[:117].rstrip() + "…"
+        result.append(
+            {
+                "number": entry["number"],
+                "title": title,
+                "details": details[:500],
+                "points": entry["points"],
+            }
+        )
+    return result
+
+
+def build_achievements_catalog() -> dict[str, Any]:
+    """Скачивает Приложение 3 и превращает таблицы достижений в JSON."""
+    content, _content_type, _final_url, _via = fetch_url(ACHIEVEMENTS_URL, use_wayback=False)
+    text = extract_pdf(content)
+    lines = text.splitlines()
+    bachelor = _parse_achievement_table(
+        lines,
+        "При приеме на обучение по программам бакалавриата",
+        "При приеме на обучение по программам магистратуры",
+    )
+    master = _parse_achievement_table(
+        lines,
+        "При приеме на обучение по программам магистратуры",
+        "3. При приеме на обучение по программам бакалавриата",
+    )
+    target = _parse_achievement_table(
+        lines,
+        "3. При приеме на обучение по программам бакалавриата",
+        "4. Перечень индивидуальных достижений",
+    )
+    payload = {
+        "generated_at": utc_now(),
+        "source": ACHIEVEMENTS_URL,
+        "max_bachelor": 10,
+        "max_master": 50,
+        "bachelor": bachelor,
+        "master": master,
+        "target": target,
+    }
+    config.ACHIEVEMENTS_PATH.write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
+    return payload
+
+
+def load_achievements_catalog() -> dict[str, Any]:
+    if not config.ACHIEVEMENTS_PATH.exists():
+        return {"bachelor": [], "master": [], "target": [], "max_bachelor": 10, "max_master": 50}
+    try:
+        payload = json.loads(config.ACHIEVEMENTS_PATH.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return {"bachelor": [], "master": [], "target": [], "max_bachelor": 10, "max_master": 50}
+    return payload if isinstance(payload, dict) else {"bachelor": [], "master": [], "target": []}
+
+
 SITE_PAGES: list[tuple[str, str, str]] = [
     ("https://sibsutis.ru/abitur/priem.php", "Поступление", "Приёмная комиссия 2026"),
     (
@@ -1468,6 +1571,11 @@ def main(argv: Iterable[str] | None = None) -> int:
         action="store_true",
         help="Собрать список ссылок сайта для автоматического обновления",
     )
+    parser.add_argument(
+        "--achievements",
+        action="store_true",
+        help="Обновить структурированный список индивидуальных достижений",
+    )
     args = parser.parse_args(list(argv) if argv is not None else None)
 
     if args.programs:
@@ -1477,13 +1585,21 @@ def main(argv: Iterable[str] | None = None) -> int:
             print(f"  ! {error['url']}: {error['error']}", file=sys.stderr)
         return 0
 
+    if args.achievements:
+        payload = build_achievements_catalog()
+        print(
+            f"Достижения: бакалавриат={len(payload['bachelor'])}, "
+            f"магистратура={len(payload['master'])}, целевые={len(payload.get('target', []))}"
+        )
+        return 0
+
     if args.site_sources:
         sources = discover_site_sources()
         print(f"Источников найдено: {len(sources)} → {config.SITE_SOURCES_PATH}")
         return 0
 
     if not args.urls and not args.file and not args.dir:
-        parser.error("укажите --dir, --urls, --file, --programs или --site-sources")
+        parser.error("укажите --dir, --urls, --file, --programs, --site-sources или --achievements")
 
     started = time.perf_counter()
     if args.dir:

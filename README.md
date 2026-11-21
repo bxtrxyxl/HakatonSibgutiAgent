@@ -85,6 +85,7 @@ python -m src.ingest --urls data/seed_urls.json --resume
 # каталог направлений и ссылки для автообновления
 python -m src.ingest --programs
 python -m src.ingest --site-sources
+python -m src.ingest --achievements
 ```
 
 **Поддерживаемые форматы:** HTML (основной контент без меню/футеров, `<table>` → Markdown,
@@ -159,6 +160,8 @@ web/index.html    одностраничный UI без сборки
 | POST | `/api/embeddings/test` | проверить эмбеддинг-модель на сервере (ключ не покидает сервер) |
 | GET | `/api/programs` | каталог направлений и профилей |
 | GET | `/api/overview` | данные правой панели: стоимость, баллы, места, стипендии |
+| GET | `/api/achievements` | структурированные баллы за индивидуальные достижения |
+| POST | `/api/achievements/refresh` | обновить таблицу достижений из Приложения 3 |
 | POST | `/api/programs/refresh` | обновить каталог с portal.sibsutis.ru |
 | POST | `/api/recommend` | подобрать направления по стеку/профессии |
 | POST | `/api/site/sources` | собрать ссылки сайта для парсинга |
@@ -197,7 +200,7 @@ pytest -v
 ```
 
 <!-- TEST_TABLE -->
-Результат последнего прогона: **21 passed** за 93 с.
+Результат последнего прогона: **22 passed** за 93 с.
 
 | Тест | Что проверяет | Результат |
 | --- | --- | --- |

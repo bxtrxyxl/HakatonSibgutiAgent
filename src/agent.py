@@ -8,6 +8,7 @@ import uuid
 from typing import Any
 
 from src import config, prompts, security
+from src.ingest import load_achievements_catalog
 from src.retrieval import HybridRetriever, recommend_programs
 
 HISTORY_LIMIT = 8
@@ -17,6 +18,12 @@ RECOMMEND_RE = re.compile(
     r"(подбер\w*|подходящ\w*|какие\s+направлен\w*|куда\s+поступ\w*|"
     r"хочу\s+(работать|стать|учиться)|кем\s+работ\w*|стек|професси\w*|"
     r"что\s+изуча\w*|какие\s+технологи\w*)",
+    re.I,
+)
+ACHIEVEMENT_RE = re.compile(
+    r"(индивидуальн\w*\s+достижен\w*|дополнительн\w*\s+балл\w*|"
+    r"балл\w*\s+за\s+достижен\w*|за\s+какие\s+достижен\w*|"
+    r"олимпиад\w*|волонтер\w*|медаль\w*|целевая\s+квота)",
     re.I,
 )
 
@@ -154,6 +161,69 @@ class SibSUTISAgent:
             )
         return sources
 
+    def _achievements_answer(self, message: str) -> dict[str, Any] | None:
+        data = load_achievements_catalog()
+        bachelor = data.get("bachelor") or []
+        master = data.get("master") or []
+        target = data.get("target") or []
+        if not bachelor and not master:
+            return None
+
+        lower = message.lower()
+        want_master = "магистра" in lower
+        want_target = "целев" in lower
+
+        def cell(value: Any) -> str:
+            return str(value or "").replace("|", "\\|").replace("\n", " ").strip()
+
+        lines: list[str] = []
+        if bachelor and not want_master:
+            lines.append("**Бакалавриат и специалитет — не более 10 баллов суммарно**")
+            lines.append("")
+            lines.append("| № | Достижение | Баллы |")
+            lines.append("| --- | --- | --- |")
+            for item in bachelor:
+                lines.append(f"| {item['number']} | {cell(item['title'])} | {item['points']} |")
+            lines.append("")
+
+        if master and (want_master or not bachelor):
+            lines.append("**Магистратура — не более 50 баллов суммарно**")
+            lines.append("")
+            lines.append("| № | Достижение | Баллы |")
+            lines.append("| --- | --- | --- |")
+            for item in master:
+                lines.append(f"| {item['number']} | {cell(item['title'])} | {item['points']} |")
+            lines.append("")
+
+        if target and (want_target or not want_master):
+            lines.append("**Целевая квота**")
+            lines.append("")
+            for item in target:
+                lines.append(f"- {item['title']} — **+{item['points']}** баллов.")
+            lines.append("")
+
+        if bachelor and master and not want_master:
+            lines.append("Для магистратуры действует отдельная таблица — до 50 баллов. Уточните, если нужна она.")
+
+        lines.append(
+            "Баллы начисляются только при наличии подтверждающих документов "
+            "до дня завершения приёма документов."
+        )
+        source_url = str(data.get("source", ""))
+        sources = (
+            [
+                {
+                    "title": "Приложение 3. Индивидуальные достижения 2026",
+                    "url": source_url,
+                    "section": "Поступление",
+                    "year_version": "2026",
+                }
+            ]
+            if source_url
+            else []
+        )
+        return {"answer_markdown": "\n".join(lines), "sources": sources}
+
     def _recommend_answer(self, message: str) -> dict[str, Any] | None:
         items = recommend_programs(message, limit=5)
         if not items:
@@ -246,6 +316,14 @@ class SibSUTISAgent:
                  "sources": []},
                 "empty_query",
             )
+
+        if not flags and ACHIEVEMENT_RE.search(message):
+            achievements = self._achievements_answer(message)
+            if achievements is not None:
+                self.sessions.append(session_id, "user", message)
+                self.sessions.append(session_id, "assistant", achievements["answer_markdown"])
+                retrieved = achievements.get("sources", [])
+                return finish(achievements, "achievements")
 
         if not flags and RECOMMEND_RE.search(message):
             recommendation = self._recommend_answer(message)
