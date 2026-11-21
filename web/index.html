@@ -3665,6 +3665,7 @@
               </button>
               <button id="discoverSourcesBtn" class="btn-pill-ghost" style="height:34px;" data-i18n="dbDiscoverSources">Показать ссылки парсинга</button>
               <button id="refreshAchievementsBtn" class="btn-pill-ghost" style="height:34px;" data-i18n="dbRefreshAchievements">Обновить достижения</button>
+              <button id="refreshMinScoresBtn" class="btn-pill-ghost" style="height:34px;" data-i18n="dbRefreshMinScores">Обновить мин. баллы</button>
             </div>
             <p id="programCatalogStatus" class="db-note" data-i18n="dbProgramsNote">Каталог обновляется с portal.sibsutis.ru и не меняет основную базу, пока вы не запустите пересборку.</p>
           </div>
@@ -3891,6 +3892,8 @@
           dbDiscoverSources: 'Показать ссылки парсинга',
           dbRefreshAchievements: 'Обновить достижения',
           dbAchievementsUpdated: 'Достижения обновлены',
+          dbRefreshMinScores: 'Обновить мин. баллы',
+          dbMinScoresUpdated: 'Минимальные баллы обновлены',
           dbProgramsNote: 'Каталог обновляется с portal.sibsutis.ru и не меняет основную базу, пока вы не запустите пересборку.',
           dbProgramsUpdated: 'Каталог обновлён',
           dbProgramsLoading: 'Обновление каталога...',
@@ -4072,6 +4075,8 @@
           dbDiscoverSources: 'Show parsing links',
           dbRefreshAchievements: 'Refresh achievements',
           dbAchievementsUpdated: 'Achievements updated',
+          dbRefreshMinScores: 'Refresh min scores',
+          dbMinScoresUpdated: 'Minimum scores updated',
           dbProgramsNote: 'The catalog is refreshed from portal.sibsutis.ru and does not change the main database until you rebuild.',
           dbProgramsUpdated: 'Catalog updated',
           dbProgramsLoading: 'Refreshing catalog...',
@@ -4329,6 +4334,7 @@
         refreshProgramsBtn: document.getElementById('refreshProgramsBtn'),
         discoverSourcesBtn: document.getElementById('discoverSourcesBtn'),
         refreshAchievementsBtn: document.getElementById('refreshAchievementsBtn'),
+        refreshMinScoresBtn: document.getElementById('refreshMinScoresBtn'),
         programCatalogStatus: document.getElementById('programCatalogStatus'),
         exportJsonBtn: document.getElementById('exportJsonBtn'),
         clearHistoryBtn: document.getElementById('clearHistoryBtn'),
@@ -5673,6 +5679,21 @@
         }
       }
 
+      async function refreshMinScores() {
+        const button = el.refreshMinScoresBtn;
+        button.disabled = true;
+        try {
+          const data = await dbFetch('/api/min-scores/refresh', { method: 'POST' });
+          showToast(`${t('dbMinScoresUpdated')}: ${data.soo || 0}`, 'ok');
+          tryFetchBackendOverview();
+        } catch (err) {
+          showToast(err.message, 'err');
+          setDbError(err.message);
+        } finally {
+          button.disabled = false;
+        }
+      }
+
       async function createDatabaseBackup() {
         el.createDbBackupBtn.disabled = true;
         try {
@@ -6008,6 +6029,7 @@
         el.refreshProgramsBtn.addEventListener('click', refreshPrograms);
         el.discoverSourcesBtn.addEventListener('click', discoverSources);
         el.refreshAchievementsBtn.addEventListener('click', refreshAchievements);
+        el.refreshMinScoresBtn.addEventListener('click', refreshMinScores);
         el.dbRetryBtn.addEventListener('click', fetchDatabaseView);
         el.dbBackupList.addEventListener('click', (event) => {
           const btn = event.target.closest('[data-action]');

@@ -450,6 +450,16 @@ SUBJECTS_BY_CODE = {
     "11.05.04": ["Математика (профиль)", "Информатика / Физика", "Русский язык"],
 }
 
+MIN_SCORE_EN = {
+    "Математика": "Mathematics",
+    "Русский язык": "Russian language",
+    "Информатика": "Computer science",
+    "Физика": "Physics",
+    "Обществознание": "Social studies",
+    "История": "History",
+    "Иностранный язык (английский)": "Foreign language (English)",
+}
+
 
 def _money_value(text: str) -> int:
     digits = re.sub(r"\D", "", text or "")
@@ -573,6 +583,24 @@ def build_overview() -> dict[str, Any]:
     for item in salaries:
         item["pct"] = round(_money_value(item["valueRu"]) / max_salary * 100)
 
+    try:
+        min_payload = json.loads(config.MIN_SCORES_PATH.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        min_payload = {}
+    min_subjects = []
+    for item in min_payload.get("soo", []) if isinstance(min_payload, dict) else []:
+        subject = str(item.get("subject", ""))
+        points = int(item.get("points", 0))
+        if subject and points:
+            min_subjects.append(
+                {
+                    "nameRu": subject,
+                    "nameEn": MIN_SCORE_EN.get(subject, subject),
+                    "budget": points,
+                    "paid": points,
+                }
+            )
+
     return {
         "generated_at": payload.get("generated_at", ""),
         "source": "catalog",
@@ -581,7 +609,8 @@ def build_overview() -> dict[str, Any]:
         "minSubjectScores": {
             "noteRu": "Минимальные баллы 2026. Ниже порога документы не принимают.",
             "noteEn": "Minimum scores 2026. Applications below the threshold are not accepted.",
-            "subjects": [
+            "subjects": min_subjects
+            or [
                 {"nameRu": "Математика (профиль)", "nameEn": "Mathematics (profile)", "budget": 27, "paid": 27},
                 {"nameRu": "Русский язык", "nameEn": "Russian language", "budget": 36, "paid": 36},
                 {"nameRu": "Информатика", "nameEn": "Computer science", "budget": 40, "paid": 40},

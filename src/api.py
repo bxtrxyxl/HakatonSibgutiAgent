@@ -18,12 +18,14 @@ from src import config
 from src.agent import get_agent
 from src.ingest import (
     build_achievements_catalog,
+    build_min_scores_catalog,
     build_program_catalog,
     create_backup,
     database_status,
     delete_backup,
     discover_site_sources,
     load_achievements_catalog,
+    load_min_scores_catalog,
     load_program_catalog,
     restore_backup,
     run_directory,
@@ -290,6 +292,27 @@ def refresh_achievements() -> dict[str, Any]:
         "bachelor": len(payload.get("bachelor", [])),
         "master": len(payload.get("master", [])),
         "target": len(payload.get("target", [])),
+        "generated_at": payload.get("generated_at", ""),
+    }
+
+
+@app.get("/api/min-scores")
+def min_scores() -> dict[str, Any]:
+    return load_min_scores_catalog()
+
+
+@app.post("/api/min-scores/refresh")
+def refresh_min_scores() -> dict[str, Any]:
+    try:
+        with _DB_LOCK:
+            payload = build_min_scores_catalog()
+    except Exception as exc:
+        raise HTTPException(status_code=502, detail=_safe_error(exc)) from exc
+    return {
+        "status": "ok",
+        "soo": len(payload.get("soo", [])),
+        "spo": len(payload.get("spo", [])),
+        "master": payload.get("master", 35),
         "generated_at": payload.get("generated_at", ""),
     }
 

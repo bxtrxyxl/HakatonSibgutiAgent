@@ -1245,6 +1245,89 @@ def load_achievements_catalog() -> dict[str, Any]:
     return payload if isinstance(payload, dict) else {"bachelor": [], "master": [], "target": []}
 
 
+MIN_SCORES_URL = (
+    "https://sibsutis.ru/applicants/documents/Прием%202026/"
+    "Правила%20приёма/Минимальные%20баллы%202026%20на%20сайт.pdf"
+)
+
+
+def _parse_min_score_section(lines: list[str]) -> list[dict[str, Any]]:
+    subjects: list[dict[str, Any]] = []
+    buffer: list[str] = []
+    for raw in lines:
+        line = " ".join(raw.split())
+        if not line:
+            continue
+        if line.startswith(("Для ", "Минимальн", "*", "образования (ВО)")):
+            continue
+        inline = re.match(r"^(.+?)\s+(\d{1,3})$", line)
+        if inline:
+            subject = inline.group(1).strip(" .")
+            if subject:
+                subjects.append({"subject": subject, "points": int(inline.group(2))})
+            buffer = []
+            continue
+        if re.fullmatch(r"\d{1,3}", line):
+            subject = " ".join(buffer).strip(" .")
+            if subject:
+                subjects.append({"subject": subject, "points": int(line)})
+            buffer = []
+            continue
+        if len(line) > 2:
+            buffer.append(line)
+    return subjects
+
+
+def build_min_scores_catalog() -> dict[str, Any]:
+    """Скачивает таблицу минимальных баллов и сохраняет её в JSON."""
+    content, _content_type, _final_url, _via = fetch_url(MIN_SCORES_URL, use_wayback=False)
+    text = extract_pdf(content)
+    lines = text.splitlines()
+    normalized = [" ".join(line.split()) for line in lines]
+
+    soo_start = next(
+        (i for i, line in enumerate(normalized) if "среднего общего образования" in line),
+        0,
+    )
+    spo_start = next(
+        (i for i, line in enumerate(normalized) if "среднего профессионального образования" in line),
+        len(normalized),
+    )
+    master_start = next(
+        (i for i, line in enumerate(normalized) if "программам магистратуры" in line),
+        len(normalized),
+    )
+
+    soo = _parse_min_score_section(normalized[soo_start:spo_start])
+    spo = _parse_min_score_section(normalized[spo_start:master_start])
+    master = 35
+    for line in normalized[master_start:]:
+        match = re.search(r"(\d{2,3})\s*балл", line)
+        if match:
+            master = int(match.group(1))
+            break
+
+    payload = {
+        "generated_at": utc_now(),
+        "source": MIN_SCORES_URL,
+        "soo": soo,
+        "spo": spo,
+        "master": master,
+    }
+    config.MIN_SCORES_PATH.write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
+    return payload
+
+
+def load_min_scores_catalog() -> dict[str, Any]:
+    if not config.MIN_SCORES_PATH.exists():
+        return {"soo": [], "spo": [], "master": 35}
+    try:
+        payload = json.loads(config.MIN_SCORES_PATH.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return {"soo": [], "spo": [], "master": 35}
+    return payload if isinstance(payload, dict) else {"soo": [], "spo": [], "master": 35}
+
+
 SITE_PAGES: list[tuple[str, str, str]] = [
     ("https://sibsutis.ru/abitur/priem.php", "Поступление", "Приёмная комиссия 2026"),
     (
@@ -1576,6 +1659,11 @@ def main(argv: Iterable[str] | None = None) -> int:
         action="store_true",
         help="Обновить структурированный список индивидуальных достижений",
     )
+    parser.add_argument(
+        "--min-scores",
+        action="store_true",
+        help="Обновить структурированные минимальные баллы",
+    )
     args = parser.parse_args(list(argv) if argv is not None else None)
 
     if args.programs:
@@ -1593,13 +1681,23 @@ def main(argv: Iterable[str] | None = None) -> int:
         )
         return 0
 
+    if args.min_scores:
+        payload = build_min_scores_catalog()
+        print(
+            f"Минимальные баллы: СОО={len(payload['soo'])}, "
+            f"СПО/ВО={len(payload['spo'])}, магистратура={payload['master']}"
+        )
+        return 0
+
     if args.site_sources:
         sources = discover_site_sources()
         print(f"Источников найдено: {len(sources)} → {config.SITE_SOURCES_PATH}")
         return 0
 
     if not args.urls and not args.file and not args.dir:
-        parser.error("укажите --dir, --urls, --file, --programs, --site-sources или --achievements")
+        parser.error(
+            "укажите --dir, --urls, --file, --programs, --site-sources, --achievements или --min-scores"
+        )
 
     started = time.perf_counter()
     if args.dir:
