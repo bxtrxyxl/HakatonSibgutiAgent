@@ -1,0 +1,16 @@
+{
+  "sibsutis-safety-guard": {
+    "PreToolUse": [
+      {
+        "matcher": "read_file|edit_file|write_file|view_file|run_command",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "..\\.venv\\Scripts\\python.exe hooks\\guard.py",
+            "timeout": 5
+          }
+        ]
+      }
+    ]
+  }
+}
