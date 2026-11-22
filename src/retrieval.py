@@ -463,6 +463,177 @@ def recommend_programs(query: str, limit: int = 5) -> list[dict[str, Any]]:
     return unique
 
 
+# --- Каталог приёмной кампании как контекст чата --------------------------
+# Правая панель собирается из data/programs.json и data/min_scores.json,
+# а RAG ищет только по data/docs. Чтобы чат не отвечал «такого направления нет»,
+# когда панель его показывает, релевантные записи каталога добавляются в контекст.
+
+DIRECTION_CODE_RE = re.compile(r"\b\d{2}[.\-]\d{2}[.\-]\d{2}\b")
+
+
+def _catalog_programs() -> list[dict[str, Any]]:
+    from src.ingest import load_program_catalog
+
+    payload = load_program_catalog()
+    programs = payload.get("programs") if isinstance(payload, dict) else None
+    if not isinstance(programs, list):
+        return []
+    return [item for item in programs if isinstance(item, dict)]
+
+
+def _best_form(programs: list[dict[str, Any]]) -> dict[str, Any]:
+    """Из записей одного кода выбирает очную с известным проходным баллом."""
+    with_score = [item for item in programs if int(item.get("pass_score") or 0) > 0]
+    pool = with_score or programs
+    full_time = [
+        item
+        for item in pool
+        if "Очная" in str(item.get("form", "")) and "Заочная" not in str(item.get("form", ""))
+    ]
+    pool = full_time or pool
+    return max(pool, key=lambda item: int(item.get("pass_score") or 0))
+
+
+def match_program(query: str) -> dict[str, Any] | None:
+    """Находит программу каталога по коду направления или названию."""
+    programs = _catalog_programs()
+    if not programs:
+        return None
+
+    normalized = _normalize(query)
+    code_match = DIRECTION_CODE_RE.search(normalized)
+    if code_match:
+        code = code_match.group(0).replace("-", ".")
+        same = [item for item in programs if str(item.get("code", "")) == code]
+        if same:
+            return _best_form(same)
+
+    concepts = _query_concepts(query)
+    if not concepts:
+        return None
+
+    best_code = ""
+    best_hits = 0
+    for program in programs:
+        title = " ".join(
+            str(program.get(key, "")) for key in ("direction", "profile", "institute")
+        )
+        hits = sum(1 for concept in concepts if _concept_matches(concept, title))
+        if hits > best_hits:
+            best_hits = hits
+            best_code = str(program.get("code", ""))
+    if not best_code or not best_hits:
+        return None
+    same = [item for item in programs if str(item.get("code", "")) == best_code]
+    return _best_form(same)
+
+
+def catalog_matches(query: str, limit: int = 6) -> list[dict[str, Any]]:
+    """Записи каталога, релевантные вопросу (для контекста и источников)."""
+    programs = _catalog_programs()
+    if not programs:
+        return []
+
+    normalized = _normalize(query)
+    codes = {item.replace("-", ".") for item in DIRECTION_CODE_RE.findall(normalized)}
+    concepts = _query_concepts(query)
+    if not codes and not concepts:
+        return []
+
+    scored: list[tuple[int, int, dict[str, Any]]] = []
+    for program in programs:
+        score = 10 if str(program.get("code", "")) in codes else 0
+        title = " ".join(
+            str(program.get(key, "")) for key in ("direction", "profile", "institute")
+        )
+        disciplines = " ".join(str(item) for item in (program.get("disciplines") or []))
+        for concept in concepts:
+            if _concept_matches(concept, title):
+                score += 2
+            elif _concept_matches(concept, disciplines):
+                score += 1
+        if score:
+            scored.append((score, int(program.get("pass_score") or 0), program))
+
+    scored.sort(key=lambda row: (-row[0], -row[1], str(row[2].get("code"))))
+    selected: list[dict[str, Any]] = []
+    seen: set[tuple[str, str]] = set()
+    for _, _, program in scored:
+        key = (str(program.get("code", "")), str(program.get("form", "")))
+        if key in seen:
+            continue
+        seen.add(key)
+        selected.append(program)
+        if len(selected) >= limit:
+            break
+    return selected
+
+
+def format_catalog(items: list[dict[str, Any]]) -> str:
+    """Компактная выжимка каталога для блока <catalog>."""
+    if not items:
+        return ""
+    lines = ["Каталог приёмной кампании 2026 (те же данные, что в правой панели):"]
+    lines.extend(_catalog_line(item) for item in items)
+    return "\n".join(lines)
+
+
+def _catalog_line(program: dict[str, Any]) -> str:
+    code = str(program.get("code", "")).strip()
+    direction = str(program.get("direction", "")).strip()
+    meta = [
+        str(program.get("level", "")).strip().lower(),
+        str(program.get("form", "")).strip().lower(),
+    ]
+    years = program.get("years")
+    if years:
+        meta.append(f"{years} г.")
+    head = f"- {code} «{direction}»"
+    meta_text = ", ".join(item for item in meta if item)
+    parts = [f"{head} — {meta_text}" if meta_text else head]
+
+    profile = str(program.get("profile", "")).strip()
+    if profile:
+        parts.append(f"профиль «{profile}»")
+
+    seats: list[str] = []
+    budget = program.get("budget")
+    paid = program.get("paid")
+    if budget is not None:
+        seats.append(f"бюджет {budget}" if int(budget or 0) else "бюджетных мест нет")
+    if paid is not None:
+        seats.append(f"платно {paid}")
+    if seats:
+        parts.append(", ".join(seats))
+
+    pass_score = int(program.get("pass_score") or 0)
+    if pass_score:
+        parts.append(f"проходной 2026 — {pass_score}")
+    subjects = SUBJECTS_BY_CODE.get(code)
+    if subjects:
+        parts.append("ЕГЭ: " + ", ".join(subjects))
+    tuition = str(program.get("tuition", "")).strip()
+    if tuition:
+        parts.append(f"стоимость {tuition} ₽ за семестр")
+    return "; ".join(parts) + "."
+
+
+def min_scores_digest() -> str:
+    """Строка с минимальными баллами 2026 для вопросов о порогах."""
+    from src.ingest import load_min_scores_catalog
+
+    payload = load_min_scores_catalog()
+    rows = payload.get("soo") if isinstance(payload, dict) else None
+    if not isinstance(rows, list) or not rows:
+        return ""
+    parts = [
+        f"{row.get('subject')} — {row.get('points')}"
+        for row in rows
+        if isinstance(row, dict) and row.get("subject") and row.get("points")
+    ]
+    return "Минимальные баллы ЕГЭ 2026: " + ", ".join(parts) + "." if parts else ""
+
+
 SHORT_NAMES = {
     "02.03.02": ("ФИИТ", "FCS"),
     "09.03.01": ("ИВТ", "CS"),

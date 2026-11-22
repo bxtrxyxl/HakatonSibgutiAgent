@@ -3,13 +3,21 @@
 from __future__ import annotations
 
 import json
+from types import SimpleNamespace
 
 import pytest
 from fastapi.testclient import TestClient
 
 from src import config
+from src.agent import SibSUTISAgent
 from src.api import app
-from src.retrieval import build_overview, recommend_programs
+from src.retrieval import (
+    build_overview,
+    catalog_matches,
+    format_catalog,
+    match_program,
+    recommend_programs,
+)
 
 pytestmark = pytest.mark.skipif(
     not config.PROGRAMS_PATH.exists(),
@@ -134,3 +142,41 @@ def test_api_min_scores(client: TestClient) -> None:
     assert len(payload["soo"]) >= 5
     assert payload["master"] == 35
     assert any(item["subject"] == "Математика" and item["points"] == 27 for item in payload["soo"])
+
+
+def test_catalog_matches_finds_direction_not_in_docs() -> None:
+    items = catalog_matches("Расскажи про 42.03.01 Реклама и связи с общественностью")
+    assert items
+    assert items[0]["code"] == "42.03.01"
+    digest = format_catalog(items)
+    assert "42.03.01" in digest
+    assert "платно" in digest or "бюджет" in digest
+
+
+def test_match_program_returns_full_time_record() -> None:
+    program = match_program("10.03.01 Информационная безопасность")
+    assert program is not None
+    assert program["code"] == "10.03.01"
+    line = format_catalog([program])
+    assert "проходной 2026" in line
+    assert "ЕГЭ:" in line
+
+
+def test_chance_answer_asks_for_scores() -> None:
+    agent = SibSUTISAgent(retriever=SimpleNamespace())  # type: ignore[arg-type]
+    session = agent.sessions.new_session()
+    result = agent._chance_answer(session, "Рассчитай шанс поступления на 09.03.02")
+    assert result is not None
+    answer = result["answer_markdown"]
+    assert "балл" in answer.lower()
+    assert "09.03.02" in answer
+
+
+def test_chance_answer_compares_scores_with_pass_score() -> None:
+    agent = SibSUTISAgent(retriever=SimpleNamespace())  # type: ignore[arg-type]
+    session = agent.sessions.new_session()
+    result = agent._chance_answer(session, "09.03.02, баллы 90 85 80")
+    assert result is not None
+    answer = result["answer_markdown"]
+    assert "255" in answer
+    assert "ориентир" in answer

@@ -10,7 +10,16 @@ from typing import Any
 
 from src import config, prompts, security
 from src.ingest import load_achievements_catalog
-from src.retrieval import HybridRetriever, recommend_programs
+from src.retrieval import (
+    DIRECTION_CODE_RE,
+    SUBJECTS_BY_CODE,
+    HybridRetriever,
+    catalog_matches,
+    format_catalog,
+    match_program,
+    min_scores_digest,
+    recommend_programs,
+)
 
 HISTORY_LIMIT = 8
 LLM_HISTORY_MESSAGES = 4
@@ -24,6 +33,11 @@ FOLLOWUP_RE = re.compile(
     re.I,
 )
 CITATION_RE = re.compile(r"\[(\d{1,2})\]")
+CITATION_STRIP_RE = re.compile(r"\s*\[\d{1,3}\]")
+CHANCE_RE = re.compile(
+    r"(шанс\w*|вероятност\w*|смогу\s+ли\s+(?:я\s+)?поступ\w*|пройду\s+ли\s+(?:я\s+)?)",
+    re.I,
+)
 RECOMMEND_RE = re.compile(
     r"(подбер\w*|подходящ\w*|какие\s+направлен\w*|куда\s+поступ\w*|"
     r"хочу\s+(работать|стать|учиться)|кем\s+работ\w*|стек|професси\w*|"
@@ -276,6 +290,120 @@ class SibSUTISAgent:
         )
         return {"answer_markdown": "\n".join(lines), "sources": sources}
 
+    def _program_sources(self, program: dict[str, Any]) -> list[dict[str, str]]:
+        url = str(program.get("url", ""))
+        if not url:
+            return []
+        return [
+            {
+                "title": f"{program.get('code', '')} {program.get('direction', '')}".strip(),
+                "url": url,
+                "section": "Программы",
+                "year_version": "2026",
+            }
+        ]
+
+    def _catalog_sources(self, items: list[dict[str, Any]]) -> list[dict[str, str]]:
+        sources: list[dict[str, str]] = []
+        seen: set[str] = set()
+        for program in items:
+            url = str(program.get("url", ""))
+            if not url or url in seen:
+                continue
+            seen.add(url)
+            sources.append(
+                {
+                    "title": f"{program.get('code', '')} {program.get('direction', '')}".strip(),
+                    "url": url,
+                    "section": "Программы",
+                    "year_version": "2026",
+                }
+            )
+            if len(sources) >= 4:
+                break
+        return sources
+
+    def _chance_answer(self, session_id: str, message: str) -> dict[str, Any] | None:
+        """Дружелюбный расчёт шанса по каталогу: без баллов — уточняем, с баллами — прикидываем."""
+        program = match_program(message)
+        if program is None:
+            for item in reversed(self.sessions.history(session_id)[-4:]):
+                found = DIRECTION_CODE_RE.search(item["content"])
+                if found:
+                    program = match_program(found.group(0))
+                    if program:
+                        break
+        if program is None:
+            return None
+
+        code = str(program.get("code", ""))
+        direction = str(program.get("direction", ""))
+        pass_score = int(program.get("pass_score") or 0)
+        budget = int(program.get("budget") or 0)
+        subjects = SUBJECTS_BY_CODE.get(code, [])
+        header = f"**{code} {direction}**".strip()
+        facts: list[str] = []
+        if pass_score:
+            facts.append(f"проходной балл 2026 — {pass_score}")
+        if budget:
+            facts.append(f"бюджетных мест — {budget}")
+        facts_text = (", ".join(facts) + ". ") if facts else ""
+
+        numbers = [int(value) for value in re.findall(r"\b(\d{1,3})\b", message)]
+        subject_scores = [value for value in numbers if 20 <= value <= 100]
+        totals = [value for value in numbers if 100 < value <= 310]
+        bonus_match = re.search(
+            r"(?:достижен\w*|дополнительн\w*)[^\d]{0,25}(\d{1,2})", message, re.I
+        )
+        bonus = min(10, int(bonus_match.group(1))) if bonus_match else 0
+
+        if totals:
+            total = totals[0]
+        elif len(subject_scores) >= 3:
+            total = sum(subject_scores[:3]) + bonus
+        else:
+            total = 0
+
+        if not total:
+            ask = (
+                f"Конечно, давай посчитаем 🙂 {header}: {facts_text}"
+                "Напиши свои баллы за три предмета"
+                + (f" ({', '.join(subjects)})" if subjects else "")
+                + " и, если есть, баллы за индивидуальные достижения (до +10) — прикину шансы."
+            )
+            return {"answer_markdown": ask, "sources": self._program_sources(program)}
+
+        if not pass_score:
+            text = (
+                f"{header}: проходной балл за 2026 год не опубликован, поэтому точную оценку дать не могу. "
+                f"Твоя сумма — {total}. Уточни ориентиры в приёмной комиссии СибГУТИ — там подскажут по конкурсу."
+            )
+            return {"answer_markdown": text, "sources": self._program_sources(program)}
+
+        diff = total - pass_score
+        low = max(0, pass_score - 5)
+        high = pass_score + 5
+        if diff >= 15:
+            verdict = "шансы очень хорошие — идёшь с запасом выше проходного"
+        elif diff >= 0:
+            verdict = "шансы хорошие, хотя конкурс может быть плотным"
+        elif diff >= -10:
+            verdict = "шансы умеренные — всё решит конкурс и число подавших"
+        else:
+            verdict = "пока ниже проходного, но шанс есть: помогут индивидуальные достижения и конкурсная ситуация"
+
+        text = (
+            f"Сумма {total} против проходного {pass_score} в 2026 году — {verdict}. "
+            f"Это ориентир, а не гарантия: проходной меняется год к году и обычно колеблется "
+            f"примерно в районе {low}–{high}. "
+            + (
+                "С такими баллами стоит подавать документы — иногда проходной оказывается ниже."
+                if diff < 0
+                else "С такими баллами направление выглядит вполне реальным."
+            )
+        )
+        return {"answer_markdown": text, "sources": self._program_sources(program)}
+
     def _recommend_answer(self, message: str) -> dict[str, Any] | None:
         items = recommend_programs(message, limit=5)
         if not items:
@@ -388,6 +516,19 @@ class SibSUTISAgent:
                 retrieved = achievements.get("sources", [])
                 return finish(achievements, "achievements")
 
+        recent = self.sessions.history(session_id)[-2:]
+        chance_requested = bool(CHANCE_RE.search(message)) or (
+            any(item["role"] == "assistant" and "шанс" in item["content"].lower() for item in recent)
+            and bool(re.search(r"\d", message))
+        )
+        if not attached_items and not flags and chance_requested:
+            chance = self._chance_answer(session_id, message)
+            if chance is not None:
+                self.sessions.append(session_id, "user", message)
+                self.sessions.append(session_id, "assistant", chance["answer_markdown"])
+                retrieved = chance.get("sources", [])
+                return finish(chance, "chance")
+
         if not attached_items and not flags and RECOMMEND_RE.search(message):
             recommendation = self._recommend_answer(message)
             if recommendation is not None:
@@ -418,12 +559,18 @@ class SibSUTISAgent:
                 f"{type(exc).__name__}: {exc}",
             )
 
-        if not retrieved and not attached_xml:
+        catalog_items = catalog_matches(search_query)
+        catalog_text = format_catalog(catalog_items)
+        if re.search(r"минимальн|порог", search_query, re.I):
+            min_text = min_scores_digest()
+            if min_text:
+                catalog_text = f"{catalog_text}\n{min_text}".strip()
+
+        if not retrieved and not attached_xml and not catalog_text:
             answer = (
-                "В доступных материалах СибГУТИ не нашлось сведений по этому вопросу. "
-                "Уточните, пожалуйста: вы абитуриент или студент, интересует бакалавриат, "
-                "специалитет или магистратура? Актуальную информацию всегда можно проверить "
-                "в разделе «Абитуриентам» на sibsutis.ru или в приёмной комиссии."
+                "Пока не нашёл этого в материалах СибГУТИ. "
+                "Уточни, пожалуйста, направление или год — или проверь актуальные данные "
+                "в разделе «Абитуриентам» на sibsutis.ru и в приёмной комиссии."
             )
             self.sessions.append(session_id, "user", message)
             self.sessions.append(session_id, "assistant", answer)
@@ -437,6 +584,8 @@ class SibSUTISAgent:
         messages: list[dict[str, str]] = [{"role": "system", "content": prompts.SYSTEM_PROMPT}]
         messages.extend(history)
         user_parts = [f"<knowledge_base>\n{context}\n</knowledge_base>"]
+        if catalog_text:
+            user_parts.append(f"<catalog>\n{catalog_text}\n</catalog>")
         if attached_xml:
             user_parts.append(f"<attached_context>\n{attached_xml}\n</attached_context>")
         user_parts.append(f"Вопрос пользователя: {message}")
@@ -462,6 +611,10 @@ class SibSUTISAgent:
             )
 
         sources = self._collect_sources(answer, retrieved)
+        if not sources and catalog_items:
+            sources = self._catalog_sources(catalog_items)
+        answer = CITATION_STRIP_RE.sub("", answer)
+        answer = re.sub(r"[ \t]{2,}", " ", answer).strip()
         ctx_labels = [
             str(item.get("label", "")).strip()[:60]
             for item in attached_items
