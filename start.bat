@@ -71,15 +71,24 @@ goto :check_kb
 echo [2/4] Found .env configuration.
 
 :check_kb
-"%VENV_PY%" -m src.ingest --check-kb >nul 2>&1
+if not exist "data\docs" goto :kb_no_docs
+"%VENV_PY%" -m src.ingest --check-kb
 if not errorlevel 1 goto :kb_ready
 
-echo [3/4] Knowledge base missing or broken - building it from data\docs...
+echo [3/4] Knowledge base missing, broken or stale - building it from data\docs...
 "%VENV_PY%" -c "from src import config, ingest; config.require_embeddings(); assert 'sk-replace-me' not in config.EMBED_API_KEY; ingest.embed_query('probe', timeout=6.0)" >nul 2>&1
 if errorlevel 1 goto :kb_fts
 "%VENV_PY%" -m src.ingest --dir data/docs
 "%VENV_PY%" -m src.ingest --check-kb >nul 2>&1
 if not errorlevel 1 goto :kb_done
+echo [ERROR] Could not rebuild the knowledge base from data\docs. See messages above.
+pause
+exit /b 1
+
+:kb_no_docs
+echo [ERROR] Folder data\docs was not found - nothing to build the knowledge base from.
+pause
+exit /b 1
 
 :kb_fts
 echo       Using local keyword index (FTS5) - works without embeddings API...

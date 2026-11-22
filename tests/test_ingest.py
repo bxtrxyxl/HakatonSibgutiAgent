@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import copy
 import json
+import os
 from pathlib import Path
 
 import httpx
@@ -365,3 +366,73 @@ def test_run_directory_fts_only_builds_sqlite_without_embeddings(
 
     found = HybridRetriever(config.KB_PATH, config.EMBEDDINGS_PATH).search("приёмную комиссию документов")
     assert found
+
+
+def test_check_kb_flags_stale_docs(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    docs_dir = tmp_path / "docs"
+    data_dir = tmp_path / "data"
+    docs_dir.mkdir()
+    data_dir.mkdir()
+    doc = docs_dir / "guide.md"
+    doc.write_text(
+        "# Поступление 2026\n\n"
+        "Документы в приёмную комиссию СибГУТИ принимают с 20 июня по 25 июля 2026 года. "
+        "Подать заявление можно лично, через портал абитуриента или по почте. "
+        "Для поступления на бюджет нужны результаты ЕГЭ и индивидуальные достижения.",
+        encoding="utf-8",
+    )
+
+    monkeypatch.setattr(config, "DATA_DIR", data_dir)
+    monkeypatch.setattr(config, "DOCS_DIR", docs_dir)
+    monkeypatch.setattr(config, "KB_PATH", data_dir / "kb.sqlite")
+    monkeypatch.setattr(config, "EMBEDDINGS_PATH", data_dir / "embeddings.npy")
+    monkeypatch.setattr(config, "REGISTRY_PATH", data_dir / "registry.json")
+    monkeypatch.setattr(config, "STATS_PATH", data_dir / "stats.json")
+
+    ingest.run_directory(docs_dir, with_embeddings=False)
+    assert ingest.check_kb()[0] is True
+
+    # После правки документа база устаревает и start.bat должен её пересобрать.
+    newer = config.KB_PATH.stat().st_mtime + 5
+    os.utime(doc, (newer, newer))
+    ok, reason = ingest.check_kb()
+    assert ok is False
+    assert "пересбор" in reason
+
+
+def test_backup_restore_without_embeddings(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    docs_dir = tmp_path / "docs"
+    data_dir = tmp_path / "data"
+    docs_dir.mkdir()
+    data_dir.mkdir()
+    (docs_dir / "guide.md").write_text(
+        "# Поступление 2026\n\n"
+        "Документы в приёмную комиссию СибГУТИ принимают с 20 июня по 25 июля 2026 года. "
+        "Подать заявление можно лично или через портал абитуриента.",
+        encoding="utf-8",
+    )
+
+    monkeypatch.setattr(config, "BASE_DIR", tmp_path)
+    monkeypatch.setattr(config, "DATA_DIR", data_dir)
+    monkeypatch.setattr(config, "DOCS_DIR", docs_dir)
+    monkeypatch.setattr(config, "KB_PATH", data_dir / "kb.sqlite")
+    monkeypatch.setattr(config, "EMBEDDINGS_PATH", data_dir / "embeddings.npy")
+    monkeypatch.setattr(config, "REGISTRY_PATH", data_dir / "registry.json")
+    monkeypatch.setattr(config, "STATS_PATH", data_dir / "stats.json")
+    monkeypatch.setattr(config, "BACKUPS_DIR", data_dir / "backups")
+    monkeypatch.setattr(config, "APP_SETTINGS_PATH", data_dir / "app_settings.json")
+
+    ingest.run_directory(docs_dir, with_embeddings=False)
+    assert not config.EMBEDDINGS_PATH.exists()
+
+    backup = ingest.create_backup("fts")
+    assert backup["embeddings"] is False
+    assert (config.BACKUPS_DIR / backup["id"] / "kb.sqlite").exists()
+
+    config.KB_PATH.unlink()
+    restored = ingest.restore_backup(backup["id"])
+    assert restored["has_kb"] is True
+    assert config.KB_PATH.exists()
+
+    ingest.delete_backup(backup["id"])
+    assert not (config.BACKUPS_DIR / backup["id"]).exists()

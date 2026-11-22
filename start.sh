@@ -42,8 +42,13 @@ elif [ -f ".env" ]; then
   echo "[2/4] Configuration .env found."
 fi
 
+if [ ! -d "data/docs" ]; then
+  echo "[ERROR] Folder data/docs was not found - nothing to build the knowledge base from."
+  exit 1
+fi
+
 if ! "$VENV_PY" -m src.ingest --check-kb >/dev/null 2>&1; then
-  echo "[3/4] Knowledge base missing or broken - building from data/docs..."
+  echo "[3/4] Knowledge base missing, broken or stale - building from data/docs..."
   if "$VENV_PY" -c "from src import config, ingest; config.require_embeddings(); assert 'sk-replace-me' not in config.EMBED_API_KEY; ingest.embed_query('probe', timeout=6.0)" >/dev/null 2>&1; then
     "$VENV_PY" -m src.ingest --dir data/docs || true
   fi

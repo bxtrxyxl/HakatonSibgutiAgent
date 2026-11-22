@@ -1834,8 +1834,8 @@ def list_backups() -> list[dict[str, Any]]:
 
 
 def create_backup(name: str = "") -> dict[str, Any]:
-    """Создаёт согласованный снапшот kb.sqlite + embeddings.npy и метаданные."""
-    if not config.KB_PATH.exists() or not config.EMBEDDINGS_PATH.exists():
+    """Создаёт согласованный снапшот kb.sqlite (+ embeddings.npy, если он есть) и метаданные."""
+    if not config.KB_PATH.exists():
         raise RuntimeError("база знаний ещё не собрана: нечего копировать")
 
     now = datetime.now(timezone.utc)
@@ -1864,6 +1864,7 @@ def create_backup(name: str = "") -> dict[str, Any]:
         "docs": int(stats.get("unique_docs", 0)),
         "chunks": int(stats.get("chunks", 0)),
         "chars": int(stats.get("total_chars", 0)),
+        "embeddings": config.EMBEDDINGS_PATH.exists(),
     }
     (backup_dir / "meta.json").write_text(
         json.dumps(meta, ensure_ascii=False, indent=2), encoding="utf-8"
@@ -1885,15 +1886,17 @@ def _backup_dir(backup_id: str) -> Path:
 def restore_backup(backup_id: str) -> dict[str, Any]:
     """Заменяет живую базу снапшотом через временные файлы и atomic replace."""
     backup_dir = _backup_dir(backup_id)
-    required = (backup_dir / "kb.sqlite", backup_dir / "embeddings.npy")
-    if not all(path.exists() for path in required):
-        raise RuntimeError("в резервной копии нет kb.sqlite или embeddings.npy")
+    if not (backup_dir / "kb.sqlite").exists():
+        raise RuntimeError("в резервной копии нет kb.sqlite")
 
     for filename in ("kb.sqlite", "embeddings.npy", "registry.json", "stats.json"):
         source_path = backup_dir / filename
-        if not source_path.exists():
-            continue
         target_path = config.DATA_DIR / filename
+        if not source_path.exists():
+            # FTS-снапшот без векторов: убираем живые embeddings, чтобы не было рассинхрона.
+            if filename == "embeddings.npy":
+                target_path.unlink(missing_ok=True)
+            continue
         temp_path = target_path.with_name(target_path.name + ".restore-tmp")
         shutil.copy2(source_path, temp_path)
         temp_path.replace(target_path)
@@ -2356,6 +2359,25 @@ def _scheduler_loop() -> None:
             print(f"autoupdate warning: {exc}", file=sys.stderr)
 
 
+def _docs_newer_than_kb() -> bool:
+    """True, если файлы в data/docs новее базы: после git pull базу нужно пересобрать."""
+    if not config.DOCS_DIR.exists():
+        return False
+    try:
+        kb_mtime = config.KB_PATH.stat().st_mtime
+    except OSError:
+        return False
+    for path in config.DOCS_DIR.rglob("*"):
+        if path.suffix.lower() not in {".md", ".txt", ".html", ".htm", ".pdf"} or not path.is_file():
+            continue
+        try:
+            if path.stat().st_mtime > kb_mtime + 1:
+                return True
+        except OSError:
+            continue
+    return False
+
+
 def check_kb() -> tuple[bool, str]:
     """Проверяет, что база пригодна для поиска: есть чанки, векторы (если есть) совпадают."""
     if not config.KB_PATH.exists():
@@ -2371,6 +2393,8 @@ def check_kb() -> tuple[bool, str]:
         return False, f"база повреждена: {exc}"
     if chunks == 0:
         return False, "в базе нет чанков"
+    if _docs_newer_than_kb():
+        return False, "data/docs новее базы — нужна пересборка"
     if config.EMBEDDINGS_PATH.exists():
         try:
             vectors = int(np.load(config.EMBEDDINGS_PATH).shape[0])

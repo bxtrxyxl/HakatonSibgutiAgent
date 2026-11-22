@@ -410,7 +410,8 @@ class SibSUTISAgent:
             return finish(
                 {
                     "answer_markdown": "Не удалось выполнить поиск по базе знаний. "
-                    "Проверьте, что база собрана: `python -m src.ingest --urls data/seed_urls.json`.",
+                    "Пересоберите базу: `python -m src.ingest --dir data/docs` "
+                    "(или запустите `start.bat` — он соберёт её сам).",
                     "sources": [],
                 },
                 "retrieval_error",
