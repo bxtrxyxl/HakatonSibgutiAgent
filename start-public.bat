@@ -54,9 +54,24 @@ if exist "%URL_FILE%" del "%URL_FILE%" >nul 2>&1
 if exist "%CF_LOG%" del "%CF_LOG%" >nul 2>&1
 taskkill /f /im cloudflared.exe >nul 2>&1
 start "" /b "%CF%" tunnel --url http://127.0.0.1:%PORT% --no-autoupdate --protocol http2 --logfile "%CF_LOG%" --loglevel info
-powershell -NoProfile -Command "for ($i=0; $i -lt 120; $i++) { if (Test-Path '%CF_LOG%') { $txt = Get-Content '%CF_LOG%' -Raw -ErrorAction SilentlyContinue; if ($txt -match 'Registered tunnel connection') { $m = [regex]::Matches($txt, 'https://[a-z0-9-]+\.trycloudflare\.com') | ForEach-Object { $_.Value } | Select-Object -First 1; if ($m) { try { $r = Invoke-WebRequest -Uri ($m + '/api/health') -UseBasicParsing -TimeoutSec 20; if ($r.StatusCode -eq 200) { [IO.File]::WriteAllText('%URL_FILE%', $m); exit 0 } } catch {} } } }; Start-Sleep -Milliseconds 500 }; exit 1"
+powershell -NoProfile -Command "for ($i=0; $i -lt 180; $i++) { if (Test-Path '%CF_LOG%') { $txt = Get-Content '%CF_LOG%' -Raw -ErrorAction SilentlyContinue; if ($txt -match 'Registered tunnel connection') { $m = [regex]::Matches($txt, 'https://[a-z0-9-]+\.trycloudflare\.com') | ForEach-Object { $_.Value } | Select-Object -First 1; if ($m) { [IO.File]::WriteAllText('%URL_FILE%', $m); exit 0 } } }; Start-Sleep -Milliseconds 500 }; exit 1"
+if errorlevel 1 goto :cf_failed
+set "PUBLIC_URL="
+set /p PUBLIC_URL=<"%URL_FILE%"
+echo       Tunnel registered: %PUBLIC_URL%
+echo       Waiting for the public address to answer (up to 2 minutes)...
+rem A fresh hostname is not in DNS yet. An early lookup can be cached as
+rem "does not exist" for minutes, so give the edge a moment and flush the cache.
+ipconfig /flushdns >nul 2>&1
+powershell -NoProfile -Command "Start-Sleep -Seconds 3; for ($i=0; $i -lt 120; $i++) { $c = & curl.exe -s -o NUL --max-time 10 -w '%%{http_code}' '%PUBLIC_URL%/api/health' 2>$null; if ($c -eq '200') { exit 0 }; Start-Sleep -Milliseconds 1000 }; exit 1"
 if not errorlevel 1 goto :tunnel_ready
-echo       Cloudflare did not answer. Trying ngrok...
+echo       curl could not confirm the link - trying PowerShell...
+powershell -NoProfile -Command "[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12; ipconfig /flushdns > $null 2>&1; for ($i=0; $i -lt 60; $i++) { try { $r = Invoke-WebRequest -Uri '%PUBLIC_URL%/api/health' -UseBasicParsing -TimeoutSec 10; if ($r.StatusCode -eq 200) { exit 0 } } catch {}; Start-Sleep -Milliseconds 1000 }; exit 1"
+if not errorlevel 1 goto :tunnel_ready
+echo       The link is not confirmed yet. If the page does not open, wait a minute and refresh.
+
+:cf_failed
+echo       Cloudflare did not open a tunnel. Trying ngrok...
 taskkill /f /im cloudflared.exe >nul 2>&1
 
 :try_ngrok
