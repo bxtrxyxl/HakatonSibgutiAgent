@@ -356,3 +356,12 @@ def test_run_directory_fts_only_builds_sqlite_without_embeddings(
     assert stats["chunks"] >= 1
     assert config.KB_PATH.exists()
     assert not config.EMBEDDINGS_PATH.exists()
+    assert ingest.check_kb()[0] is True
+
+    # Рассинхрон векторов делает базу непригодной для check_kb, а поиск не падает.
+    np.save(config.EMBEDDINGS_PATH, np.ones((5, 2), dtype=np.float32))
+    assert ingest.check_kb()[0] is False
+    from src.retrieval import HybridRetriever
+
+    found = HybridRetriever(config.KB_PATH, config.EMBEDDINGS_PATH).search("приёмную комиссию документов")
+    assert found

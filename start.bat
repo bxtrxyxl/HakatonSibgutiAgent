@@ -44,7 +44,7 @@ pause
 exit /b 1
 
 :check_deps
-"%VENV_PY%" -c "import fastapi, uvicorn, openai, httpx, bs4, trafilatura, pypdf, numpy, dotenv, pydantic" >nul 2>&1
+"%VENV_PY%" -c "import fastapi, uvicorn, openai, httpx, bs4, trafilatura, pypdf, numpy, dotenv, pydantic, multipart" >nul 2>&1
 if not errorlevel 1 goto :deps_ok
 echo [1/4] Installing dependencies from requirements.txt...
 "%VENV_PY%" -m pip install --disable-pip-version-check -r requirements.txt
@@ -71,32 +71,31 @@ goto :check_kb
 echo [2/4] Found .env configuration.
 
 :check_kb
-set "HAS_KB=1"
-if not exist "data\kb.sqlite" set "HAS_KB=0"
-if not exist "data\embeddings.npy" set "HAS_KB=0"
-if "%HAS_KB%"=="1" goto :kb_ready
+"%VENV_PY%" -m src.ingest --check-kb >nul 2>&1
+if not errorlevel 1 goto :kb_ready
 
-echo [3/4] Checking embeddings API and building knowledge base...
-"%VENV_PY%" -c "from src import config, ingest; config.require_embeddings(); assert 'sk-replace-me' not in config.EMBED_API_KEY; ingest.embed_query('probe', timeout=4.0)" >nul 2>&1
-if errorlevel 1 goto :kb_fts_fallback
+echo [3/4] Knowledge base missing or broken - building it from data\docs...
+"%VENV_PY%" -c "from src import config, ingest; config.require_embeddings(); assert 'sk-replace-me' not in config.EMBED_API_KEY; ingest.embed_query('probe', timeout=6.0)" >nul 2>&1
+if errorlevel 1 goto :kb_fts
 "%VENV_PY%" -m src.ingest --dir data/docs
-if not errorlevel 1 goto :start_server
-echo [!] Embeddings build failed, falling back to local FTS5 index...
-"%VENV_PY%" -m src.ingest --dir data/docs --fts-only
-goto :start_server
+"%VENV_PY%" -m src.ingest --check-kb >nul 2>&1
+if not errorlevel 1 goto :kb_done
 
-:kb_fts_fallback
-if exist "data\kb.sqlite" goto :kb_sqlite_exists
-echo       Embeddings API unavailable or keys not set - building local FTS5 index...
+:kb_fts
+echo       Using local keyword index (FTS5) - works without embeddings API...
 "%VENV_PY%" -m src.ingest --dir data/docs --fts-only
-goto :start_server
+"%VENV_PY%" -m src.ingest --check-kb
+if not errorlevel 1 goto :kb_done
+echo [ERROR] Could not build the knowledge base from data\docs.
+pause
+exit /b 1
 
-:kb_sqlite_exists
-echo       Local data\kb.sqlite already exists; continuing without embeddings.npy.
+:kb_done
+echo [3/4] Knowledge base built.
 goto :start_server
 
 :kb_ready
-echo [3/4] Knowledge base ready (data\kb.sqlite + embeddings.npy).
+echo [3/4] Knowledge base ready.
 
 :start_server
 powershell -NoProfile -Command "if (Get-NetTCPConnection -LocalPort %PORT% -State Listen -ErrorAction SilentlyContinue) { exit 0 } else { exit 1 }" >nul 2>&1

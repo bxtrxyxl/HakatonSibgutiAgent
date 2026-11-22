@@ -118,10 +118,16 @@ class HybridRetriever:
         finally:
             connection.close()
         if ids.shape[0] != matrix.shape[0]:
-            raise RuntimeError(
-                f"рассинхронизация индексов: чанков {ids.shape[0]}, векторов {matrix.shape[0]}. "
-                "Пересоберите базу: python -m src.ingest --urls data/seed_urls.json"
+            # Не роняем чат: без векторов поиск продолжит работать по FTS5.
+            print(
+                f"[retrieval] рассинхронизация индексов: чанков {ids.shape[0]}, "
+                f"векторов {matrix.shape[0]}; поиск идёт только по FTS5",
+                file=sys.stderr,
             )
+            self._embeddings = np.zeros((0, 0), dtype=np.float32)
+            self._chunk_ids = np.zeros((0,), dtype=np.int64)
+            self._id_to_pos = {}
+            return
         self._embeddings = matrix
         self._chunk_ids = ids
         self._id_to_pos = {int(chunk_id): position for position, chunk_id in enumerate(ids)}

@@ -2356,6 +2356,31 @@ def _scheduler_loop() -> None:
             print(f"autoupdate warning: {exc}", file=sys.stderr)
 
 
+def check_kb() -> tuple[bool, str]:
+    """Проверяет, что база пригодна для поиска: есть чанки, векторы (если есть) совпадают."""
+    if not config.KB_PATH.exists():
+        return False, "нет data/kb.sqlite"
+    try:
+        connection = sqlite3.connect(f"file:{config.KB_PATH}?mode=ro", uri=True)
+        try:
+            chunks = connection.execute("SELECT COUNT(*) FROM chunks").fetchone()[0]
+            connection.execute("SELECT COUNT(*) FROM chunks_fts").fetchone()
+        finally:
+            connection.close()
+    except sqlite3.Error as exc:
+        return False, f"база повреждена: {exc}"
+    if chunks == 0:
+        return False, "в базе нет чанков"
+    if config.EMBEDDINGS_PATH.exists():
+        try:
+            vectors = int(np.load(config.EMBEDDINGS_PATH).shape[0])
+        except Exception as exc:
+            return False, f"embeddings.npy не читается: {exc}"
+        if vectors != chunks:
+            return False, f"чанков {chunks}, векторов {vectors}"
+    return True, f"чанков {chunks}"
+
+
 def main(argv: Iterable[str] | None = None) -> int:
     # Консоль Windows по умолчанию cp1252: без этого русский --help падает.
     for stream in (sys.stdout, sys.stderr):
@@ -2408,7 +2433,17 @@ def main(argv: Iterable[str] | None = None) -> int:
         action="store_true",
         help="Собрать локальный FTS5-индекс без обращения к API эмбеддингов",
     )
+    parser.add_argument(
+        "--check-kb",
+        action="store_true",
+        help="Проверить, что локальная база пригодна для поиска (код выхода 0 — да)",
+    )
     args = parser.parse_args(list(argv) if argv is not None else None)
+
+    if args.check_kb:
+        ok, reason = check_kb()
+        print(("OK: " if ok else "FAIL: ") + reason)
+        return 0 if ok else 1
 
     if args.programs:
         payload = build_program_catalog()
