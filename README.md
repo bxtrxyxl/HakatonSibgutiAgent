@@ -22,6 +22,14 @@
 
 ## Быстрый запуск
 
+**В один клик:**
+- Windows: запустите [`start.bat`](start.bat) (двойным кликом — файл отображается как `start`).
+- Linux / macOS: `./start.sh`.
+
+Скрипт сам создаст `.venv`, установит зависимости из `requirements.txt`, создаст `.env` из `.env.example` при отсутствии, соберёт базу знаний из `data/docs` (с переходом на локальный FTS5, если API эмбеддингов недоступен), поднимет сервер на `http://127.0.0.1:8000` и откроет браузер.
+
+Вручную:
+
 ```bash
 python -m venv .venv && .venv\Scripts\activate      # 0. окружение (Windows)
 pip install -r requirements.txt                      # 1. зависимости

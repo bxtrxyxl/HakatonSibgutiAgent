@@ -325,3 +325,34 @@ def test_preserve_failed_docs_from_backup_restores_missing_doc_and_vectors(
     matrix = np.load(config.EMBEDDINGS_PATH)
     assert matrix.shape == (2, 2)
     assert np.allclose(matrix[1], np.asarray([0.0, 1.0], dtype=np.float32))
+
+
+def test_run_directory_fts_only_builds_sqlite_without_embeddings(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    docs_dir = tmp_path / "docs"
+    data_dir = tmp_path / "data"
+    docs_dir.mkdir()
+    data_dir.mkdir()
+    (docs_dir / "guide.md").write_text(
+        "# Поступление 2026\n\nПодача документов в приёмную комиссию СибГУТИ начинается 20 июня 2026 года.",
+        encoding="utf-8",
+    )
+
+    monkeypatch.setattr(config, "DATA_DIR", data_dir)
+    monkeypatch.setattr(config, "KB_PATH", data_dir / "kb.sqlite")
+    monkeypatch.setattr(config, "EMBEDDINGS_PATH", data_dir / "embeddings.npy")
+    monkeypatch.setattr(config, "REGISTRY_PATH", data_dir / "registry.json")
+    monkeypatch.setattr(config, "STATS_PATH", data_dir / "stats.json")
+    monkeypatch.setattr(
+        ingest,
+        "embed_texts",
+        lambda *_args, **_kwargs: pytest.fail("embed_texts не должен вызываться в режиме --fts-only"),
+    )
+
+    stats = ingest.run_directory(docs_dir, with_embeddings=False)
+
+    assert stats["unique_docs"] == 1
+    assert stats["chunks"] >= 1
+    assert config.KB_PATH.exists()
+    assert not config.EMBEDDINGS_PATH.exists()

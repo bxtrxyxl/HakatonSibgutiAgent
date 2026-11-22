@@ -962,6 +962,7 @@ def process_local_file(
     section: str = "",
     year: str | None = None,
     default_url: str = "",
+    with_embeddings: bool = True,
 ) -> np.ndarray | None:
     """Индексирует один локальный файл. Возвращает векторы или None при дубликате."""
     markdown, fmt = load_local_document(path)
@@ -996,13 +997,17 @@ def process_local_file(
         "chars": len(markdown),
         "retrieved_via": "local_file",
     }
-    vectors = embed_texts([f"{final_title}\n{final_section}\n{c['text']}" for c in chunks])
+    vectors = (
+        embed_texts([f"{final_title}\n{final_section}\n{c['text']}" for c in chunks])
+        if with_embeddings
+        else np.zeros((0, 0), dtype=np.float32)
+    )
     store_document(connection, doc, chunks)
     known.add(digest)
     return vectors
 
 
-def run_directory(directory: Path, rebuild: bool = True) -> dict[str, Any]:
+def run_directory(directory: Path, rebuild: bool = True, with_embeddings: bool = True) -> dict[str, Any]:
     """Собирает базу из папки с локальными .md/.txt/.html/.pdf."""
     suffixes = {".md", ".markdown", ".txt", ".html", ".htm", ".pdf"}
     files = sorted(path for path in directory.rglob("*") if path.suffix.lower() in suffixes)
@@ -1022,14 +1027,22 @@ def run_directory(directory: Path, rebuild: bool = True) -> dict[str, Any]:
         section = path.parent.name if path.parent != directory else "Прочее"
         try:
             vectors = process_local_file(
-                path, connection, known, section=section, default_url=f"local://{relative}"
+                path,
+                connection,
+                known,
+                section=section,
+                default_url=f"local://{relative}",
+                with_embeddings=with_embeddings,
             )
             if vectors is None:
                 skipped += 1
                 print(f"[{index}/{len(files)}] skip (duplicate) {relative}")
             else:
-                append_embeddings(vectors)
-                print(f"[{index}/{len(files)}] ok {vectors.shape[0]} chunks {relative}")
+                if with_embeddings:
+                    append_embeddings(vectors)
+                    print(f"[{index}/{len(files)}] ok {vectors.shape[0]} chunks {relative}")
+                else:
+                    print(f"[{index}/{len(files)}] ok (FTS5) {relative}")
         except Exception as exc:
             errors.append(
                 {"url": relative, "error": str(exc), "stage": "local_file", "reason": "local_io"}
@@ -1039,7 +1052,8 @@ def run_directory(directory: Path, rebuild: bool = True) -> dict[str, Any]:
             write_registry(connection)
             write_stats(connection, read_registry(connection), errors, skipped)
 
-    verify_index_consistency(connection)
+    if with_embeddings:
+        verify_index_consistency(connection)
     registry = write_registry(connection)
     stats = write_stats(connection, registry, errors, skipped)
     connection.close()
@@ -2389,6 +2403,11 @@ def main(argv: Iterable[str] | None = None) -> int:
         action="store_true",
         help="Обновить структурированные минимальные баллы",
     )
+    parser.add_argument(
+        "--fts-only",
+        action="store_true",
+        help="Собрать локальный FTS5-индекс без обращения к API эмбеддингов",
+    )
     args = parser.parse_args(list(argv) if argv is not None else None)
 
     if args.programs:
@@ -2429,7 +2448,7 @@ def main(argv: Iterable[str] | None = None) -> int:
         if not args.dir.is_dir():
             print(f"папка не найдена: {args.dir}", file=sys.stderr)
             return 2
-        stats = run_directory(args.dir)
+        stats = run_directory(args.dir, with_embeddings=not args.fts_only)
     elif args.urls:
         stats = run_urls(args.urls, use_wayback=not args.no_wayback, resume=args.resume)
     else:
