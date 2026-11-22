@@ -1867,8 +1867,8 @@ def _persist_job_state() -> None:
         return
     try:
         write_app_settings({"last_job": snapshot})
-    except OSError:
-        pass
+    except OSError as exc:
+        print(f"persist job warning: {exc}", file=sys.stderr)
 
 
 def _restore_job_state() -> None:

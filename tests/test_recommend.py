@@ -80,6 +80,8 @@ def test_overview_covers_all_catalog_directions() -> None:
     by_code = {item["code"]: item for item in directions}
     assert by_code["09.04.01"]["levelRu"] == "Магистратура"
     assert by_code["09.04.01"]["budget"] > 0
+    assert by_code["09.04.01"]["paid"] == 35
+    assert by_code["09.04.01"]["paidIsMinThreshold"] is True
     assert by_code["10.04.01"]["paid"] == 35
     assert by_code["10.04.01"]["paidIsMinThreshold"] is True
     assert "заочная (ДОТ)" in by_code["20.03.01"]["formsRu"]

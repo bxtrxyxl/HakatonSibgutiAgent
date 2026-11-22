@@ -5936,7 +5936,13 @@
           payload = null;
         }
         if (!response.ok) {
-          let detail = payload && payload.detail ? payload.detail : `HTTP ${response.status}`;
+          const rawDetail = payload && payload.detail;
+          let detail =
+            typeof rawDetail === 'string'
+              ? rawDetail
+              : (rawDetail && typeof rawDetail === 'object' && rawDetail.message
+                  ? String(rawDetail.message)
+                  : `HTTP ${response.status}`);
           if (response.status === 401) {
             renderAdminAuth();
             if (state.settings.lang === 'en') detail = t('dbAuthRequired');
@@ -6260,7 +6266,8 @@
           : (interrupted ? t('dbSiteInterrupted') : (failed ? t('dbSiteFailed') : t('dbSiteDone')));
         el.siteRebuildProgressWrap.style.display = running ? 'block' : 'none';
         el.siteRebuildProgressBar.style.width = `${running ? (job.progress || 0) : 100}%`;
-        el.rebuildSiteBtn.disabled = running;
+        const cooldownBlocked = Boolean(siteCooldown && !siteCooldown.allowed);
+        el.rebuildSiteBtn.disabled = running || cooldownBlocked;
 
         if (running) {
           el.siteRebuildNote.textContent =
@@ -6277,9 +6284,13 @@
         }
         const stats = (job.result && job.result.stats) || {};
         const backup = (job.result && job.result.backup_id) || '';
+        const cooldownSuffix = cooldownBlocked
+          ? ` · ${t('dbSiteCooldownNote')} ${formatDbDateTime(siteCooldown.next_at)}`
+          : '';
         el.siteRebuildNote.textContent =
           `${t('dbSiteDone')}: ${stats.unique_docs || 0} / ${stats.chunks || 0}` +
-          (backup ? ` · ${t('dbSiteBackup')} ${backup}` : '');
+          (backup ? ` · ${t('dbSiteBackup')} ${backup}` : '') +
+          cooldownSuffix;
       }
 
       async function fetchSiteJob() {

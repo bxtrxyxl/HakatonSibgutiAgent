@@ -349,12 +349,9 @@ def _concept_matches(concept: str, text: str) -> bool:
 
 def recommend_programs(query: str, limit: int = 5) -> list[dict[str, Any]]:
     """Подбирает направления по стеку/профессии и объясняет совпадение."""
-    if not config.PROGRAMS_PATH.exists():
-        return []
-    try:
-        payload = json.loads(config.PROGRAMS_PATH.read_text(encoding="utf-8"))
-    except (OSError, json.JSONDecodeError):
-        return []
+    from src.ingest import load_program_catalog
+
+    payload = load_program_catalog()
     programs = payload.get("programs") if isinstance(payload, dict) else None
     if not isinstance(programs, list) or not programs:
         return []
@@ -507,7 +504,7 @@ MIN_SCORE_EN = {
 }
 
 
-OVERVIEW_SCHEMA_VERSION = 3
+OVERVIEW_SCHEMA_VERSION = 4
 DEFAULT_MIN_SCORES: dict[str, int] = {
     "Математика": 27,
     "Русский язык": 36,
@@ -622,14 +619,15 @@ def _extract_kb_facts() -> dict[str, Any]:
         "submission_period_en": "Jun 20 — Jul 25",
     }
 
-    if config.ACHIEVEMENTS_PATH.exists():
-        try:
-            ach = json.loads(config.ACHIEVEMENTS_PATH.read_text(encoding="utf-8"))
-            max_b = int(ach.get("max_bachelor") or 0)
-            if max_b > 0:
-                facts["bonus_max"] = max_b
-        except (OSError, ValueError, TypeError, json.JSONDecodeError):
-            pass
+    from src.ingest import load_achievements_catalog
+
+    ach = load_achievements_catalog()
+    try:
+        max_b = int(ach.get("max_bachelor") or 0)
+        if max_b > 0:
+            facts["bonus_max"] = max_b
+    except (ValueError, TypeError):
+        facts["bonus_max"] = 10
 
     if not config.KB_PATH.exists():
         return facts
@@ -690,10 +688,9 @@ def build_overview(*, force_refresh: bool = False) -> dict[str, Any]:
         if cached is not None and cached.get("kb_fingerprint") == fingerprint:
             return cached
 
-    try:
-        payload = json.loads(config.PROGRAMS_PATH.read_text(encoding="utf-8"))
-    except (OSError, json.JSONDecodeError):
-        payload = {}
+    from src.ingest import load_min_scores_catalog, load_program_catalog
+
+    payload = load_program_catalog()
     catalog_programs = payload.get("programs") if isinstance(payload, dict) else []
     if not isinstance(catalog_programs, list):
         catalog_programs = []
@@ -705,10 +702,7 @@ def build_overview(*, force_refresh: bool = False) -> dict[str, Any]:
         and "Заочная" not in str(item.get("form", ""))
     ]
 
-    try:
-        min_payload = json.loads(config.MIN_SCORES_PATH.read_text(encoding="utf-8"))
-    except (OSError, json.JSONDecodeError):
-        min_payload = {}
+    min_payload = load_min_scores_catalog()
     min_map = dict(DEFAULT_MIN_SCORES)
     min_subjects = []
     for item in min_payload.get("soo", []) if isinstance(min_payload, dict) else []:
@@ -799,8 +793,12 @@ def build_overview(*, force_refresh: bool = False) -> dict[str, Any]:
         min_sum = MASTER_MIN_SCORE if is_master else _min_exam_sum(code, min_map)
         if is_master:
             budget_score = raw_score if has_budget else 0
-            paid_score = raw_score if raw_score > 0 else min_sum
-            paid_is_min = raw_score <= 0
+            if has_budget:
+                paid_score = min_sum
+                paid_is_min = True
+            else:
+                paid_score = raw_score if raw_score > 0 else min_sum
+                paid_is_min = raw_score <= 0
         elif has_budget:
             budget_score = raw_score
             paid_score = min_sum
