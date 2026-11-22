@@ -5,14 +5,24 @@ cd /d "%~dp0"
 
 set "PYTHONIOENCODING=utf-8"
 set "PYTHONUTF8=1"
-set "HOST=127.0.0.1"
+if not defined HOST set "HOST=127.0.0.1"
 set "PORT=8000"
+set "HEALTH_HOST=127.0.0.1"
+set "LAN_IP="
+if /i "%HOST%"=="0.0.0.0" call :detect_lan_ip
 set "URL=http://%HOST%:%PORT%/"
+if defined LAN_IP set "URL=http://%LAN_IP%:%PORT%/"
 set "VENV_PY=.venv\Scripts\python.exe"
 
 echo ====================================================
 echo   SibSUTIS AI Assistant - Start
 echo ====================================================
+echo.
+if /i not "%HOST%"=="0.0.0.0" goto :mode_ready
+echo   LAN mode: open %URL% from another device on the same network.
+echo   If it does not open, allow TCP %PORT% in Windows Firewall for Private networks.
+echo   Security: set ADMIN_TOKEN in .env before demoing on a shared network.
+:mode_ready
 echo.
 
 if exist "%VENV_PY%" goto :check_deps
@@ -115,10 +125,20 @@ exit /b 0
 
 :launch_uvicorn
 echo [4/4] Starting server at %URL% (press Ctrl+C or close window to stop)...
-start "" /b powershell -NoProfile -Command "for ($i=0; $i -lt 30; $i++) { try { $r = Invoke-WebRequest -Uri 'http://%HOST%:%PORT%/api/health' -UseBasicParsing -TimeoutSec 2; if ($r.StatusCode -eq 200) { Start-Process '%URL%'; break } } catch {}; Start-Sleep -Milliseconds 500 }" >nul 2>&1
+start "" /b powershell -NoProfile -Command "for ($i=0; $i -lt 30; $i++) { try { $r = Invoke-WebRequest -Uri 'http://%HEALTH_HOST%:%PORT%/api/health' -UseBasicParsing -TimeoutSec 2; if ($r.StatusCode -eq 200) { Start-Process '%URL%'; break } } catch {}; Start-Sleep -Milliseconds 500 }" >nul 2>&1
 "%VENV_PY%" -m uvicorn src.api:app --host %HOST% --port %PORT%
 if not errorlevel 1 exit /b 0
 echo.
 echo [ERROR] Server exited with code %errorlevel%.
 pause
 exit /b 1
+
+:detect_lan_ip
+set "LAN_IP_FILE=%TEMP%\sibsutis_lan_ip.txt"
+powershell -NoProfile -Command "$c = Get-NetIPConfiguration | Where-Object { $_.IPv4DefaultGateway -ne $null -and $_.NetAdapter.Status -eq 'Up' } | Select-Object -First 1; if ($c) { $c.IPv4Address.IPAddress }" > "%LAN_IP_FILE%" 2>nul
+set /p LAN_IP=<"%LAN_IP_FILE%"
+del "%LAN_IP_FILE%" >nul 2>&1
+if defined LAN_IP exit /b 0
+echo [!] Could not detect LAN IPv4 - using 127.0.0.1.
+set "LAN_IP=127.0.0.1"
+exit /b 0

@@ -28,6 +28,13 @@
 
 Скрипт сам создаст `.venv`, установит зависимости из `requirements.txt`, создаст `.env` из `.env.example` при отсутствии, соберёт базу знаний из `data/docs` (с переходом на локальный FTS5, если API эмбеддингов недоступен), поднимет сервер на `http://127.0.0.1:8000` и откроет браузер.
 
+**Показ с другого устройства по Wi-Fi:**
+- Windows: запустите [`start-lan.bat`](start-lan.bat) — сервер слушает все интерфейсы, скрипт печатает готовую ссылку `http://<IP>:8000/` и открывает её.
+- Оба устройства должны быть в одной сети (надёжнее всего — хот-спот телефона).
+- Если страница не открывается, разрешите входящий TCP `8000` в брандмауэре для частной сети:
+  `New-NetFirewallRule -DisplayName "SibSUTIS Agent 8000" -Direction Inbound -Action Allow -Protocol TCP -LocalPort 8000 -Profile Private`.
+- На общей сети задайте `ADMIN_TOKEN` в `.env`, иначе админ-эндпоинты доступны всем в сети.
+
 Вручную:
 
 ```bash
@@ -35,6 +42,7 @@ python -m venv .venv && .venv\Scripts\activate      # 0. окружение (Win
 pip install -r requirements.txt                      # 1. зависимости
 python -m src.ingest --dir data/docs                 # 2. сборка базы из ваших .md
 uvicorn src.api:app --host 127.0.0.1 --port 8000     # 3. запуск
+uvicorn src.api:app --host 0.0.0.0 --port 8000       # 3a. запуск для доступа по сети
 ```
 
 Перед запуском скопируйте `.env.example` в `.env` и заполните ключи. Без `.env`
