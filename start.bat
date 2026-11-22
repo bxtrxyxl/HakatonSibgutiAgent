@@ -119,13 +119,16 @@ echo [3/4] Knowledge base ready.
 :start_server
 powershell -NoProfile -Command "if (Get-NetTCPConnection -LocalPort %PORT% -State Listen -ErrorAction SilentlyContinue) { exit 0 } else { exit 1 }" >nul 2>&1
 if errorlevel 1 goto :launch_uvicorn
+if defined NO_BROWSER exit /b 0
 echo [4/4] Server is already running at %URL%. Opening browser...
 start "" "%URL%"
 exit /b 0
 
 :launch_uvicorn
 echo [4/4] Starting server at %URL% (press Ctrl+C or close window to stop)...
+if defined NO_BROWSER goto :skip_browser_open
 start "" /b powershell -NoProfile -Command "for ($i=0; $i -lt 120; $i++) { try { $r = Invoke-WebRequest -Uri 'http://%HEALTH_HOST%:%PORT%/api/health' -UseBasicParsing -TimeoutSec 2; if ($r.StatusCode -eq 200) { Start-Process '%URL%'; break } } catch {}; Start-Sleep -Milliseconds 500 }" >nul 2>&1
+:skip_browser_open
 "%VENV_PY%" -m uvicorn src.api:app --host %HOST% --port %PORT%
 if not errorlevel 1 exit /b 0
 echo.

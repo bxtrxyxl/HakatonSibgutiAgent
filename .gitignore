@@ -36,6 +36,8 @@ Thumbs.db
 ngrok.exe
 ngrok.zip
 ngrok*.log
+cloudflared.exe
+cloudflared*.log
 
 # Playwright
 test-results/
