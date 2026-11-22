@@ -3356,6 +3356,28 @@
       color: var(--error);
     }
 
+    .db-badge.is-exp {
+      background: rgba(245, 158, 11, 0.14);
+      border-color: rgba(245, 158, 11, 0.34);
+      color: var(--text-2);
+    }
+
+    .db-exp-box {
+      margin-top: 12px;
+      padding-top: 12px;
+      border-top: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .db-exp-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+    }
+
     .db-token-row {
       display: grid;
       grid-template-columns: 1fr auto auto;
@@ -4019,32 +4041,38 @@
           <div class="db-section">
             <div class="db-section-head">
               <div>
-                <span class="db-section-title" data-i18n="dbAutoTitle">Автообновление по расписанию</span>
-                <span class="db-section-desc" data-i18n="dbAutoDesc">Сервер сам обновляет каталог, достижения, минимальные баллы и ссылки для парсинга. База знаний пересобирается отдельно.</span>
+                <span class="db-section-title" data-i18n="dbAutoTitle">Обновление данных по кнопке</span>
+                <span class="db-section-desc" data-i18n="dbAutoDesc">Запускается только вручную: обновляет каталог, достижения, минимальные баллы и ссылки парсинга, сохраняя прежние записи при ошибках.</span>
               </div>
               <span id="autoUpdateBadge" class="db-badge">—</span>
             </div>
-            <div class="toggle-row" style="padding:0;">
-              <div class="toggle-info">
-                <span class="toggle-title" data-i18n="dbAutoToggle">Включить автообновление</span>
-                <span id="autoUpdateStatus" class="toggle-desc">—</span>
-              </div>
-              <button id="toggleAutoUpdate" class="switch" role="switch" aria-checked="false" aria-label="Автообновление"></button>
-            </div>
-            <div class="db-folder-row" style="margin-top:10px;">
-              <select id="autoUpdateInterval" class="db-select">
-                <option value="6">6 ч</option>
-                <option value="12">12 ч</option>
-                <option value="24">24 ч</option>
-                <option value="72">3 дня</option>
-                <option value="168">7 дней</option>
-              </select>
-              <button id="runAutoUpdateBtn" class="btn-pill-ghost" style="height:34px;" data-i18n="dbAutoRun">Обновить сейчас</button>
-            </div>
+            <button id="runAutoUpdateBtn" class="btn-pill-ghost" style="height:34px;" data-i18n="dbAutoRun">Обновить сейчас</button>
             <div id="autoUpdateProgressWrap" class="db-progress" style="display:none;margin-top:10px;">
               <div id="autoUpdateProgressBar" class="db-progress-bar"></div>
             </div>
-            <p id="autoUpdateNote" class="db-note" data-i18n="dbAutoNote">Фоновые задачи выполняются по одной. Прогресс виден здесь.</p>
+            <p id="autoUpdateNote" class="db-note" data-i18n="dbAutoNote">Задачи выполняются по одной. При сбое части источников старые данные не теряются.</p>
+            <div class="db-exp-box">
+              <div class="db-exp-head">
+                <span class="toggle-title" data-i18n="dbAutoExpTitle">Автопарсинг по расписанию</span>
+                <span class="db-badge is-exp" data-i18n="dbAutoExpBadge">Экспериментально</span>
+              </div>
+              <div class="toggle-row" style="padding:0;">
+                <div class="toggle-info">
+                  <span class="toggle-desc" data-i18n="dbAutoToggle">Включить фоновое расписание</span>
+                  <span id="autoUpdateStatus" class="toggle-desc">—</span>
+                </div>
+                <button id="toggleAutoUpdate" class="switch" role="switch" aria-checked="false" aria-label="Автопарсинг по расписанию"></button>
+              </div>
+              <div class="db-folder-row" style="margin-top:4px;">
+                <select id="autoUpdateInterval" class="db-select">
+                  <option value="6">6 ч</option>
+                  <option value="12">12 ч</option>
+                  <option value="24">24 ч</option>
+                  <option value="72">3 дня</option>
+                  <option value="168">7 дней</option>
+                </select>
+              </div>
+            </div>
           </div>
 
           <!-- Secondary manual import utility for jury/admin verification -->
@@ -4287,18 +4315,21 @@
           dbSiteBackup: 'Копия',
           dbSourcesFound: 'Ссылок найдено',
           dbLocalBadge: 'локально',
-          dbAutoTitle: 'Автообновление по расписанию',
-          dbAutoDesc: 'Сервер сам обновляет каталог, достижения, минимальные баллы и ссылки для парсинга. База знаний пересобирается отдельно.',
-          dbAutoToggle: 'Включить автообновление',
+          dbAutoTitle: 'Обновление данных по кнопке',
+          dbAutoDesc: 'Запускается только вручную: обновляет каталог, достижения, минимальные баллы и ссылки парсинга, сохраняя прежние записи при ошибках.',
+          dbAutoToggle: 'Включить фоновое расписание',
+          dbAutoExpTitle: 'Автопарсинг по расписанию',
+          dbAutoExpBadge: 'Экспериментально',
           dbAutoRun: 'Обновить сейчас',
-          dbAutoNote: 'Фоновые задачи выполняются по одной. Прогресс виден здесь.',
+          dbAutoNote: 'Задачи выполняются по одной. При сбое части источников старые данные не теряются.',
           dbAutoLast: 'последний запуск',
-          dbAutoOn: 'включено',
-          dbAutoOff: 'выключено',
+          dbAutoOn: 'по расписанию',
+          dbAutoOff: 'по кнопке',
           dbAutoNever: 'ещё не запускалось',
           dbAutoNext: 'следующий запуск',
           dbAutoRunning: 'Выполняется',
-          dbAutoUpdated: 'Автообновление завершено',
+          dbAutoUpdated: 'Данные с сайта обновлены',
+          dbAutoPartial: 'Обновление завершено с сохранением части старых данных',
           dbAutoNoChanges: 'Изменений нет',
           dbAutoChanged: 'Изменено',
           dbJobBusy: 'Уже выполняется другая задача',
@@ -4524,18 +4555,21 @@
           dbSiteBackup: 'Backup',
           dbSourcesFound: 'Links found',
           dbLocalBadge: 'local',
-          dbAutoTitle: 'Scheduled updates',
-          dbAutoDesc: 'The server refreshes the catalog, achievements, minimum scores and parsing links. The knowledge base is rebuilt separately.',
-          dbAutoToggle: 'Enable scheduled updates',
+          dbAutoTitle: 'Manual data update',
+          dbAutoDesc: 'Runs only on button click: refreshes the catalog, achievements, minimum scores and parsing links while keeping previous records on errors.',
+          dbAutoToggle: 'Enable background schedule',
+          dbAutoExpTitle: 'Scheduled autoparsing',
+          dbAutoExpBadge: 'Experimental',
           dbAutoRun: 'Update now',
-          dbAutoNote: 'Background jobs run one at a time. Progress is shown here.',
+          dbAutoNote: 'Jobs run one at a time. Old data is preserved if some sources fail.',
           dbAutoLast: 'last run',
-          dbAutoOn: 'enabled',
-          dbAutoOff: 'disabled',
+          dbAutoOn: 'scheduled',
+          dbAutoOff: 'manual only',
           dbAutoNever: 'never run',
           dbAutoNext: 'next run',
           dbAutoRunning: 'Running',
-          dbAutoUpdated: 'Scheduled update finished',
+          dbAutoUpdated: 'Site data updated',
+          dbAutoPartial: 'Updated with partial fallback to previous data',
           dbAutoNoChanges: 'No changes',
           dbAutoChanged: 'Changed',
           dbJobBusy: 'Another job is already running',
@@ -6767,6 +6801,7 @@
 
       let autoUpdateView = null;
       let autoUpdatePollTimer = null;
+      let autoUpdateWasRunning = false;
 
       function stopAutoUpdatePolling() {
         if (autoUpdatePollTimer) {
@@ -6834,8 +6869,18 @@
       async function fetchAutoUpdate(options = {}) {
         try {
           const data = await dbFetch('/api/autoupdate');
+          const job = (data && data.job) || {};
+          const isRunning = job.kind === 'autoupdate' && job.status === 'running';
+          const finishedNow = autoUpdateWasRunning && !isRunning;
+          autoUpdateWasRunning = isRunning;
           autoUpdateView = data;
           renderAutoUpdate();
+          if (finishedNow) {
+            showToast(data.last_status === 'partial' ? t('dbAutoPartial') : t('dbAutoUpdated'), 'ok');
+            fetchDatabaseView();
+            fetchProgramCatalog();
+            tryFetchBackendOverview();
+          }
           scheduleAutoUpdatePolling();
         } catch (err) {
           if (!options.silent) {
@@ -6883,12 +6928,14 @@
 
       async function runAutoUpdateNow() {
         el.runAutoUpdateBtn.disabled = true;
+        autoUpdateWasRunning = true;
         try {
           const data = await dbFetch('/api/autoupdate/run', { method: 'POST' });
           autoUpdateView = Object.assign({}, autoUpdateView || {}, { job: data.job });
           renderAutoUpdate();
           scheduleAutoUpdatePolling();
         } catch (err) {
+          autoUpdateWasRunning = false;
           el.runAutoUpdateBtn.disabled = false;
           showToast(err.status === 409 ? t('dbJobBusy') : err.message, 'err');
         }

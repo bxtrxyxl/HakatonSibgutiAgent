@@ -655,8 +655,8 @@ CREATE VIRTUAL TABLE IF NOT EXISTS chunks_fts USING fts5(
 """
 
 
-def connect_db(path: Path = config.KB_PATH) -> sqlite3.Connection:
-    connection = sqlite3.connect(path)
+def connect_db(path: Path | None = None) -> sqlite3.Connection:
+    connection = sqlite3.connect(config.KB_PATH if path is None else path)
     connection.row_factory = sqlite3.Row
     connection.execute("PRAGMA journal_mode=WAL")
     return connection
@@ -1217,28 +1217,65 @@ def discover_program_links(index_url: str = config.PROFILE_INDEX_URL) -> list[di
 
 
 def build_program_catalog() -> dict[str, Any]:
-    """Скачивает профили направлений и сохраняет структурированный каталог."""
+    """Скачивает профили направлений и сохраняет структурированный каталог.
+
+    При сбое отдельных карточек или пустом ответе сохраняет прежние профили из
+    текущего ``data/programs.json``, чтобы рабочие данные не терялись.
+    """
+    previous = load_program_catalog().get("programs", [])
+    prev_by_url = {str(item.get("url", "")): item for item in previous if isinstance(item, dict) and item.get("url")}
     links = discover_program_links()
     programs: list[dict[str, Any]] = []
-    errors: list[dict[str, str]] = []
+    errors: list[dict[str, Any]] = []
+    seen_urls: set[str] = set()
+    fresh_count = 0
+    preserved_count = 0
+
     for index, link in enumerate(links, start=1):
+        url = link["url"]
         try:
-            content, _content_type, final_url, _via = fetch_url(link["url"], use_wayback=False)
+            content, _content_type, final_url, _via = fetch_url(url, use_wayback=False)
             program = parse_program_page(final_url, decode_text(content))
             if program.get("code"):
                 programs.append(program)
+                seen_urls.add(url)
+                seen_urls.add(final_url)
+                fresh_count += 1
                 print(f"[{index}/{len(links)}] program {program['code']} {program.get('profile', '')[:50]}")
             else:
-                errors.append({"url": link["url"], "error": "no_program_code"})
+                entry: dict[str, Any] = {"url": url, "error": "no_program_code"}
+                fallback = prev_by_url.get(url)
+                if fallback is not None:
+                    programs.append(copy.deepcopy(fallback))
+                    seen_urls.add(url)
+                    preserved_count += 1
+                    entry["preserved"] = True
+                errors.append(entry)
         except Exception as exc:
-            errors.append({"url": link["url"], "error": f"{type(exc).__name__}: {exc}"})
-            print(f"[{index}/{len(links)}] ERROR {link['url']}: {exc}", file=sys.stderr)
+            entry = {"url": url, "error": f"{type(exc).__name__}: {exc}"}
+            fallback = prev_by_url.get(url)
+            if fallback is not None:
+                programs.append(copy.deepcopy(fallback))
+                seen_urls.add(url)
+                preserved_count += 1
+                entry["preserved"] = True
+            errors.append(entry)
+            print(f"[{index}/{len(links)}] ERROR {url}: {exc}", file=sys.stderr)
+
+    for old_url, old_item in prev_by_url.items():
+        if old_url not in seen_urls:
+            programs.append(copy.deepcopy(old_item))
+            preserved_count += 1
+
+    if fresh_count == 0 and previous:
+        raise RuntimeError("не удалось обновить ни один профиль; сохранён прежний каталог")
 
     programs.sort(key=lambda item: (item.get("code", ""), item.get("profile", "")))
     payload = {
         "generated_at": utc_now(),
         "source": config.PROFILE_INDEX_URL,
         "count": len(programs),
+        "preserved": preserved_count,
         "programs": programs,
         "errors": errors,
     }
@@ -1343,33 +1380,40 @@ def _parse_achievement_table(lines: list[str], start_marker: str, end_marker: st
 
 
 def build_achievements_catalog() -> dict[str, Any]:
-    """Скачивает Приложение 3 и превращает таблицы достижений в JSON."""
+    """Скачивает Приложение 3 и превращает таблицы достижений в JSON.
+
+    Если PDF не содержит текстового слоя или разбор вернул пустые списки,
+    недостающие разделы берутся из прежнего файла или обновление прерывается.
+    """
+    previous = load_achievements_catalog()
     content, _content_type, _final_url, _via = fetch_url(ACHIEVEMENTS_URL, use_wayback=False)
     text = extract_pdf(content)
     lines = text.splitlines()
-    bachelor = _parse_achievement_table(
+    parsed_bachelor = _parse_achievement_table(
         lines,
         "При приеме на обучение по программам бакалавриата",
         "При приеме на обучение по программам магистратуры",
     )
-    master = _parse_achievement_table(
+    parsed_master = _parse_achievement_table(
         lines,
         "При приеме на обучение по программам магистратуры",
         "3. При приеме на обучение по программам бакалавриата",
     )
-    target = _parse_achievement_table(
+    parsed_target = _parse_achievement_table(
         lines,
         "3. При приеме на обучение по программам бакалавриата",
         "4. Перечень индивидуальных достижений",
     )
+    if not parsed_bachelor and not parsed_master and (previous.get("bachelor") or previous.get("master")):
+        raise RuntimeError("не удалось извлечь достижения из PDF; сохранён прежний каталог")
     payload = {
         "generated_at": utc_now(),
         "source": ACHIEVEMENTS_URL,
         "max_bachelor": 10,
         "max_master": 50,
-        "bachelor": bachelor,
-        "master": master,
-        "target": target,
+        "bachelor": parsed_bachelor or previous.get("bachelor", []),
+        "master": parsed_master or previous.get("master", []),
+        "target": parsed_target or previous.get("target", []),
     }
     config.ACHIEVEMENTS_PATH.write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
     return payload
@@ -1416,7 +1460,11 @@ def _parse_min_score_section(lines: list[str]) -> list[dict[str, Any]]:
 
 
 def build_min_scores_catalog() -> dict[str, Any]:
-    """Скачивает таблицу минимальных баллов и сохраняет её в JSON."""
+    """Скачивает таблицу минимальных баллов и сохраняет её в JSON.
+
+    Если разбор PDF дал пустые разделы, сохраняет прежние значения.
+    """
+    previous = load_min_scores_catalog()
     content, _content_type, _final_url, _via = fetch_url(MIN_SCORES_URL, use_wayback=False)
     text = extract_pdf(content)
     lines = text.splitlines()
@@ -1435,21 +1483,24 @@ def build_min_scores_catalog() -> dict[str, Any]:
         len(normalized),
     )
 
-    soo = _parse_min_score_section(normalized[soo_start:spo_start])
-    spo = _parse_min_score_section(normalized[spo_start:master_start])
-    master = 35
+    parsed_soo = _parse_min_score_section(normalized[soo_start:spo_start])
+    parsed_spo = _parse_min_score_section(normalized[spo_start:master_start])
+    master_found: int | None = None
     for line in normalized[master_start:]:
         match = re.search(r"(\d{2,3})\s*балл", line)
         if match:
-            master = int(match.group(1))
+            master_found = int(match.group(1))
             break
+
+    if not parsed_soo and not parsed_spo and (previous.get("soo") or previous.get("spo")):
+        raise RuntimeError("не удалось извлечь минимальные баллы из PDF; сохранён прежний каталог")
 
     payload = {
         "generated_at": utc_now(),
         "source": MIN_SCORES_URL,
-        "soo": soo,
-        "spo": spo,
-        "master": master,
+        "soo": parsed_soo or previous.get("soo", []),
+        "spo": parsed_spo or previous.get("spo", []),
+        "master": master_found if master_found is not None else int(previous.get("master", 35) or 35),
     }
     config.MIN_SCORES_PATH.write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
     return payload
@@ -1984,12 +2035,83 @@ def _run_job(kind: str, target: Callable[[Callable[..., None]], Any]) -> None:
         _persist_job_state()
 
 
+def _preserve_failed_docs_from_backup(
+    backup_id: str,
+    failed_urls: set[str],
+    errors: list[dict[str, Any]],
+    skipped: int,
+) -> tuple[int, dict[str, Any] | None]:
+    """Переносит из резервной копии документы и эмбеддинги тех URL, которые не удалось обновить."""
+    if not backup_id or not failed_urls:
+        return 0, None
+    backup_dir = _backup_dir(backup_id)
+    backup_kb = backup_dir / "kb.sqlite"
+    backup_emb = backup_dir / "embeddings.npy"
+    if not backup_kb.exists() or not backup_emb.exists():
+        return 0, None
+
+    backup_matrix = np.load(backup_emb).astype(np.float32)
+    backup_conn = sqlite3.connect(f"file:{backup_kb}?mode=ro", uri=True)
+    backup_conn.row_factory = sqlite3.Row
+    live_conn = connect_db()
+    preserved = 0
+    try:
+        chunk_rows = backup_conn.execute("SELECT id FROM chunks ORDER BY id").fetchall()
+        id_to_pos = {int(row["id"]): idx for idx, row in enumerate(chunk_rows)}
+        if len(id_to_pos) != backup_matrix.shape[0]:
+            return 0, None
+
+        live_urls = {str(row["url"]) for row in live_conn.execute("SELECT url FROM documents")}
+        live_hashes = existing_hashes(live_conn)
+        backup_docs = backup_conn.execute(
+            """SELECT doc_id, title, url, section, fetched_at, year_version,
+                      format, sha256, chars, retrieved_via
+               FROM documents"""
+        ).fetchall()
+
+        for doc_row in backup_docs:
+            url = str(doc_row["url"])
+            sha = str(doc_row["sha256"])
+            if url not in failed_urls or url in live_urls or sha in live_hashes:
+                continue
+            chunk_records = backup_conn.execute(
+                "SELECT id, heading, text FROM chunks WHERE doc_id = ? ORDER BY idx",
+                (doc_row["doc_id"],),
+            ).fetchall()
+            if not chunk_records:
+                continue
+            positions = [id_to_pos.get(int(chunk["id"]), -1) for chunk in chunk_records]
+            if any(pos < 0 for pos in positions):
+                continue
+            vectors = backup_matrix[positions]
+            chunks_payload = [
+                {"heading": str(chunk["heading"] or ""), "text": str(chunk["text"] or "")}
+                for chunk in chunk_records
+            ]
+            store_document(live_conn, dict(doc_row), chunks_payload)
+            append_embeddings(vectors)
+            live_urls.add(url)
+            live_hashes.add(sha)
+            preserved += 1
+
+        if preserved == 0:
+            return 0, None
+
+        verify_index_consistency(live_conn)
+        registry = write_registry(live_conn)
+        stats = write_stats(live_conn, registry, errors, skipped)
+        return preserved, stats
+    finally:
+        backup_conn.close()
+        live_conn.close()
+
+
 def run_site_rebuild(progress: Callable[..., None] | None = None) -> dict[str, Any]:
     """Находит ссылки и полностью пересобирает базу из сайта.
 
-    Перед пересборкой делает резервную копию. Если сайт не отдал документов
-    или собрал меньше половины прежнего объёма, база возвращается к рабочему
-    состоянию: частично собранная база хуже прежней.
+    Перед пересборкой делает резервную копию. Если часть URL не ответила,
+    их прежние документы и векторы подтягиваются из копии. Если сайт не отдал
+    ни одного документа или итоговый объём меньше половины прежнего — откат.
     """
     before_docs = int(_read_stats().get("unique_docs") or 0)
     previous_stamp = str(read_app_settings().get("last_site_rebuild_at") or "")
@@ -2010,9 +2132,27 @@ def run_site_rebuild(progress: Callable[..., None] | None = None) -> dict[str, A
         sources = discover_site_sources()
         stats = run_urls(config.SITE_SOURCES_PATH, use_wayback=False, progress=progress)
 
+        fresh_docs = int(stats.get("unique_docs") or 0)
+        if fresh_docs == 0:
+            if backup is not None:
+                restore_backup(str(backup["id"]))
+            raise RuntimeError(
+                f"сайт отдал 0 документов вместо {before_docs} — база восстановлена из копии"
+            )
+
+        preserved_docs = 0
+        errors = list(stats.get("errors", []))
+        failed_urls = {str(err.get("url") or "") for err in errors if isinstance(err, dict) and err.get("url")}
+        if backup is not None and failed_urls:
+            preserved_docs, updated_stats = _preserve_failed_docs_from_backup(
+                str(backup["id"]), failed_urls, errors, int(stats.get("skipped") or 0)
+            )
+            if updated_stats is not None:
+                stats = updated_stats
+
         after_docs = int(stats.get("unique_docs") or 0)
         degraded = before_docs > 0 and after_docs < before_docs * 0.5
-        if after_docs == 0 or degraded:
+        if degraded:
             if backup is not None:
                 restore_backup(str(backup["id"]))
             raise RuntimeError(
@@ -2024,6 +2164,7 @@ def run_site_rebuild(progress: Callable[..., None] | None = None) -> dict[str, A
             "sources": len(sources),
             "stats": stats,
             "backup_id": str(backup["id"]) if backup else "",
+            "preserved_docs": preserved_docs,
         }
     except Exception:
         # Неудачная попытка не должна блокировать повторный запуск на сутки.

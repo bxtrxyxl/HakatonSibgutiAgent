@@ -7,6 +7,7 @@ import json
 from pathlib import Path
 
 import httpx
+import numpy as np
 import pytest
 
 from src import config, ingest
@@ -183,3 +184,144 @@ def test_persist_job_state_writes_snapshot(
         assert persisted["last_job"]["status"] == "done"
     finally:
         _set_job_state(snapshot)
+
+
+def test_build_program_catalog_preserves_missing_profiles_on_partial_error(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    catalog_path = tmp_path / "programs.json"
+    old_ok = {
+        "url": "https://portal.sibsutis.ru/abitur/profile/detail.php?ID=1",
+        "code": "09.03.01",
+        "profile": "Old One",
+    }
+    old_fail = {
+        "url": "https://portal.sibsutis.ru/abitur/profile/detail.php?ID=2",
+        "code": "09.03.03",
+        "profile": "Preserved Two",
+    }
+    catalog_path.write_text(json.dumps({"count": 2, "programs": [old_ok, old_fail]}), encoding="utf-8")
+    monkeypatch.setattr(config, "PROGRAMS_PATH", catalog_path)
+    monkeypatch.setattr(
+        ingest,
+        "discover_program_links",
+        lambda: [{"url": old_ok["url"], "title": "1"}, {"url": old_fail["url"], "title": "2"}],
+    )
+
+    def fake_fetch(url: str, use_wayback: bool = False) -> tuple[bytes, str, str, str]:
+        if url == old_fail["url"]:
+            raise RuntimeError("timeout")
+        return b"<html></html>", "text/html", url, "direct"
+
+    monkeypatch.setattr(ingest, "fetch_url", fake_fetch)
+    monkeypatch.setattr(
+        ingest,
+        "parse_program_page",
+        lambda url, html: {"url": url, "code": "09.03.01", "profile": "Fresh One"},
+    )
+
+    payload = ingest.build_program_catalog()
+
+    assert payload["count"] == 2
+    assert payload["preserved"] == 1
+    assert [item["profile"] for item in payload["programs"]] == ["Fresh One", "Preserved Two"]
+    assert payload["errors"][0]["preserved"] is True
+
+
+def test_pdf_catalogs_preserve_previous_data_when_pdf_empty(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    ach_path = tmp_path / "achievements.json"
+    min_path = tmp_path / "min_scores.json"
+    ach_path.write_text(
+        json.dumps({"bachelor": [{"title": "Медаль", "points": 10}], "master": [], "target": []}),
+        encoding="utf-8",
+    )
+    min_path.write_text(
+        json.dumps({"soo": [{"subject": "Математика", "points": 27}], "spo": [], "master": 35}),
+        encoding="utf-8",
+    )
+    monkeypatch.setattr(config, "ACHIEVEMENTS_PATH", ach_path)
+    monkeypatch.setattr(config, "MIN_SCORES_PATH", min_path)
+    monkeypatch.setattr(ingest, "fetch_url", lambda url, use_wayback=False: (b"%PDF", "application/pdf", url, "direct"))
+    monkeypatch.setattr(ingest, "extract_pdf", lambda data: "пустой текст без таблиц")
+
+    with pytest.raises(RuntimeError):
+        ingest.build_achievements_catalog()
+    with pytest.raises(RuntimeError):
+        ingest.build_min_scores_catalog()
+
+    assert json.loads(ach_path.read_text(encoding="utf-8"))["bachelor"][0]["title"] == "Медаль"
+    assert json.loads(min_path.read_text(encoding="utf-8"))["soo"][0]["subject"] == "Математика"
+
+
+def test_preserve_failed_docs_from_backup_restores_missing_doc_and_vectors(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    data_dir = tmp_path / "data"
+    backups_dir = data_dir / "backups"
+    data_dir.mkdir()
+    backups_dir.mkdir()
+
+    monkeypatch.setattr(config, "DATA_DIR", data_dir)
+    monkeypatch.setattr(config, "KB_PATH", data_dir / "kb.sqlite")
+    monkeypatch.setattr(config, "EMBEDDINGS_PATH", data_dir / "embeddings.npy")
+    monkeypatch.setattr(config, "REGISTRY_PATH", data_dir / "registry.json")
+    monkeypatch.setattr(config, "STATS_PATH", data_dir / "stats.json")
+    monkeypatch.setattr(config, "BACKUPS_DIR", backups_dir)
+
+    doc1 = {
+        "doc_id": "d1",
+        "title": "Doc 1",
+        "url": "https://sibsutis.ru/ok",
+        "section": "Поступление",
+        "fetched_at": "2026-01-01T00:00:00Z",
+        "year_version": "2026",
+        "format": "html",
+        "sha256": "h1",
+        "chars": 12,
+        "retrieved_via": "direct",
+    }
+    doc2 = {
+        "doc_id": "d2",
+        "title": "Doc 2",
+        "url": "https://sibsutis.ru/failed",
+        "section": "Общежития",
+        "fetched_at": "2026-01-01T00:00:00Z",
+        "year_version": "2026",
+        "format": "html",
+        "sha256": "h2",
+        "chars": 14,
+        "retrieved_via": "direct",
+    }
+
+    conn = ingest.connect_db()
+    ingest.init_db(conn, rebuild=True)
+    ingest.store_document(conn, doc1, [{"heading": "H1", "text": "Fresh text 1"}])
+    ingest.store_document(conn, doc2, [{"heading": "H2", "text": "Old text 2"}])
+    conn.close()
+    ingest.append_embeddings(np.asarray([[1.0, 0.0], [0.0, 1.0]], dtype=np.float32))
+    backup = ingest.create_backup("before")
+
+    # Имитируем частичную пересборку: doc1 пересобрался, doc2 не скачался.
+    config.EMBEDDINGS_PATH.unlink()
+    conn = ingest.connect_db()
+    ingest.init_db(conn, rebuild=True)
+    ingest.store_document(conn, doc1, [{"heading": "H1", "text": "Fresh text 1"}])
+    conn.close()
+    ingest.append_embeddings(np.asarray([[1.0, 0.0]], dtype=np.float32))
+
+    preserved, updated_stats = ingest._preserve_failed_docs_from_backup(
+        str(backup["id"]),
+        {"https://sibsutis.ru/failed"},
+        [{"url": "https://sibsutis.ru/failed", "error": "timeout"}],
+        0,
+    )
+
+    assert preserved == 1
+    assert updated_stats is not None
+    assert updated_stats["unique_docs"] == 2
+    assert updated_stats["chunks"] == 2
+    matrix = np.load(config.EMBEDDINGS_PATH)
+    assert matrix.shape == (2, 2)
+    assert np.allclose(matrix[1], np.asarray([0.0, 1.0], dtype=np.float32))
