@@ -32,6 +32,11 @@ Thumbs.db
 .vscode/
 .idea/
 
+# ngrok (публичный туннель)
+ngrok.exe
+ngrok.zip
+ngrok*.log
+
 # Playwright
 test-results/
 playwright-report/

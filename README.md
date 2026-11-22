@@ -35,6 +35,13 @@
   `New-NetFirewallRule -DisplayName "SibSUTIS Agent 8000" -Direction Inbound -Action Allow -Protocol TCP -LocalPort 8000 -Profile Private`.
 - На общей сети задайте `ADMIN_TOKEN` в `.env`, иначе админ-эндпоинты доступны всем в сети.
 
+**Публичная ссылка через ngrok (доступ из интернета):**
+- Скачайте [ngrok](https://ngrok.com/download) и положите `ngrok.exe` в корень проекта (рядом с `start.bat`); файл в `.gitignore` и не коммитится.
+- Запустите [`start-public.bat`](start-public.bat). Он поднимет приложение, откроет туннель и напечатает ссылку вида `https://<random>.ngrok-free.app/`, а затем откроет её в браузере.
+- При первом запуске скрипт попросит authtoken (бесплатный, [в панели ngrok](https://dashboard.ngrok.com/get-started/your-authtoken)). Его можно один раз прописать в `.env` как `NGROK_AUTHTOKEN=...` — тогда ввод не потребуется.
+- Бесплатный ngrok показывает страницу «Visit Site» при первом заходе и меняет адрес при каждом перезапуске. Входящие правила брандмауэра не нужны: ngrok соединяется исходящими.
+- Ссылка публичная: любой, у кого она есть, может общаться с чатом (расходует кредиты LLM-провайдера). Перед показом задайте `ADMIN_TOKEN` в `.env`, чтобы закрыть пересборку, бэкапы и другие тяжёлые операции.
+
 Вручную:
 
 ```bash
