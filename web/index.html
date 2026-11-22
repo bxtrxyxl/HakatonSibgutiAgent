@@ -4741,6 +4741,12 @@
             const parsed = JSON.parse(raw);
             const settings = Object.assign({}, DEFAULT_SETTINGS, parsed.settings || {});
             if (settings.mode === 'demo') settings.mode = 'fastapi';
+            if (
+              settings.mode === 'openai' &&
+              /^https?:\/\/(127\.0\.0\.1|localhost)(:\d+)?(\/|$)/i.test(settings.endpoint || '')
+            ) {
+              settings.mode = 'fastapi';
+            }
             const chats = Array.isArray(parsed.chats) && parsed.chats.length ? parsed.chats : createInitialChats();
             const activeChatId = chats.some((c) => c.id === parsed.activeChatId) ? parsed.activeChatId : chats[0].id;
             return {
@@ -7056,7 +7062,8 @@
       }
 
       async function testConnection() {
-        const mode = state.settings.mode;
+        const activeBtn = el.modeSegmented.querySelector('.seg-btn.is-active');
+        const mode = (activeBtn && activeBtn.dataset.mode) || state.settings.mode;
         const base = el.endpointInput.value.trim().replace(/\/+$/, '');
         const key = el.apiKeyInput.value.trim();
 
@@ -7350,11 +7357,11 @@
 
         el.modeSegmented.querySelectorAll('.seg-btn').forEach((btn) => {
           btn.addEventListener('click', () => {
-            state.settings.mode = btn.dataset.mode;
+            const nextMode = btn.dataset.mode;
             el.modeSegmented.querySelectorAll('.seg-btn').forEach((b) => b.classList.toggle('is-active', b === btn));
-            if (state.settings.mode === 'openai' && el.endpointInput.value.includes('127.0.0.1')) {
+            if (nextMode === 'openai' && /(127\.0\.0\.1|localhost)/i.test(el.endpointInput.value)) {
               el.endpointInput.value = 'https://openrouter.ai/api/v1';
-            } else if (state.settings.mode === 'fastapi' && el.endpointInput.value.includes('openrouter')) {
+            } else if (nextMode === 'fastapi' && el.endpointInput.value.includes('openrouter')) {
               el.endpointInput.value = 'http://127.0.0.1:8000';
             }
           });
@@ -7418,7 +7425,17 @@
         });
 
         el.saveSettingsBtn.addEventListener('click', () => {
-          state.settings.endpoint = el.endpointInput.value.trim() || 'http://127.0.0.1:8000';
+          const activeModeBtn = el.modeSegmented.querySelector('.seg-btn.is-active');
+          let nextMode = (activeModeBtn && activeModeBtn.dataset.mode) || state.settings.mode;
+          const nextEndpoint = el.endpointInput.value.trim() || 'http://127.0.0.1:8000';
+          if (
+            nextMode === 'openai' &&
+            /^https?:\/\/(127\.0\.0\.1|localhost)(:\d+)?(\/|$)/i.test(nextEndpoint)
+          ) {
+            nextMode = 'fastapi';
+          }
+          state.settings.mode = nextMode;
+          state.settings.endpoint = nextEndpoint;
           state.settings.apiKey = el.apiKeyInput.value.trim();
           state.settings.model = el.modelNameInput.value.trim() || 'deepseek-chat';
           state.settings.showQuotes = el.toggleQuotes.getAttribute('aria-checked') === 'true';
