@@ -72,7 +72,9 @@ MAX_CHUNKS_PER_DOC = 4
 # Предел числа сессий в памяти: старые вытесняются, чтобы процесс не рос бесконечно.
 SESSION_LIMIT = _env_int("SESSION_LIMIT", 500)
 REQUEST_TIMEOUT = 60.0
+QUERY_EMBED_TIMEOUT = float(_env("QUERY_EMBED_TIMEOUT", "4.0") or 4.0)
 LLM_TIMEOUT = 90.0
+LLM_REWRITE_TIMEOUT = float(_env("LLM_REWRITE_TIMEOUT", "8.0") or 8.0)
 
 # Чанкинг: ~800-1200 символов с перекрытием ~150.
 CHUNK_SIZE = 1100

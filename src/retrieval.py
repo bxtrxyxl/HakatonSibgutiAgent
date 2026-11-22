@@ -7,6 +7,7 @@ import json
 import os
 import re
 import sqlite3
+import sys
 import tempfile
 import threading
 from dataclasses import dataclass
@@ -20,6 +21,7 @@ from src import config
 
 RRF_K = 60
 NEAR_DUPLICATE_SIM = 0.97
+MAX_QUERY_VECTOR_CACHE = 256
 TOKEN_RE = re.compile(r"[0-9a-zA-Zа-яА-ЯёЁ]+(?:[.\-/][0-9a-zA-Zа-яА-ЯёЁ]+)*")
 
 
@@ -82,6 +84,8 @@ class HybridRetriever:
         self._chunk_ids: np.ndarray | None = None
         self._id_to_pos: dict[int, int] | None = None
         self._load_lock = threading.Lock()
+        self._query_cache: dict[str, np.ndarray] = {}
+        self._query_cache_lock = threading.Lock()
         self._embedder = None
 
     # --- ресурсы ---------------------------------------------------------
@@ -135,11 +139,28 @@ class HybridRetriever:
     def _query_vector(self, query: str) -> np.ndarray | None:
         if self._embeddings is None or self._embeddings.size == 0:
             return None
+        cache_key = " ".join((query or "").split()).lower()
+        with self._query_cache_lock:
+            cached = self._query_cache.get(cache_key)
+        if cached is not None:
+            return cached
         if self._embedder is None:
-            from src.ingest import embed_texts
+            from src.ingest import embed_query
 
-            self._embedder = embed_texts
-        vector = self._embedder([query])[0]
+            self._embedder = embed_query
+        if getattr(self._embedder, "__name__", "") == "embed_texts":
+            raw = self._embedder([query])[0]
+        else:
+            raw = self._embedder(query)
+        vector = np.asarray(raw, dtype=np.float32)
+        norm = float(np.linalg.norm(vector))
+        if norm > 0 and abs(norm - 1.0) > 1e-4:
+            vector = vector / norm
+        with self._query_cache_lock:
+            if len(self._query_cache) >= MAX_QUERY_VECTOR_CACHE:
+                oldest = next(iter(self._query_cache))
+                self._query_cache.pop(oldest, None)
+            self._query_cache[cache_key] = vector
         return vector
 
     # --- поиск -----------------------------------------------------------
@@ -162,7 +183,11 @@ class HybridRetriever:
 
     def _vector_search(self, query: str, limit: int) -> list[int]:
         self._load_embeddings()
-        vector = self._query_vector(query)
+        try:
+            vector = self._query_vector(query)
+        except Exception as exc:
+            print(f"[retrieval] query embedding fallback to FTS5: {type(exc).__name__}: {exc}", file=sys.stderr)
+            return []
         if vector is None:
             return []
         scores = self._embeddings @ vector

@@ -98,6 +98,28 @@ def sanitize_chunks(chunks: list[dict[str, Any]]) -> str:
     return "\n\n".join(blocks)
 
 
+def sanitize_context_items(items: list[dict[str, Any]] | None) -> tuple[str, list[str]]:
+    """Санитизирует прикреплённые в UI карточки контекста и возвращает XML + флаги инъекций."""
+    if not items:
+        return "", []
+    blocks: list[str] = []
+    flags: list[str] = []
+    for raw in items[:6]:
+        if not isinstance(raw, dict):
+            continue
+        label_raw = str(raw.get("label", "")).strip()[:120]
+        summary_raw = str(raw.get("summary", "")).strip()[:800]
+        if not label_raw and not summary_raw:
+            continue
+        for flag in detect_injection(f"{label_raw}\n{summary_raw}"):
+            if flag not in flags:
+                flags.append(flag)
+        label = _neutralize(label_raw).replace("&", "&amp;").replace('"', "'").replace("<", "&lt;").replace(">", "&gt;")
+        summary = _neutralize(summary_raw).replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
+        blocks.append(f'<context_item label="{label}" trust="untrusted_data">\n{summary}\n</context_item>')
+    return "\n\n".join(blocks), flags
+
+
 def redact(text: str) -> str:
     """Удаляет из строки всё, похожее на ключи и токены."""
     cleaned = str(text)

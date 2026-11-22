@@ -57,9 +57,15 @@ _ALLOWED_UPLOADS = {".html", ".htm", ".pdf", ".txt", ".md"}
 _MAX_UPLOAD_BYTES = 25 * 1024 * 1024
 
 
+class ContextItem(BaseModel):
+    label: str = Field(min_length=1, max_length=120)
+    summary: str = Field(default="", max_length=800)
+
+
 class ChatRequest(BaseModel):
     session_id: str = Field(default="", description="Идентификатор сессии; пустой — создать новую")
     message: str = Field(min_length=1, max_length=4000)
+    context_items: list[ContextItem] = Field(default_factory=list, max_length=6)
 
 
 class BackupRequest(BaseModel):
@@ -178,7 +184,8 @@ def new_session() -> dict[str, str]:
 def chat(request: ChatRequest) -> dict[str, Any]:
     agent = get_agent()
     session_id = request.session_id or agent.new_session()
-    return agent.answer(session_id, request.message)
+    items = [item.model_dump() for item in request.context_items]
+    return agent.answer(session_id, request.message, context_items=items or None)
 
 
 @app.post("/api/ingest/file", dependencies=[Depends(require_admin)])

@@ -13,7 +13,16 @@ from src.ingest import load_achievements_catalog
 from src.retrieval import HybridRetriever, recommend_programs
 
 HISTORY_LIMIT = 8
-LLM_MAX_TOKENS = 2000
+LLM_HISTORY_MESSAGES = 4
+LLM_HISTORY_ITEM_CHARS = 600
+LLM_MAX_TOKENS = 1200
+FOLLOWUP_RE = re.compile(
+    r"(?:^(?:а|и|но|ну|тогда|ещ[её]|кстати|хорошо|ладно|понятно)\b"
+    r"|\b(?:он|она|оно|они|его|е[её]|их|него|не[её]|них|нему|ней|ним|"
+    r"этот|эта|это|эти|этого|этой|этим|этих|туда|там|оттуда|"
+    r"такой|такая|такие|такое|подробнее)\b)",
+    re.I,
+)
 CITATION_RE = re.compile(r"\[(\d{1,2})\]")
 RECOMMEND_RE = re.compile(
     r"(подбер\w*|подходящ\w*|какие\s+направлен\w*|куда\s+поступ\w*|"
@@ -27,6 +36,19 @@ ACHIEVEMENT_RE = re.compile(
     r"олимпиад\w*|волонтер\w*|медаль\w*|целевая\s+квота)",
     re.I,
 )
+
+
+def _needs_rewrite(message: str, history: list[dict[str, str]]) -> bool:
+    """Переформулировка нужна только если есть история и вопрос опирается на контекст диалога."""
+    if not history:
+        return False
+    text = (message or "").strip()
+    if not text:
+        return False
+    if FOLLOWUP_RE.search(text):
+        return True
+    tokens = re.findall(r"[0-9a-zA-Zа-яА-ЯёЁ]+", text)
+    return len(tokens) <= 5
 
 
 class SessionStore:
@@ -107,22 +129,26 @@ class SibSUTISAgent:
             )
         return self._client
 
-    def _chat(self, messages: list[dict[str, str]], max_tokens: int = LLM_MAX_TOKENS) -> str:
-        response = self._llm().chat.completions.create(
-            model=config.LLM_MODEL,
-            messages=messages,
-            temperature=0.2,
-            max_tokens=max_tokens,
-        )
+    def _chat(
+        self,
+        messages: list[dict[str, str]],
+        max_tokens: int = LLM_MAX_TOKENS,
+        timeout: float | None = None,
+        retry_on_empty: bool = True,
+    ) -> str:
+        kwargs: dict[str, Any] = {
+            "model": config.LLM_MODEL,
+            "messages": messages,
+            "temperature": 0.2,
+            "max_tokens": max_tokens,
+        }
+        if timeout is not None:
+            kwargs["timeout"] = timeout
+        response = self._llm().chat.completions.create(**kwargs)
         content = (response.choices[0].message.content or "").strip()
-        if not content:
+        if not content and retry_on_empty:
             # Модель могла израсходовать бюджет на reasoning — один повтор с запасом.
-            response = self._llm().chat.completions.create(
-                model=config.LLM_MODEL,
-                messages=messages,
-                temperature=0.2,
-                max_tokens=max_tokens * 2,
-            )
+            response = self._llm().chat.completions.create(**{**kwargs, "max_tokens": max_tokens * 2})
             content = (response.choices[0].message.content or "").strip()
         return content
 
@@ -138,9 +164,12 @@ class SibSUTISAgent:
 
     def _rewrite_query(self, session_id: str, message: str) -> str:
         history = self.sessions.history(session_id)
-        if not history:
+        if not _needs_rewrite(message, history):
             return message.strip()
-        rendered = "\n".join(f"{item['role']}: {item['content'][:400]}" for item in history[-HISTORY_LIMIT:])
+        rendered = "\n".join(
+            f"{item['role']}: {item['content'][:300]}"
+            for item in history[-LLM_HISTORY_MESSAGES:]
+        )
         try:
             rewritten = self._chat(
                 [
@@ -149,12 +178,14 @@ class SibSUTISAgent:
                         "content": prompts.REWRITE_PROMPT.format(history=rendered, question=message.strip()),
                     }
                 ],
-                max_tokens=200,
+                max_tokens=80,
+                timeout=config.LLM_REWRITE_TIMEOUT,
+                retry_on_empty=False,
             )
         except Exception:
             return message.strip()
         rewritten = rewritten.strip().strip('"').strip()
-        return rewritten[:400] if rewritten else message.strip()
+        return rewritten[:300] if rewritten else message.strip()
 
     def _collect_sources(self, answer: str, chunks: list[dict[str, Any]]) -> list[dict[str, str]]:
         cited = {int(match) for match in CITATION_RE.findall(answer or "")}
@@ -307,11 +338,22 @@ class SibSUTISAgent:
 
     # --- основной цикл ---------------------------------------------------
 
-    def answer(self, session_id: str, user_message: str) -> dict[str, Any]:
+    def answer(
+        self,
+        session_id: str,
+        user_message: str,
+        context_items: list[dict[str, str]] | None = None,
+    ) -> dict[str, Any]:
         started = time.perf_counter()
         session_id = self.sessions.ensure(session_id)
         message = (user_message or "").strip()
-        flags = security.detect_injection(message)
+        attached_items = [
+            item
+            for item in (context_items or [])
+            if isinstance(item, dict) and (item.get("label") or item.get("summary"))
+        ][:6]
+        attached_xml, context_flags = security.sanitize_context_items(attached_items)
+        flags = list(dict.fromkeys([*security.detect_injection(message), *context_flags]))
         retrieved: list[dict[str, Any]] = []
 
         def finish(payload: dict[str, Any], status: str, error: str = "") -> dict[str, Any]:
@@ -338,7 +380,7 @@ class SibSUTISAgent:
                 "empty_query",
             )
 
-        if not flags and ACHIEVEMENT_RE.search(message):
+        if not attached_items and not flags and ACHIEVEMENT_RE.search(message):
             achievements = self._achievements_answer(message)
             if achievements is not None:
                 self.sessions.append(session_id, "user", message)
@@ -346,7 +388,7 @@ class SibSUTISAgent:
                 retrieved = achievements.get("sources", [])
                 return finish(achievements, "achievements")
 
-        if not flags and RECOMMEND_RE.search(message):
+        if not attached_items and not flags and RECOMMEND_RE.search(message):
             recommendation = self._recommend_answer(message)
             if recommendation is not None:
                 self.sessions.append(session_id, "user", message)
@@ -356,7 +398,14 @@ class SibSUTISAgent:
 
         try:
             query = self._rewrite_query(session_id, message)
-            retrieved = self.retriever.search(query)
+            if attached_items and not context_flags:
+                ctx_hint = " ".join(
+                    str(item.get("label", "")).strip() for item in attached_items if item.get("label")
+                )[:220]
+                search_query = f"{query} {ctx_hint}".strip() if ctx_hint else query
+            else:
+                search_query = query
+            retrieved = self.retriever.search(search_query)
         except Exception as exc:
             return finish(
                 {
@@ -368,7 +417,7 @@ class SibSUTISAgent:
                 f"{type(exc).__name__}: {exc}",
             )
 
-        if not retrieved:
+        if not retrieved and not attached_xml:
             answer = (
                 "В доступных материалах СибГУТИ не нашлось сведений по этому вопросу. "
                 "Уточните, пожалуйста: вы абитуриент или студент, интересует бакалавриат, "
@@ -379,19 +428,18 @@ class SibSUTISAgent:
             self.sessions.append(session_id, "assistant", answer)
             return finish({"answer_markdown": answer, "sources": []}, "no_context")
 
-        context = security.sanitize_chunks(retrieved)
-        history = self.sessions.history(session_id)[-HISTORY_LIMIT:]
+        context = security.sanitize_chunks(retrieved) if retrieved else "(дополнительных фрагментов не найдено)"
+        history = [
+            {"role": item["role"], "content": item["content"][:LLM_HISTORY_ITEM_CHARS]}
+            for item in self.sessions.history(session_id)[-LLM_HISTORY_MESSAGES:]
+        ]
         messages: list[dict[str, str]] = [{"role": "system", "content": prompts.SYSTEM_PROMPT}]
         messages.extend(history)
-        messages.append(
-            {
-                "role": "user",
-                "content": (
-                    f"<knowledge_base>\n{context}\n</knowledge_base>\n\n"
-                    f"Вопрос пользователя: {message}"
-                ),
-            }
-        )
+        user_parts = [f"<knowledge_base>\n{context}\n</knowledge_base>"]
+        if attached_xml:
+            user_parts.append(f"<attached_context>\n{attached_xml}\n</attached_context>")
+        user_parts.append(f"Вопрос пользователя: {message}")
+        messages.append({"role": "user", "content": "\n\n".join(user_parts)})
 
         try:
             answer = self._chat(messages)
@@ -413,7 +461,17 @@ class SibSUTISAgent:
             )
 
         sources = self._collect_sources(answer, retrieved)
-        self.sessions.append(session_id, "user", message)
+        ctx_labels = [
+            str(item.get("label", "")).strip()[:60]
+            for item in attached_items
+            if isinstance(item, dict) and item.get("label")
+        ]
+        user_history = (
+            f"{message}\n[Контекст: {', '.join(ctx_labels)}]"
+            if ctx_labels and not context_flags
+            else message
+        )
+        self.sessions.append(session_id, "user", user_history)
         self.sessions.append(session_id, "assistant", answer)
 
         payload: dict[str, Any] = {"answer_markdown": answer, "sources": sources}

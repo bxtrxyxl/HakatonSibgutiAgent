@@ -11,6 +11,7 @@ import pytest
 from fastapi.testclient import TestClient
 
 from src import config, security
+from src.agent import get_agent
 from src.api import app
 from src.ingest import site_rebuild_cooldown
 from src.retrieval import build_overview, refresh_overview
@@ -240,3 +241,56 @@ def test_overview_refresh_persists_snapshot(client: TestClient) -> None:
         ]
     finally:
         build_overview(force_refresh=True)
+
+
+def test_chat_accepts_attached_context_items(client: TestClient, monkeypatch: pytest.MonkeyPatch) -> None:
+    agent = get_agent()
+    captured: dict[str, object] = {}
+
+    def fake_search(query: str, top_k: int | None = None) -> list[dict[str, object]]:
+        captured["search_query"] = query
+        return [
+            {
+                "chunk_id": 1,
+                "doc_id": "doc-1",
+                "title": "Проходные баллы СибГУТИ",
+                "url": "https://sibsutis.ru/scores",
+                "section": "Поступление",
+                "year_version": "2026",
+                "text": "Проходной балл на бюджет ИСиТ — 251.",
+            }
+        ]
+
+    def fake_chat(messages: list[dict[str, str]], **kwargs: object) -> str:
+        captured["messages"] = messages
+        return "По прикреплённой карточке максимум — 251 балл на ИСиТ [1]."
+
+    monkeypatch.setattr(agent.retriever, "search", fake_search)
+    monkeypatch.setattr(agent, "_chat", fake_chat)
+
+    response = client.post(
+        "/api/chat",
+        json={
+            "message": "Что важно по этим параметрам?",
+            "context_items": [
+                {
+                    "label": "Проходные баллы · Бюджет",
+                    "summary": "Максимум 251 (ИСиТ), минимум 207 (ИБТС).",
+                }
+            ],
+        },
+    )
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert "251" in payload["answer_markdown"]
+    assert len(payload["sources"]) == 1
+    assert "Проходные баллы · Бюджет" in str(captured["search_query"])
+    messages = captured["messages"]
+    assert isinstance(messages, list)
+    last_user = messages[-1]["content"]
+    assert "<attached_context>" in last_user
+    assert 'label="Проходные баллы · Бюджет"' in last_user
+    assert "Максимум 251 (ИСиТ)" in last_user
+    with agent.sessions._lock:
+        agent.sessions._sessions.pop(payload["session_id"], None)

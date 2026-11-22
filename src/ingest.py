@@ -555,16 +555,40 @@ def _chunk_group(
 
 # --- Эмбеддинги -----------------------------------------------------------
 
-def _embedding_client() -> Any:
+_EMBED_CLIENT_LOCK = threading.Lock()
+_EMBED_CLIENTS: dict[tuple[str, str, float, Any], Any] = {}
+
+
+def _embedding_client(timeout: float | None = None) -> Any:
     from openai import OpenAI
 
     config.require_embeddings()
-    return OpenAI(
-        base_url=config.EMBED_BASE_URL,
-        api_key=config.EMBED_API_KEY,
-        timeout=config.REQUEST_TIMEOUT,
-        max_retries=0,
-    )
+    effective_timeout = config.REQUEST_TIMEOUT if timeout is None else float(timeout)
+    cache_key = (config.EMBED_BASE_URL, config.EMBED_API_KEY, effective_timeout, OpenAI)
+    with _EMBED_CLIENT_LOCK:
+        client = _EMBED_CLIENTS.get(cache_key)
+        if client is None:
+            client = OpenAI(
+                base_url=config.EMBED_BASE_URL,
+                api_key=config.EMBED_API_KEY,
+                timeout=effective_timeout,
+                max_retries=0,
+            )
+            _EMBED_CLIENTS[cache_key] = client
+    return client
+
+
+def embed_query(text: str, timeout: float | None = None) -> np.ndarray:
+    """Быстрый единичный эмбеддинг поискового запроса с повторным использованием клиента."""
+    effective_timeout = config.QUERY_EMBED_TIMEOUT if timeout is None else float(timeout)
+    client = _embedding_client(timeout=effective_timeout)
+    prepared = (text or "").strip()[: config.EMBED_MAX_CHARS] or "пустой фрагмент"
+    response = client.embeddings.create(model=config.EMBED_MODEL, input=[prepared])
+    vector = np.asarray(response.data[0].embedding, dtype=np.float32)
+    norm = float(np.linalg.norm(vector))
+    if norm > 0:
+        vector = vector / norm
+    return vector
 
 
 def _embed_batch(client: Any, batch: list[str]) -> list[list[float]]:
