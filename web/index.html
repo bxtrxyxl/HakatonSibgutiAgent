@@ -4249,6 +4249,7 @@
           dbRetry: 'Повторить',
           dbLoading: 'Загрузка...',
           dbServerError: 'Сервер базы недоступен',
+          dbFileHint: 'Страница открыта как файл. Запустите start.bat и откройте http://127.0.0.1:8000/ (или ссылку, которую печатает start-lan.bat).',
           dbOffline: 'офлайн',
           dbNoBackups: 'Резервных копий пока нет',
           dbEmbedNotConfigured: 'не настроена',
@@ -4489,6 +4490,7 @@
           dbRetry: 'Retry',
           dbLoading: 'Loading...',
           dbServerError: 'Database server is unreachable',
+          dbFileHint: 'The page is opened as a file. Run start.bat and open http://127.0.0.1:8000/ (or the link printed by start-lan.bat).',
           dbOffline: 'offline',
           dbNoBackups: 'No backups yet',
           dbEmbedNotConfigured: 'not configured',
@@ -5504,7 +5506,7 @@
       async function tryFetchBackendOverview() {
         if (state.settings.mode !== 'fastapi') return;
         try {
-          const base = state.settings.endpoint.replace(/\/+$/, '');
+          const base = resolveApiBase(state.settings.endpoint);
           const response = await fetch(`${base}/api/overview`);
           if (!response.ok) return;
           const data = await response.json();
@@ -6195,7 +6197,7 @@
           : [];
 
         if (mode !== 'openai') {
-          const base = endpoint.replace(/\/+$/, '');
+          const base = resolveApiBase(endpoint);
           const payload = {
             session_id: chat.id,
             message: messageText
@@ -6356,10 +6358,19 @@
         resetClearButton();
       }
 
+      function resolveApiBase(configured) {
+        const raw = String(configured || '').trim().replace(/\/+$/, '');
+        const pageOrigin = /^https?:$/.test(window.location.protocol) ? window.location.origin : '';
+        if (!raw) return pageOrigin || 'http://127.0.0.1:8000';
+        const isLocalDefault = /^https?:\/\/(127\.0\.0\.1|localhost)(:\d+)?$/i.test(raw);
+        if (pageOrigin && isLocalDefault && pageOrigin !== raw) return pageOrigin;
+        return raw;
+      }
+
       function dbApiBase() {
         const configured =
           state.settings.mode === 'fastapi' ? state.settings.endpoint : 'http://127.0.0.1:8000';
-        return configured.trim().replace(/\/+$/, '');
+        return resolveApiBase(configured);
       }
 
       function setDbError(message) {
@@ -6574,7 +6585,8 @@
           renderDatabaseTab();
           fetchSiteCooldown();
         } catch (err) {
-          setDbError(`${t('dbServerError')}: ${err.message}`);
+          const hint = window.location.protocol === 'file:' ? ` ${t('dbFileHint')}` : '';
+          setDbError(`${t('dbServerError')}: ${err.message}.${hint}`);
           el.dbActiveBadge.textContent = t('dbOffline');
           el.dbActiveBadge.classList.remove('is-ok');
           el.dbActiveBadge.classList.add('is-err');
@@ -7079,7 +7091,8 @@
 
         const t0 = performance.now();
         try {
-          const url = mode === 'fastapi' ? `${base}/api/stats` : `${base}/models`;
+          const target = mode === 'fastapi' ? resolveApiBase(base) : base;
+          const url = mode === 'fastapi' ? `${target}/api/stats` : `${target}/models`;
           const res = await fetch(url, {
             headers: key ? { Authorization: `Bearer ${key}` } : {}
           });

@@ -125,7 +125,7 @@ exit /b 0
 
 :launch_uvicorn
 echo [4/4] Starting server at %URL% (press Ctrl+C or close window to stop)...
-start "" /b powershell -NoProfile -Command "for ($i=0; $i -lt 30; $i++) { try { $r = Invoke-WebRequest -Uri 'http://%HEALTH_HOST%:%PORT%/api/health' -UseBasicParsing -TimeoutSec 2; if ($r.StatusCode -eq 200) { Start-Process '%URL%'; break } } catch {}; Start-Sleep -Milliseconds 500 }" >nul 2>&1
+start "" /b powershell -NoProfile -Command "for ($i=0; $i -lt 120; $i++) { try { $r = Invoke-WebRequest -Uri 'http://%HEALTH_HOST%:%PORT%/api/health' -UseBasicParsing -TimeoutSec 2; if ($r.StatusCode -eq 200) { Start-Process '%URL%'; break } } catch {}; Start-Sleep -Milliseconds 500 }" >nul 2>&1
 "%VENV_PY%" -m uvicorn src.api:app --host %HOST% --port %PORT%
 if not errorlevel 1 exit /b 0
 echo.

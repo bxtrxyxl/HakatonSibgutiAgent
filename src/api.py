@@ -27,6 +27,7 @@ from src.ingest import (
     database_status,
     delete_backup,
     discover_site_sources,
+    ensure_knowledge_base,
     job_status,
     load_achievements_catalog,
     load_min_scores_catalog,
@@ -46,6 +47,7 @@ from src.retrieval import build_overview, recommend_programs, refresh_overview
 
 @asynccontextmanager
 async def _lifespan(_app: FastAPI):
+    ensure_knowledge_base()
     start_autoupdate_scheduler()
     yield
 

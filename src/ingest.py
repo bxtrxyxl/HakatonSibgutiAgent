@@ -2405,6 +2405,58 @@ def check_kb() -> tuple[bool, str]:
     return True, f"чанков {chunks}"
 
 
+def ensure_knowledge_base() -> dict[str, Any]:
+    """Гарантирует локальную базу из папки проекта: собирает её при отсутствии или поломке."""
+    ok, reason = check_kb()
+    if ok:
+        return {"status": "ready", "reason": reason}
+
+    docs_dir = config.DOCS_DIR
+    if not docs_dir.exists():
+        return {"status": "skipped", "reason": "папка data/docs не найдена"}
+    has_docs = any(
+        path.is_file() and path.suffix.lower() in {".md", ".markdown", ".txt", ".html", ".htm", ".pdf"}
+        for path in docs_dir.rglob("*")
+    )
+    if not has_docs:
+        return {"status": "skipped", "reason": "в data/docs нет документов"}
+
+    print(f"[kb] база требует пересборки ({reason}); собираю из {docs_dir}", flush=True)
+    with_embeddings = True
+    try:
+        config.require_embeddings()
+        embed_query("probe", timeout=6.0)
+    except Exception as exc:
+        print(f"[kb] embedding API недоступен ({exc}); использую FTS5", file=sys.stderr)
+        with_embeddings = False
+
+    attempts = [True, False] if with_embeddings else [False]
+    last_stats: dict[str, Any] = {}
+    for use_embeddings in attempts:
+        try:
+            last_stats = run_directory(docs_dir, rebuild=True, with_embeddings=use_embeddings)
+        except Exception as exc:
+            print(f"[kb] сборка не удалась ({exc})", file=sys.stderr)
+            continue
+        ok, reason = check_kb()
+        if ok:
+            return {
+                "status": "built",
+                "embeddings": use_embeddings,
+                "reason": reason,
+                "stats": last_stats,
+            }
+        print(f"[kb] после сборки база не готова ({reason})", file=sys.stderr)
+
+    ok, reason = check_kb()
+    return {
+        "status": "built-unverified" if last_stats else "failed",
+        "embeddings": False,
+        "reason": reason,
+        "stats": last_stats,
+    }
+
+
 def main(argv: Iterable[str] | None = None) -> int:
     # Консоль Windows по умолчанию cp1252: без этого русский --help падает.
     for stream in (sys.stdout, sys.stderr):

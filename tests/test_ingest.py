@@ -400,6 +400,44 @@ def test_check_kb_flags_stale_docs(tmp_path: Path, monkeypatch: pytest.MonkeyPat
     assert "пересбор" in reason
 
 
+def test_ensure_knowledge_base_builds_from_project_docs(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    docs_dir = tmp_path / "docs"
+    data_dir = tmp_path / "data"
+    docs_dir.mkdir()
+    data_dir.mkdir()
+    (docs_dir / "guide.md").write_text(
+        "# Поступление 2026\n\n"
+        "Документы в приёмную комиссию СибГУТИ принимают с 20 июня по 25 июля 2026 года. "
+        "Подать заявление можно лично или через портал абитуриента.",
+        encoding="utf-8",
+    )
+
+    monkeypatch.setattr(config, "BASE_DIR", tmp_path)
+    monkeypatch.setattr(config, "DATA_DIR", data_dir)
+    monkeypatch.setattr(config, "DOCS_DIR", docs_dir)
+    monkeypatch.setattr(config, "KB_PATH", data_dir / "kb.sqlite")
+    monkeypatch.setattr(config, "EMBEDDINGS_PATH", data_dir / "embeddings.npy")
+    monkeypatch.setattr(config, "REGISTRY_PATH", data_dir / "registry.json")
+    monkeypatch.setattr(config, "STATS_PATH", data_dir / "stats.json")
+    monkeypatch.setattr(config, "require_embeddings", lambda: (_ for _ in ()).throw(RuntimeError("offline")))
+    monkeypatch.setattr(
+        ingest, "embed_query", lambda *_args, **_kwargs: pytest.fail("embed_query не должен вызываться")
+    )
+
+    result = ingest.ensure_knowledge_base()
+
+    assert result["status"] == "built"
+    assert result["embeddings"] is False
+    assert config.KB_PATH.exists()
+    assert not config.EMBEDDINGS_PATH.exists()
+    assert ingest.check_kb()[0] is True
+
+    again = ingest.ensure_knowledge_base()
+    assert again["status"] == "ready"
+
+
 def test_backup_restore_without_embeddings(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     docs_dir = tmp_path / "docs"
     data_dir = tmp_path / "data"
